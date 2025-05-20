@@ -3,410 +3,233 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Serverless P2P Chat (2-URL Exchange)</title>
+    <title>P2P Chat (simple-peer)</title>
+    <!-- Get simple-peer from a CDN -->
+    <script src="https://bundle.jsdelivr.net/npm/simple-peer@9.11.1/simplepeer.min.js"></script>
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f4f4; color: #333; }
-        .container { max-width: 700px; margin: auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-        h1, h2 { text-align: center; color: #007bff; }
-        textarea { width: 98%; min-height: 60px; margin-bottom: 10px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 0.85em; }
-        button {
-            background-color: #007bff; color: white; padding: 10px 15px; border: none;
-            border-radius: 4px; cursor: pointer; margin-right: 5px; margin-bottom: 10px;
-            transition: background-color 0.3s ease;
-        }
-        button:hover { background-color: #0056b3; }
-        button:disabled { background-color: #ccc; cursor: not-allowed; }
-        #chatBox { border: 1px solid #ddd; height: 200px; overflow-y: scroll; padding: 10px; margin-bottom: 10px; background-color: #e9ecef; border-radius: 4px; }
-        .message { margin-bottom: 8px; padding: 8px; border-radius: 4px; }
-        .sent { background-color: #d1ecf1; text-align: right; margin-left: auto; max-width: 70%; }
-        .received { background-color: #e2e3e5; text-align: left; margin-right: auto; max-width: 70%; }
-        #messageInput { width: calc(100% - 90px); padding: 10px; border: 1px solid #ddd; border-radius: 4px; }
-        #status { margin-top: 15px; font-style: italic; color: #555; text-align: center; padding: 10px; background-color: #f9f9f9; border-radius: 4px;}
-        .section { margin-bottom: 20px; padding: 15px; border: 1px solid #eee; border-radius: 5px; background: #f9f9f9; }
-        .instructions { font-size: 0.9em; color: #666; margin-bottom: 10px; line-height: 1.5; }
-        .url-box { padding: 10px; background: #e9ecef; border: 1px dashed #ccc; word-break: break-all; margin-bottom: 10px; font-size: 0.9em; }
-        .url-box strong { display: block; margin-bottom: 5px; }
-        .hidden { display: none; }
+        body { font-family: sans-serif; margin: 20px; background-color: #f0f0f0; display: flex; flex-direction: column; align-items: center; }
+        .container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); width: 90%; max-width: 600px; }
+        #sessionControls button { margin: 5px; padding: 10px 15px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        #shareableUrl { margin-top: 10px; padding: 10px; background: #e9ecef; border: 1px solid #ced4da; border-radius: 4px; word-break: break-all; }
+        #chatBox { border: 1px solid #ccc; height: 300px; overflow-y: scroll; padding: 10px; margin-bottom: 10px; background: #f8f9fa; }
+        .message { margin-bottom: 5px; padding: 8px; border-radius: 5px; max-width: 75%; word-wrap: break-word; }
+        .sent { background-color: #d1ecf1; text-align: right; margin-left: auto; }
+        .received { background-color: #e2e3e5; text-align: left; margin-right: auto; }
+        #messageInput { width: calc(100% - 85px); padding: 10px; border: 1px solid #ccc; border-radius: 4px 0 0 4px; }
+        #sendButton { padding: 10px 15px; background-color: #28a745; color: white; border: none; border-radius: 0 4px 4px 0; cursor: pointer; }
+        #sendButton:disabled { background-color: #aaa; }
+        #status { margin-top: 10px; font-style: italic; color: #555; text-align: center; }
+        #chatArea { display: none; margin-top: 20px; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Serverless P2P Chat (2-URL Exchange)</h1>
+        <h1>P2P Chat with simple-peer</h1>
+        <div id="sessionControls">
+            <button id="createSessionBtn">Create New Session & Share URL</button>
+            <p>Or join if URL has a session ID.</p>
+        </div>
+        <div id="shareableUrl" style="display:none;">Share this URL: <span></span></div>
         <div id="status">Initializing...</div>
 
-        <!-- Initial UI / Initiator Step 1 -->
-        <div class="section" id="initialSection">
-            <h2>Start or Join a Session</h2>
-            <div class="instructions">
-                To start, click "Create Session Invitation Link".
-                If you received an invitation link, open it.
-                If you received a "Connection Link" from Peer 2, open that.
-            </div>
-            <button id="createInvitationBtn">Create Session Invitation Link</button>
-        </div>
-
-        <!-- Initiator Step 1.5: Display Invitation Link -->
-        <div class="section hidden" id="initiatorDisplayInvitationSection">
-            <h2>Peer 1: Invitation Created</h2>
-            <div class="instructions">
-                Send the "Invitation Link" below to Peer 2.
-                Then, wait for Peer 2 to send you a "Connection Link" back.
-                Open the "Connection Link" from Peer 2 in this browser to connect.
-            </div>
-            <div class="url-box">
-                <strong>Invitation Link for Peer 2:</strong>
-                <p id="invitationUrlOutput"></p>
-            </div>
-            <p><i>Waiting for you to open the Connection Link from Peer 2...</i></p>
-        </div>
-
-        <!-- Joiner Step 1: Process Invitation & Create Connection Link -->
-        <div class="section hidden" id="joinerCreateConnectionLinkSection">
-            <h2>Peer 2: Invitation Received</h2>
-            <div class="instructions">
-                An invitation from Peer 1 has been loaded.
-                A "Connection Link" for Peer 1 has been generated below.
-                Copy this "Connection Link" and send it back to Peer 1.
-            </div>
-            <textarea id="receivedOfferDebug" rows="2" readonly placeholder="Received Offer (Debug)"></textarea>
-            <div class="url-box">
-                <strong>Connection Link to send back to Peer 1:</strong>
-                <p id="connectionUrlOutput"></p>
-            </div>
-            <p><i>Waiting for Peer 1 to open this Connection Link...</i></p>
-        </div>
-
-        <!-- Chat Section -->
-        <div class="section hidden" id="chatSection">
-            <h2>Chatting P2P</h2>
+        <div id="chatArea">
             <div id="chatBox"></div>
-            <input type="text" id="messageInput" placeholder="Type message..." disabled>
+            <input type="text" id="messageInput" placeholder="Type a message..." disabled>
             <button id="sendButton" disabled>Send</button>
         </div>
     </div>
 
     <script>
-        const initialSection = document.getElementById('initialSection');
-        const createInvitationBtn = document.getElementById('createInvitationBtn');
-
-        const initiatorDisplayInvitationSection = document.getElementById('initiatorDisplayInvitationSection');
-        const invitationUrlOutput = document.getElementById('invitationUrlOutput');
-
-        const joinerCreateConnectionLinkSection = document.getElementById('joinerCreateConnectionLinkSection');
-        const receivedOfferDebug = document.getElementById('receivedOfferDebug');
-        const connectionUrlOutput = document.getElementById('connectionUrlOutput');
-
-        const chatSection = document.getElementById('chatSection');
+        const createSessionBtn = document.getElementById('createSessionBtn');
+        const shareableUrlDiv = document.getElementById('shareableUrl');
+        const shareableUrlSpan = shareableUrlDiv.querySelector('span');
+        const statusDiv = document.getElementById('status');
+        const chatArea = document.getElementById('chatArea');
         const chatBox = document.getElementById('chatBox');
         const messageInput = document.getElementById('messageInput');
         const sendButton = document.getElementById('sendButton');
-        const statusDiv = document.getElementById('status');
 
-        let peerConnection;
-        let dataChannel;
-        let localOfferInitiator = null; // For initiator to store its offer
-
-        const RTCCONFIG = {
-            iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
-        };
+        let peer;
+        let roomId = null;
 
         function logStatus(message) {
             console.log(message);
             statusDiv.textContent = message;
         }
 
-        function hideAllSections() {
-            initialSection.classList.add('hidden');
-            initiatorDisplayInvitationSection.classList.add('hidden');
-            joinerCreateConnectionLinkSection.classList.add('hidden');
-            chatSection.classList.add('hidden');
+        function generateRoomId() {
+            return 'p2pchat-' + Math.random().toString(36).substring(2, 9); // Prefix to avoid collisions
         }
 
-        function initializePeerConnection(isInitiator) {
-            if (peerConnection) peerConnection.close();
-            peerConnection = new RTCPeerConnection(RTCCONFIG);
-
-            peerConnection.onicecandidate = event => {
-                // ICE candidates are included in the SDP for this simplified model
-                // In a robust app, they might be exchanged after initial offer/answer
-                // which would further complicate a no-server URL-only exchange.
-                 if (event.candidate) {
-                    console.log("Generated ICE candidate, will be part of next localDescription update:", event.candidate);
-                     // If we were exchanging them separately, the initiator would need to update their offer URL
-                     // or the joiner their answer URL, requiring yet another URL share.
-                } else {
-                     // All ICE candidates have been gathered for the current local description.
-                     // The localDescription should now be complete.
-                     if (isInitiator && peerConnection.localDescription && !initiatorDisplayInvitationSection.classList.contains('hidden')) {
-                        // Re-generate invitation URL if ICE candidates just finished for initiator *before* joiner connection
-                        const offerString = JSON.stringify(peerConnection.localDescription);
-                        const encodedOffer = encodeURIComponent(offerString);
-                        const invitationUrl = `${window.location.origin}${window.location.pathname}#invite_offer=${encodedOffer}`;
-                        invitationUrlOutput.textContent = invitationUrl;
-                        console.log("ICE gathering complete for initiator, updated invitation URL.");
-                     } else if (!isInitiator && peerConnection.localDescription && !joinerCreateConnectionLinkSection.classList.contains('hidden')) {
-                        // Re-generate connection URL if ICE candidates just finished for joiner
-                        const answerString = JSON.stringify(peerConnection.localDescription);
-                        const encodedAnswer = encodeURIComponent(answerString);
-                        const originalOfferString = receivedOfferDebug.dataset.originalOffer; // Get stored original offer
-                        const connectionUrl = `${window.location.origin}${window.location.pathname}#connect_answer=${encodedAnswer}&original_offer=${encodeURIComponent(originalOfferString)}`;
-                        connectionUrlOutput.textContent = connectionUrl;
-                        console.log("ICE gathering complete for joiner, updated connection URL.");
-                     }
-                }
-            };
-
-            peerConnection.oniceconnectionstatechange = () => {
-                logStatus(`P2P Connection State: ${peerConnection.iceConnectionState}`);
-                if (peerConnection.iceConnectionState === 'connected' || peerConnection.iceConnectionState === 'completed') {
-                    logStatus('P2P Connection Established!');
-                    hideAllSections();
-                    chatSection.classList.remove('hidden');
-                    messageInput.disabled = false;
-                    sendButton.disabled = false;
-                } else if (['failed', 'disconnected', 'closed'].includes(peerConnection.iceConnectionState)) {
-                    logStatus('P2P Connection Failed/Closed. Please refresh to start over.');
-                    resetP2PState();
-                }
-            };
-
-            peerConnection.ondatachannel = event => { // For the peer receiving the data channel
-                dataChannel = event.channel;
-                setupDataChannelEvents();
-                logStatus('Data channel connection received!');
-            };
-        }
-
-        function setupDataChannelEvents() {
-            if (!dataChannel) return;
-            dataChannel.onopen = () => {
-                logStatus('Data Channel OPEN');
-                // UI update might already be handled by iceconnectionstatechange
-            };
-            dataChannel.onclose = () => {
-                logStatus('Data Channel CLOSED');
-                resetP2PState(false); // Don't show initial section if channel just closed
-            };
-            dataChannel.onmessage = event => {
-                appendMessage(event.data, 'received');
-            };
-            dataChannel.onerror = error => {
-                console.error("Data Channel Error:", error);
-                logStatus(`Data Channel Error: ${error.message || 'Unknown'}`);
-            };
-        }
-
-        function resetP2PState(showInitial = true) {
-            if (dataChannel) dataChannel.close();
-            if (peerConnection) peerConnection.close();
-            peerConnection = null;
-            dataChannel = null;
-            localOfferInitiator = null;
-
-            hideAllSections();
-            if (showInitial) initialSection.classList.remove('hidden');
-            else chatSection.classList.add('hidden'); // Keep chat hidden if not showing initial
-
-            messageInput.disabled = true;
-            sendButton.disabled = true;
-            logStatus('Connection reset. Ready to start or join.');
-            window.location.hash = ''; // Clear hash to prevent re-processing on refresh if desired
-        }
-
-        // --- Initiator (Peer 1) ---
-        createInvitationBtn.onclick = async () => {
-            logStatus('Creating invitation link...');
-            hideAllSections();
-            initiatorDisplayInvitationSection.classList.remove('hidden');
-            initializePeerConnection(true); // true for initiator
-
-            dataChannel = peerConnection.createDataChannel("chatChannel");
-            setupDataChannelEvents();
-
-            try {
-                const offer = await peerConnection.createOffer();
-                await peerConnection.setLocalDescription(offer);
-                localOfferInitiator = offer; // Store offer locally
-
-                // Wait for ICE gathering to complete (onicecandidate with null candidate)
-                // For simplicity, we'll proceed, and onicecandidate might update the URL later if needed.
-                // A more robust way is to use `peerConnection.iceGatheringState === 'complete'` or a promise.
-                const offerString = JSON.stringify(peerConnection.localDescription);
-                const encodedOffer = encodeURIComponent(offerString);
-                const invitationUrl = `${window.location.origin}${window.location.pathname}#invite_offer=${encodedOffer}`;
-                invitationUrlOutput.textContent = invitationUrl;
-                logStatus('Invitation link created. Send it to Peer 2 and wait for their Connection Link.');
-            } catch (e) {
-                console.error("Error creating offer:", e);
-                logStatus(`Error creating offer: ${e.message}`);
-                resetP2PState();
-            }
+        createSessionBtn.onclick = () => {
+            roomId = generateRoomId();
+            window.location.hash = roomId;
+            shareableUrlSpan.textContent = window.location.href;
+            shareableUrlDiv.style.display = 'block';
+            createSessionBtn.disabled = true;
+            logStatus(`Session created. Room ID: ${roomId}. Share the URL.`);
+            startP2PConnection(true); // true for initiator
         };
 
-        // --- Joiner (Peer 2) ---
-        async function handleInvitationOffer(encodedOffer) {
-            logStatus('Invitation received. Processing offer from Peer 1...');
-            hideAllSections();
-            joinerCreateConnectionLinkSection.classList.remove('hidden');
-            initializePeerConnection(false); // false for joiner
-
-            try {
-                const offerString = decodeURIComponent(encodedOffer);
-                const offer = JSON.parse(offerString);
-                receivedOfferDebug.value = `Offer From P1: Type ${offer.type}, ${offer.sdp.length} chars`;
-                receivedOfferDebug.dataset.originalOffer = offerString; // Store for URL generation
-
-                await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
-                const answer = await peerConnection.createAnswer();
-                await peerConnection.setLocalDescription(answer);
-
-                // Wait for ICE gathering for answer
-                const answerString = JSON.stringify(peerConnection.localDescription);
-                const encodedAnswer = encodeURIComponent(answerString);
-
-                // Include original offer (or its hash/ID) for context if needed, but for simplicity, full offer.
-                const connectionUrl = `${window.location.origin}${window.location.pathname}#connect_answer=${encodedAnswer}&original_offer=${encodeURIComponent(offerString)}`;
-                connectionUrlOutput.textContent = connectionUrl;
-                logStatus('Connection link generated. Send it back to Peer 1.');
-
-            } catch (e) {
-                console.error("Error processing invitation offer / creating answer:", e);
-                logStatus(`Error: ${e.message}. Please ensure the invitation link is correct.`);
-                resetP2PState();
+        function initializeApp() {
+            if (window.location.hash) {
+                roomId = window.location.hash.substring(1);
+                logStatus(`Joining room: ${roomId}`);
+                shareableUrlSpan.textContent = window.location.href;
+                shareableUrlDiv.style.display = 'block';
+                createSessionBtn.style.display = 'none';
+                startP2PConnection(false); // false for joiner
+            } else {
+                logStatus('Ready. Create a session or open a session URL.');
             }
         }
 
-        // --- Initiator (Peer 1) - Processes Connection Link from Peer 2 ---
-        async function handleConnectionAnswer(encodedAnswer, encodedOriginalOffer) {
-            logStatus('Connection link from Peer 2 received. Attempting to connect...');
-            hideAllSections(); // Keep UI clean, status will update
-            // Initiator needs its peerConnection instance from when it created the offer.
-            // If not available (e.g. refresh), it needs to re-init.
-            // For simplicity, assume PC is still around or re-initialize with stored local offer.
-
-            if (!peerConnection || !localOfferInitiator) {
-                // This case handles if Peer 1 refreshed after sending invitation.
-                // Re-initialize PC, set local offer, then remote answer.
-                logStatus('Re-initializing connection for Peer 1...');
-                initializePeerConnection(true); // true for initiator
-
-                // If localOfferInitiator was lost due to refresh, we might need it from the URL too.
-                // For this example, we assume Peer 1's browser tab remained open.
-                // A more robust solution might pass the original offer back from Peer 2 in the URL.
-                // (Added `original_offer` to Peer 2's URL generation for this)
-                let offerToSet;
-                if (localOfferInitiator) {
-                    offerToSet = localOfferInitiator;
-                } else if (encodedOriginalOffer) {
-                    try {
-                        offerToSet = JSON.parse(decodeURIComponent(encodedOriginalOffer));
-                        logStatus('Recovered original offer from connection URL.');
-                    } catch (e) {
-                        logStatus('Error: Could not recover original offer. Connection may fail.');
-                        resetP2PState(); return;
-                    }
-                } else {
-                    logStatus('Error: Original offer lost and not in URL. Cannot connect.');
-                    resetP2PState(); return;
-                }
-                // If peerConnection was just re-created, it doesn't have a local description.
-                // We need to set our original local offer again.
-                // But we also need dataChannel. This gets complex if Peer 1 refreshed.
-                // The simplest path is Peer 1 does NOT refresh.
-
-                if (!peerConnection.localDescription) {
-                    // This means Peer 1 likely refreshed. We need to re-setup the offer side.
-                    // This is tricky because createDataChannel must happen before createOffer.
-                    // If peerConnection was truly lost, this path is hard.
-                    // Let's assume localOfferInitiator means the PC structure is basically there.
-                    // For now, we rely on the existing `peerConnection` if `localOfferInitiator` is set.
-                    // The original `createInvitationBtn` path is the reliable one for Peer 1.
-                    // This `handleConnectionAnswer` path assumes Peer 1's tab is still open.
-                    // If `localOfferInitiator` is null, we are in trouble.
-                    if(!peerConnection.currentLocalDescription && offerToSet) { // Should be localDescription not currentLocalDescription
-                       // This path is simplified: if PC exists but no localDesc, it was likely re-init'd
-                       // and we need to re-apply the offer. For this simple case, assume it's there
-                       // from the createInvitationBtn flow. If Peer 1 refreshes, it's a manual restart.
-                       logStatus("Warning: Peer 1 state might be inconsistent if page was refreshed. Best to restart session.");
-                    }
-                }
-                 // If PC exists and has a local description (the offer), we can proceed.
-                 if (!peerConnection.localDescription && offerToSet) {
-                    // This scenario suggests a refresh by Peer 1.
-                    // We need to re-initialize properly. For now, error out.
-                    // A full solution would re-create the offer side.
-                    logStatus("Error: Peer 1 state lost (e.g. refresh). Please have Peer 1 create a new invitation.");
-                    resetP2PState();
-                    return;
-                }
-
+        function startP2PConnection(isInitiator) {
+            if (!roomId) {
+                logStatus("Error: No Room ID.");
+                return;
             }
 
+            logStatus(isInitiator ? 'Initiating connection...' : 'Attempting to join...');
 
-            try {
-                const answerString = decodeURIComponent(encodedAnswer);
-                const answer = JSON.parse(answerString);
+            // simple-peer will use its default public STUN servers and trackers
+            // For specific trackers: peer = new SimplePeer({ initiator: isInitiator, trickle: false, config: { iceServers: [...] }, wrtc: wrtc })
+            // trickle: false can sometimes be easier for initial setup as it bundles candidates.
+            peer = new SimplePeer({
+                initiator: isInitiator,
+                trickle: false, // Bundles ICE candidates into SDP, simpler signaling
+                // config: { iceServers: [ { urls: 'stun:stun.l.google.com:19302' } ] } // Already uses defaults
+            });
 
-                await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
-                logStatus('Answer from Peer 2 set. Connection should establish soon.');
-                // Connection will proceed via oniceconnectionstatechange
-            } catch (e) {
-                console.error("Error processing connection answer:", e);
-                logStatus(`Error: ${e.message}. Ensure the connection link is correct.`);
-                resetP2PState();
+            peer.on('error', err => {
+                console.error('Peer error:', err);
+                logStatus(`Connection Error: ${err.message}. Try refreshing.`);
+                if (peer) peer.destroy();
+            });
+
+            peer.on('signal', data => {
+                // This is where simple-peer gives you signaling data (offer/answer/candidate)
+                // In a "no backend" scenario, if we weren't using trackers implicitly,
+                // this 'data' would need to be manually exchanged.
+                // With trackers, simple-peer handles this exchange if both peers use the same 'room'
+                // concept, which we are faking by having them connect *to each other* and
+                // simple-peer does the handshake automatically.
+                //
+                // For a URL-based "room" without explicit server signaling:
+                // Initiator gets offer -> puts in URL -> Joiner gets offer from URL -> generates answer -> puts in new URL -> Initiator gets answer from new URL
+                //
+                // If using simple-peer with a custom signaling server (not what we want here):
+                // signalingSocket.send(JSON.stringify({ type: 'signal', signal: data, toRoom: roomId }));
+                //
+                // For this example to work with URL-based signaling via hash:
+                // Peer 1 (initiator) generates offer, puts in hash.
+                // Peer 2 sees hash, takes offer, generates answer, signals it back by changing hash.
+                // Peer 1 sees hash change, takes answer.
+                // This is what we'll do: encode the signal data in the hash for the other peer to pick up.
+
+                if (isInitiator && data.type === 'offer') {
+                    // Initiator: Offer is ready. Put it in a URL for Peer 2.
+                    const offerSignal = encodeURIComponent(JSON.stringify(data));
+                    const fullUrl = `${window.location.origin}${window.location.pathname}#${roomId}&offer=${offerSignal}`;
+                    shareableUrlSpan.textContent = fullUrl; // Update the shareable URL
+                    window.history.replaceState(null, '', `#${roomId}&offer=${offerSignal}`); // Update current URL
+                    logStatus('Offer generated. Share the updated URL. Waiting for answer...');
+                } else if (!isInitiator && data.type === 'answer') {
+                    // Joiner: Answer is ready. Put it in a URL for Peer 1.
+                    const answerSignal = encodeURIComponent(JSON.stringify(data));
+                    // The original URL Peer 2 opened had Peer 1's offer.
+                    // Peer 1 is waiting for an answer related to its original room and offer.
+                    // Peer 1's page should detect this answer in its hash.
+                    const params = new URLSearchParams(window.location.hash.substring(1));
+                    const originalRoom = params.get('room'); // Or the first part of the hash
+                    const answerUrlFragment = `#${originalRoom}&answer=${answerSignal}`; // Use original room ID
+                    window.location.hash = answerUrlFragment; // This change should be detected by Peer 1
+                    logStatus('Answer generated and put in URL hash for Peer 1 to see. Waiting for connection...');
+                }
+            });
+
+
+            peer.on('connect', () => {
+                logStatus('P2P Connection Established!');
+                chatArea.style.display = 'block';
+                messageInput.disabled = false;
+                sendButton.disabled = false;
+                shareableUrlDiv.style.display = 'none'; // Hide URL sharing once connected
+                sessionControls.style.display = 'none';
+            });
+
+            peer.on('data', data => {
+                appendMessage(data.toString(), 'received');
+            });
+
+            peer.on('close', () => {
+                logStatus('Connection closed. Please refresh to start over.');
+                if (peer) peer.destroy();
+                chatArea.style.display = 'none';
+                messageInput.disabled = true;
+                sendButton.disabled = true;
+                sessionControls.style.display = 'block';
+                createSessionBtn.disabled = false;
+                createSessionBtn.style.display = 'inline-block';
+            });
+
+            // Check hash for incoming signals (offer for joiner, answer for initiator)
+            handleUrlSignal(); // Initial check
+            window.addEventListener('hashchange', handleUrlSignal);
+        }
+
+        function handleUrlSignal() {
+            if (!peer || peer.destroyed) return; // Don't process if peer isn't ready or is destroyed
+
+            const hashContent = window.location.hash.substring(1);
+            const params = new URLSearchParams(hashContent.includes('&') ? hashContent.substring(hashContent.indexOf('&')+1) : '');
+
+            if (params.has('offer') && !peer.initiator && !peer.destroyed) { // Joiner receives offer
+                try {
+                    const offerSignal = JSON.parse(decodeURIComponent(params.get('offer')));
+                    if (offerSignal.type === 'offer') {
+                        peer.signal(offerSignal);
+                        logStatus('Received offer from URL, signaling answer...');
+                        // Clear the offer from hash after processing to prevent re-processing
+                        // window.history.replaceState(null, '', `#${roomId}`);
+                    }
+                } catch (e) { console.error("Error parsing offer from URL:", e); }
+            } else if (params.has('answer') && peer.initiator && !peer.destroyed) { // Initiator receives answer
+                try {
+                    const answerSignal = JSON.parse(decodeURIComponent(params.get('answer')));
+                    if (answerSignal.type === 'answer') {
+                        peer.signal(answerSignal);
+                        logStatus('Received answer from URL, attempting to connect...');
+                        // Clear the answer from hash
+                        // window.history.replaceState(null, '', `#${roomId}`);
+                    }
+                } catch (e) { console.error("Error parsing answer from URL:", e); }
             }
         }
 
 
-        // --- Common Chat Logic ---
         sendButton.onclick = () => {
             const message = messageInput.value;
-            if (message && dataChannel && dataChannel.readyState === 'open') {
-                dataChannel.send(message);
+            if (message && peer && !peer.destroyed) {
+                peer.send(message);
                 appendMessage(message, 'sent');
                 messageInput.value = '';
-            } else {
-                logStatus('Cannot send message. Data channel not open or message empty.');
             }
         };
-        messageInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendButton.click(); });
+
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendButton.click();
+        });
+
         function appendMessage(message, type) {
             const msgDiv = document.createElement('div');
             msgDiv.classList.add('message', type);
-            msgDiv.textContent = message;
+            msgDiv.textContent = message; // Use textContent for security
             chatBox.appendChild(msgDiv);
             chatBox.scrollTop = chatBox.scrollHeight;
         }
 
-        // --- App Initialization & URL Parsing ---
-        function processUrlHash() {
-            const hash = window.location.hash.substring(1);
-            if (!hash) {
-                resetP2PState(true); // Show initial if no hash
-                return;
-            }
-
-            const params = new URLSearchParams(hash.replace(/&/g, '&')); // Handle potential HTML entities if copy-pasted badly
-
-            if (params.has('invite_offer')) {
-                handleInvitationOffer(params.get('invite_offer'));
-            } else if (params.has('connect_answer')) {
-                handleConnectionAnswer(params.get('connect_answer'), params.get('original_offer'));
-            } else {
-                logStatus("No valid action in URL. Ready to start or join.");
-                resetP2PState(true);
-            }
-        }
-
-        window.addEventListener('hashchange', processUrlHash);
-        // Initial load
-        processUrlHash();
-        if (!window.location.hash) { // If no hash on initial load, show initial section
-             hideAllSections();
-             initialSection.classList.remove('hidden');
-             logStatus("Ready. Create an invitation or open a link.");
-        }
-
+        initializeApp();
     </script>
 </body>
 </html>
