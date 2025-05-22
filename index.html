@@ -82,6 +82,13 @@
         }
 
         /* --- Status & Invite Section --- */
+         #my-info-inputs {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
         #my-peer-id {
             font-weight: bold;
             padding: 0.2em 0.5em;
@@ -164,6 +171,18 @@
             justify-content: space-between;
             align-items: center;
         }
+        #peer-list li .peer-name-id-container {
+            flex-grow: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        #peer-list li .peer-name-id-container .peer-id-small {
+            font-size: 0.8em;
+            opacity: 0.7;
+            margin-left: 5px;
+        }
+
         #peer-list li.no-peers {
             background-color: transparent;
             border: none;
@@ -176,12 +195,13 @@
             border-radius: 50%;
             margin-left: 10px;
             display: inline-block;
+            flex-shrink: 0; /* Prevents shrinking if name is long */
         }
         .peer-connected {
-            background-color: var(--success-color);
+            background-color: var(--success-color); /* Default, will be overridden by peer color */
         }
         .peer-connecting {
-            background-color: var(--warning-color);
+            background-color: var(--warning-color); /* Default, might be overridden */
         }
 
 
@@ -199,7 +219,7 @@
             font-weight: 500;
         }
 
-        input[type="text"] {
+        input[type="text"], input[type="color"] {
             width: 100%;
             padding: 0.6rem;
             border: 1px solid var(--border-color);
@@ -207,7 +227,11 @@
             box-sizing: border-box; /* Important for width 100% */
             font-size: 0.95rem;
         }
-        input[type="text"]:focus {
+        input[type="color"] {
+             padding: 0.3rem; /* Color input padding is often different */
+             height: calc(0.6rem * 2 + 0.6rem + 2px); /* Match text input height roughly */
+        }
+        input[type="text"]:focus, input[type="color"]:focus {
             outline: none;
             border-color: var(--primary-color);
             box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
@@ -291,7 +315,24 @@
     <main class="container">
         <section id="status-section" class="card">
             <h2>My Status & Invite</h2>
+            <div id="my-info-inputs" class="form-grid">
+                <div class="form-group">
+                    <label for="my-name">My Name:</label>
+                    <input type="text" id="my-name" placeholder="Enter your name">
+                </div>
+                <div class="form-group">
+                    <label for="my-color">My Color:</label>
+                    <input type="color" id="my-color" value="#007bff">
+                </div>
+            </div>
+            <button id="update-my-info" class="button-primary" style="margin-bottom: 1rem;">Update My Info</button>
+
+            <p>
+                My Name: <span id="my-current-name" style="font-weight:bold;">Anonymous</span> |
+                My Color: <span id="my-current-color-swatch" style="display: inline-block; width: 1em; height: 1em; border: 1px solid #ccc; vertical-align: middle; background-color: #007bff;"></span>
+            </p>
             <p>My Peer ID: <strong id="my-peer-id" class="status-connecting">Connecting...</strong></p>
+
             <div id="invite-link-area" style="display: none;">
                 <label for="invite-link">Sharable Invite Link:</label>
                 <div class="invite-input-group">
@@ -355,10 +396,70 @@
             const lsClearButton = document.getElementById('ls-clear');
             const localStorageDisplay = document.getElementById('localstorage-display');
 
+            // New elements for Name/Color
+            const myNameInput = document.getElementById('my-name');
+            const myColorInput = document.getElementById('my-color');
+            const updateMyInfoButton = document.getElementById('update-my-info');
+            const myCurrentNameDisplay = document.getElementById('my-current-name');
+            const myCurrentColorSwatch = document.getElementById('my-current-color-swatch');
+
             let peer;
             let myPeerId;
-            const connections = {}; // Store active connections { peerId: DataConnection }
+            const connections = {}; // Store active connections { peerId: { conn: DataConnection, name: 'PeerName', color: '#RRGGBB', status: 'connected'/'connecting' } }
             let applyingRemoteChange = false; // Flag to prevent broadcast loops
+
+            let myName = 'Anonymous';
+            let myColor = '#007bff'; // Default color, matches var(--primary-color)
+            const MY_NAME_KEY = '__pjs_sync_myName';
+            const MY_COLOR_KEY = '__pjs_sync_myColor';
+
+            function loadMyInfo() {
+                myName = localStorage.getItem(MY_NAME_KEY) || 'Anonymous';
+                myColor = localStorage.getItem(MY_COLOR_KEY) || '#007bff';
+                myNameInput.value = myName;
+                myColorInput.value = myColor;
+                updateMyCurrentInfoDisplay();
+            }
+
+            function updateMyCurrentInfoDisplay() {
+                myCurrentNameDisplay.textContent = myName;
+                myCurrentColorSwatch.style.backgroundColor = myColor;
+            }
+
+            updateMyInfoButton.addEventListener('click', () => {
+                const newName = myNameInput.value.trim();
+                const newColor = myColorInput.value;
+
+                myName = newName || 'Anonymous';
+                myColor = newColor;
+
+                localStorage.setItem(MY_NAME_KEY, myName);
+                localStorage.setItem(MY_COLOR_KEY, myColor);
+
+                updateMyCurrentInfoDisplay();
+                broadcastUserInfo();
+                // Also update my own metadata in connections if I'm connected to myself (for testing, though not typical)
+                if (connections[myPeerId]) {
+                    connections[myPeerId].name = myName;
+                    connections[myPeerId].color = myColor;
+                    updatePeerList();
+                }
+            });
+
+            function broadcastUserInfo() {
+                console.log('Broadcasting my info:', { name: myName, color: myColor });
+                const message = { type: 'userInfoUpdate', payload: { name: myName, color: myColor } };
+                Object.values(connections).forEach(peerInfo => {
+                    if (peerInfo.conn && peerInfo.conn.open) {
+                        try {
+                            peerInfo.conn.send(message);
+                        } catch (e) {
+                            console.error(`Error sending user info to ${peerInfo.conn.peer}:`, e);
+                        }
+                    }
+                });
+            }
+
 
             function setPeerIdStatus(status, message) {
                 myPeerIdDisplay.className = ''; // Clear existing classes
@@ -379,31 +480,33 @@
                 peer.on('open', (id) => {
                     myPeerId = id;
                     setPeerIdStatus('connected');
+                    updateMyCurrentInfoDisplay(); // Ensure name/color are displayed with PeerID
                     console.log('My Peer ID is: ' + id);
                     generateInviteLink();
                     inviteLinkArea.style.display = 'block';
                     checkUrlForAutoConnect();
                 });
 
-                peer.on('connection', (conn) => {
-                    console.log('Incoming connection from:', conn.peer);
-                    setupConnectionEventHandlers(conn);
+                peer.on('connection', (incomingConn) => {
+                    console.log('Incoming connection from:', incomingConn.peer, 'with metadata:', incomingConn.metadata);
+                    connections[incomingConn.peer] = {
+                        conn: incomingConn,
+                        name: (incomingConn.metadata && incomingConn.metadata.name) ? incomingConn.metadata.name : incomingConn.peer,
+                        color: (incomingConn.metadata && incomingConn.metadata.color) ? incomingConn.metadata.color : '#6c757d', // Default secondary color
+                        status: 'connecting'
+                    };
+                    setupConnectionEventHandlers(incomingConn);
+                    updatePeerList();
                 });
 
                 peer.on('disconnected', () => {
                     console.log('Disconnected from PeerJS server. Attempting to reconnect...');
                     setPeerIdStatus('reconnecting', 'Reconnecting...');
-                    // PeerJS often attempts to reconnect automatically.
-                    // If it doesn't, or if you want more control:
-                    // setTimeout(() => {
-                    //     if (!peer.destroyed && !peer.disconnected) peer.reconnect();
-                    // }, 3000);
                 });
 
                 peer.on('close', () => {
                     console.log('Peer destroyed (closed). Needs re-initialization.');
                     setPeerIdStatus('disconnected', 'Peer Closed. Refresh.');
-                    // Handle this by possibly re-initializing 'peer' or disabling functionality
                 });
 
                 peer.on('error', (err) => {
@@ -411,16 +514,17 @@
                     setPeerIdStatus('error', `Error: ${err.type || err.message}`);
                     if (err.type === 'peer-unavailable') {
                         alert(`Could not connect to peer: ${err.message.split('peer ').pop()}. They might be offline or the ID is incorrect.`);
+                         // Remove the problematic peer from the list if attempting connection
+                        const problematicPeerId = err.message.match(/to peer (.+)/)?.[1];
+                        if (problematicPeerId && connections[problematicPeerId]) {
+                            delete connections[problematicPeerId];
+                            updatePeerList();
+                        }
                     } else if (err.type === 'network') {
-                        // Often happens if PeerServer is down or internet connection lost
                         alert('Network error with PeerJS. Please check your connection or try again later.');
                     } else if (err.type === 'server-error') {
                         alert('PeerJS server error. Please try again later.');
                     }
-                    // Consider re-initialization on some errors
-                    // if (err.type === 'disconnected' || err.type === 'network' || err.type === 'server-error') {
-                    //    setTimeout(initializePeer, 5000); // Try to re-init after a delay
-                    // }
                 });
             }
 
@@ -434,27 +538,66 @@
                     console.log("Cannot connect to self.");
                     return;
                 }
-                if (connections[targetPeerId] && connections[targetPeerId].open) {
+                if (connections[targetPeerId] && connections[targetPeerId].conn && connections[targetPeerId].conn.open) {
                     console.log(`Already connected to ${targetPeerId}`);
                     return;
                 }
                 console.log(`Attempting to connect to: ${targetPeerId}`);
-                const conn = peer.connect(targetPeerId, { reliable: true });
+                const conn = peer.connect(targetPeerId, {
+                    reliable: true,
+                    metadata: { name: myName, color: myColor }
+                });
+
+                connections[targetPeerId] = {
+                    conn: conn,
+                    name: targetPeerId, // Placeholder name until their info is received
+                    color: '#6c757d',   // Placeholder color
+                    status: 'connecting'
+                };
                 setupConnectionEventHandlers(conn);
-                updatePeerList(); // Add to list as "connecting"
+                updatePeerList();
             }
 
             function setupConnectionEventHandlers(conn) {
                 conn.on('open', () => {
-                    console.log(`Connection established with ${conn.peer}`);
-                    connections[conn.peer] = conn;
+                    const peerId = conn.peer;
+                    console.log(`Connection established with ${peerId}. My local info: ${myName}, ${myColor}`);
+                    console.log('Received metadata from peer:', conn.metadata);
+
+                    // Ensure the connection object is stored/updated
+                    if (!connections[peerId]) {
+                        connections[peerId] = { conn: conn, name: peerId, color: '#6c757d', status: 'connecting' };
+                    }
+                    connections[peerId].conn = conn;
+                    connections[peerId].status = 'connected';
+
+                    // Use metadata if provided (usually by the initiator)
+                    if (conn.metadata) {
+                        if (conn.metadata.name) connections[peerId].name = conn.metadata.name;
+                        if (conn.metadata.color) connections[peerId].color = conn.metadata.color;
+                    }
+                    
+                    // Send my current user info to this peer
+                    if (conn.open) {
+                        conn.send({ type: 'userInfoUpdate', payload: { name: myName, color: myColor } });
+                    }
+
                     updatePeerList();
-                    sendFullLocalStorage(conn);
+                    sendFullLocalStorage(conn); // Send current localStorage state
                 });
 
                 conn.on('data', (data) => {
                     console.log(`Data received from ${conn.peer}:`, data);
-                    handleReceivedData(data, conn.peer);
+                    if (data.type === 'userInfoUpdate') {
+                        console.log(`User info update from ${conn.peer}:`, data.payload);
+                        if (connections[conn.peer]) {
+                            connections[conn.peer].name = data.payload.name || conn.peer;
+                            connections[conn.peer].color = data.payload.color || '#6c757d';
+                            updatePeerList();
+                        }
+                    } else {
+                        handleReceivedData(data, conn.peer); // Handle localStorage updates
+                    }
                 });
 
                 conn.on('close', () => {
@@ -465,7 +608,6 @@
 
                 conn.on('error', (err) => {
                     console.error(`Connection error with ${conn.peer}:`, err);
-                    // alert(`Connection error with ${conn.peer}: ${err.type || err.message}`);
                     delete connections[conn.peer];
                     updatePeerList();
                 });
@@ -485,18 +627,40 @@
                 }
 
                 connectedPeerIds.forEach(peerId => {
-                    const conn = connections[peerId];
+                    const peerInfo = connections[peerId];
                     const li = document.createElement('li');
-                    li.textContent = peerId;
+
+                    const nameIdContainer = document.createElement('div');
+                    nameIdContainer.className = 'peer-name-id-container';
+
+                    const nameSpan = document.createElement('span');
+                    nameSpan.textContent = peerInfo.name || peerId;
+                    nameSpan.style.fontWeight = 'bold';
+                    if (peerInfo.color) {
+                        nameSpan.style.color = peerInfo.color;
+                    }
+                    nameIdContainer.appendChild(nameSpan);
+
+                    // Display Peer ID if name is different or if it's the only identifier
+                    if (peerInfo.name && peerInfo.name !== peerId) {
+                        const idSpan = document.createElement('span');
+                        idSpan.textContent = `(${peerId})`;
+                        idSpan.className = 'peer-id-small';
+                        nameIdContainer.appendChild(idSpan);
+                    }
+                    li.appendChild(nameIdContainer);
                     
                     const statusIndicator = document.createElement('span');
                     statusIndicator.className = 'peer-status-indicator';
-                    if (conn && conn.open) {
+
+                    if (peerInfo && peerInfo.status === 'connected' && peerInfo.conn && peerInfo.conn.open) {
                         statusIndicator.classList.add('peer-connected');
-                        li.title = 'Connected';
+                        statusIndicator.style.backgroundColor = peerInfo.color || 'var(--success-color)';
+                        li.title = `Connected to ${peerInfo.name || peerId}`;
                     } else {
                         statusIndicator.classList.add('peer-connecting');
-                        li.title = 'Connecting...';
+                        statusIndicator.style.backgroundColor = peerInfo.color || 'var(--warning-color)';
+                        li.title = `Connecting to ${peerInfo.name || peerId}...`;
                     }
                     li.appendChild(statusIndicator);
                     peerList.appendChild(li);
@@ -512,7 +676,7 @@
 
             copyInviteLinkButton.addEventListener('click', () => {
                 inviteLinkInput.select();
-                inviteLinkInput.setSelectionRange(0, 99999); // For mobile devices
+                inviteLinkInput.setSelectionRange(0, 99999);
                 try {
                     document.execCommand('copy');
                     copyStatusMessage.textContent = 'Link copied!';
@@ -527,7 +691,7 @@
                     copyStatusMessage.classList.add('visible');
                      setTimeout(() => {
                         copyStatusMessage.classList.remove('visible');
-                        copyStatusMessage.style.color = 'var(--success-color)'; // Reset color
+                        copyStatusMessage.style.color = 'var(--success-color)';
                     }, 2000);
                 }
             });
@@ -535,13 +699,14 @@
             function checkUrlForAutoConnect() {
                 const urlParams = new URLSearchParams(window.location.search);
                 const connectToId = urlParams.get('connectTo');
-                if (connectToId) {
+                if (connectToId && connectToId !== myPeerId) { // Don't connect to self from URL
                     console.log(`Found 'connectTo' URL parameter: ${connectToId}`);
                     const newUrl = window.location.origin + window.location.pathname;
                     window.history.replaceState({}, document.title, newUrl);
-                    
-                    // Delay connection slightly to ensure our own peer is fully ready
                     setTimeout(() => connectToPeer(connectToId), 1500);
+                } else if (connectToId === myPeerId) {
+                     const newUrl = window.location.origin + window.location.pathname;
+                    window.history.replaceState({}, document.title, newUrl); // Clean URL even if it's self
                 }
             }
 
@@ -550,27 +715,24 @@
                 const items = [];
                 for (let i = 0; i < localStorage.length; i++) {
                     const key = localStorage.key(i);
+                    // Filter out internal keys for name/color
+                    if (key === MY_NAME_KEY || key === MY_COLOR_KEY) continue;
                     const value = localStorage.getItem(key);
-                    // Simple JSON.stringify for values to show quotes for strings
                     items.push(`  "${key}": ${JSON.stringify(value)}`);
                 }
                 localStorageDisplay.textContent = items.length > 0 ? `{\n${items.join(',\n')}\n}` : '{}';
             }
 
             function broadcastStorageChange(change) {
-                if (applyingRemoteChange) {
-                    // console.log("Skipping broadcast, change was remote or part of initial full sync.");
-                    return;
-                }
-                console.log('Broadcasting change:', change);
+                if (applyingRemoteChange) return;
+                console.log('Broadcasting storage change:', change);
                 const message = { type: 'localStorageUpdate', ...change };
-                Object.values(connections).forEach(conn => {
-                    if (conn && conn.open) {
+                Object.values(connections).forEach(peerInfo => {
+                    if (peerInfo.conn && peerInfo.conn.open) {
                         try {
-                            conn.send(message);
+                            peerInfo.conn.send(message);
                         } catch (e) {
-                            console.error(`Error sending data to ${conn.peer}:`, e);
-                            // Optionally handle connection issues here, e.g., mark peer as problematic
+                            console.error(`Error sending storage data to ${peerInfo.conn.peer}:`, e);
                         }
                     }
                 });
@@ -580,6 +742,7 @@
                 const allItems = {};
                 for (let i = 0; i < localStorage.length; i++) {
                     const key = localStorage.key(i);
+                    if (key === MY_NAME_KEY || key === MY_COLOR_KEY) continue; // Don't sync internal keys this way
                     allItems[key] = localStorage.getItem(key);
                 }
                 console.log(`Sending full localStorage to ${conn.peer}:`, allItems);
@@ -589,7 +752,7 @@
             }
 
             function handleReceivedData(data, fromPeerId) {
-                applyingRemoteChange = true; // Set flag before making changes
+                applyingRemoteChange = true;
                 try {
                     if (data.type === 'localStorageUpdate') {
                         console.log(`Applying remote localStorage update from ${fromPeerId}:`, data);
@@ -598,65 +761,104 @@
                         } else if (data.action === 'removeItem') {
                             originalRemoveItem.call(localStorage, data.key);
                         } else if (data.action === 'clear') {
-                            originalClear.call(localStorage);
+                            originalClear.call(localStorage); // This will clear ALL, including our name/color.
+                                                            // We need to preserve them or re-apply.
+                                                            // For simplicity now, it clears all.
+                                                            // A more robust solution would selectively clear.
+                            // Re-save local info if cleared by remote peer
+                            localStorage.setItem(MY_NAME_KEY, myName);
+                            localStorage.setItem(MY_COLOR_KEY, myColor);
                         }
-                        displayLocalStorage(); // Update display after local change
+                        displayLocalStorage();
                     } else if (data.type === 'fullLocalStorageSync') {
                         console.log(`Applying full localStorage sync from ${fromPeerId}:`, data.data);
-                        originalClear.call(localStorage); // Clear existing before applying full sync
+                        // Clear only synced items, not internal ones
+                        for (let i = localStorage.length - 1; i >= 0; i--) {
+                            const key = localStorage.key(i);
+                            if (key !== MY_NAME_KEY && key !== MY_COLOR_KEY) {
+                                originalRemoveItem.call(localStorage, key);
+                            }
+                        }
                         for (const key in data.data) {
                             if (Object.hasOwnProperty.call(data.data, key)) {
                                 originalSetItem.call(localStorage, key, data.data[key]);
                             }
                         }
-                        displayLocalStorage(); // Update display after local change
+                        displayLocalStorage();
                     }
                 } catch (e) {
                     console.error("Error applying remote change:", e);
                 } finally {
-                    applyingRemoteChange = false; // Reset flag
+                    applyingRemoteChange = false;
                 }
             }
 
-            // Store original localStorage methods
             const originalSetItem = localStorage.setItem;
             const originalRemoveItem = localStorage.removeItem;
             const originalClear = localStorage.clear;
 
-            // Override localStorage methods to detect changes
             localStorage.setItem = function(key, value) {
-                const oldValue = localStorage.getItem(key); // Get old value using original getItem
-                originalSetItem.call(localStorage, key, value); // Call original method
-                if (String(oldValue) !== String(value)) { // Only broadcast if value actually changed
+                // Prevent our internal keys from triggering broadcasts, or being overwritten by external setItem with same key
+                if (key === MY_NAME_KEY || key === MY_COLOR_KEY) {
+                    originalSetItem.call(localStorage, key, value);
+                    // No displayLocalStorage() or broadcast here for these internal keys
+                    return;
+                }
+                const oldValue = localStorage.getItem(key);
+                originalSetItem.call(localStorage, key, value);
+                if (String(oldValue) !== String(value)) {
                     broadcastStorageChange({ action: 'setItem', key, value });
                 }
-                if (!applyingRemoteChange) displayLocalStorage(); // Update local display if not a remote change
+                if (!applyingRemoteChange) displayLocalStorage();
             };
 
             localStorage.removeItem = function(key) {
+                if (key === MY_NAME_KEY || key === MY_COLOR_KEY) {
+                    originalRemoveItem.call(localStorage, key);
+                    return;
+                }
                 const oldValue = localStorage.getItem(key);
                 originalRemoveItem.call(localStorage, key);
-                if (oldValue !== null) { // Only broadcast if item existed
+                if (oldValue !== null) {
                     broadcastStorageChange({ action: 'removeItem', key });
                 }
                  if (!applyingRemoteChange) displayLocalStorage();
             };
 
             localStorage.clear = function() {
-                const hadItems = localStorage.length > 0;
+                // Preserve internal keys when clearing
+                const tempName = localStorage.getItem(MY_NAME_KEY);
+                const tempColor = localStorage.getItem(MY_COLOR_KEY);
+
+                let hadUserItems = false;
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (key !== MY_NAME_KEY && key !== MY_COLOR_KEY) {
+                        hadUserItems = true;
+                        break;
+                    }
+                }
+
                 originalClear.call(localStorage);
-                if (hadItems) { // Only broadcast if there was something to clear
+
+                if (tempName !== null) originalSetItem.call(localStorage, MY_NAME_KEY, tempName);
+                if (tempColor !== null) originalSetItem.call(localStorage, MY_COLOR_KEY, tempColor);
+
+                if (hadUserItems) {
                     broadcastStorageChange({ action: 'clear' });
                 }
                 if (!applyingRemoteChange) displayLocalStorage();
             };
 
-            // Event listeners for UI controls
             lsSetButton.addEventListener('click', () => {
                 const key = lsKeyInput.value.trim();
                 const value = lsValueInput.value;
                 if (key) {
-                    localStorage.setItem(key, value); // Our overridden setItem will handle broadcast & display
+                    if (key === MY_NAME_KEY || key === MY_COLOR_KEY) {
+                        alert(`The key "${key}" is reserved for internal use. Please choose a different key.`);
+                        return;
+                    }
+                    localStorage.setItem(key, value);
                     lsKeyInput.value = '';
                     lsValueInput.value = '';
                 } else {
@@ -667,7 +869,11 @@
             lsRemoveButton.addEventListener('click', () => {
                 const key = lsKeyInput.value.trim();
                 if (key) {
-                    localStorage.removeItem(key); // Our overridden removeItem will handle broadcast & display
+                     if (key === MY_NAME_KEY || key === MY_COLOR_KEY) {
+                        alert(`The key "${key}" is reserved and cannot be removed this way.`);
+                        return;
+                    }
+                    localStorage.removeItem(key);
                     lsKeyInput.value = '';
                     lsValueInput.value = '';
                 } else {
@@ -676,35 +882,16 @@
             });
 
             lsClearButton.addEventListener('click', () => {
-                if (confirm('Are you sure you want to clear ALL your local storage items and broadcast this?')) {
-                    localStorage.clear(); // Our overridden clear will handle broadcast & display
+                if (confirm('Are you sure you want to clear ALL your synced local storage items and broadcast this? (Your name/color settings will be preserved locally)')) {
+                    localStorage.clear();
                 }
             });
 
             // --- Initial Setup ---
-            displayLocalStorage(); // Initial display
+            loadMyInfo();          // Load name/color first
+            displayLocalStorage(); // Initial display (filters out internal keys)
             initializePeer();      // Start PeerJS
             updatePeerList();      // Initial peer list (empty)
-
-            // Optional: Listen to 'storage' event for changes from other tabs (same origin)
-            // This can be complex to integrate perfectly with the override system to avoid loops.
-            // window.addEventListener('storage', (event) => {
-            //     if (applyingRemoteChange) return; // Avoid processing changes we just applied
-            //     console.log('Storage event from another tab/window:', event);
-            //
-            //     // This change originated outside our current tab's direct localStorage.* calls.
-            //     // We need to reflect it in our UI and broadcast it.
-            //     displayLocalStorage(); // Update UI
-            //
-            //     // Determine what happened and broadcast
-            //     if (event.key === null) { // localStorage.clear() was called
-            //         broadcastStorageChange({ action: 'clear' });
-            //     } else if (event.newValue === null) { // localStorage.removeItem(event.key)
-            //         broadcastStorageChange({ action: 'removeItem', key: event.key });
-            //     } else { // localStorage.setItem(event.key, event.newValue)
-            //         broadcastStorageChange({ action: 'setItem', key: event.key, value: event.newValue });
-            //     }
-            // });
         });
     </script>
 </body>
