@@ -1,0 +1,57 @@
+<!DOCTYPE html><html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Add AI Assistant Bookmarklet</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 2rem;
+      background: #f9f9f9;
+    }
+    .bookmarklet-button {
+      display: inline-block;
+      padding: 12px 24px;
+      background: #4f46e5;
+      color: white;
+      text-decoration: none;
+      border-radius: 8px;
+      font-weight: bold;
+      font-size: 18px;
+      cursor: grab;
+      margin-bottom: 1rem;
+    }
+    .copy-section {
+      margin-top: 2rem;
+    }
+    .code-box {
+      background: #e5e7eb;
+      padding: 1rem;
+      font-family: monospace;
+      font-size: 14px;
+      border-radius: 6px;
+      overflow-x: auto;
+    }
+  </style>
+</head>
+<body>
+  <h1>🧠 Add the AI Assistant to Any Page</h1>  <p><strong>Desktop users:</strong> Drag the button below to your bookmarks bar:</p>
+  <a href="javascript:(function(){const id='m8-loader-script';if(document.getElementById(id)){console.log('M8 already loading or loaded.');const container=document.getElementById('m8-app-container');if(container)container.style.display='flex';return;}const s=document.createElement('script');s.id=id;s.src='https://YOUR_DOMAIN.com/agent.js';s.onerror=()=>alert('Error: Could not load the M8 agent script. Check the URL in the bookmarklet.');document.body.appendChild(s);})();"
+     class="bookmarklet-button"
+     title="Drag this to your bookmarks bar">
+    💬 Add AI Assistant
+  </a>  <div class="copy-section">
+    <p><strong>Mobile users:</strong> Tap to copy the code and paste it into a new bookmark:</p>
+    <button onclick="copyBookmarklet()" style="padding: 10px 16px; font-size: 16px; background: #10b981; color: white; border: none; border-radius: 6px; cursor: pointer;">📋 Copy Bookmarklet Code</button>
+    <div class="code-box" id="bookmarklet-code">
+      javascript:(function(){const s=document.createElement('script');s.src='https://yourdomain.com/agent.js';document.body.appendChild(s);})();
+    </div>
+  </div>  <script>
+    function copyBookmarklet() {
+      const code = document.getElementById("bookmarklet-code").innerText;
+      navigator.clipboard.writeText(code).then(() => {
+        alert("Copied! Now create a new bookmark and paste this code as the URL.");
+      });
+    }
+  </script></body>
+</html>
