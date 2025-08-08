@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>StockSight AI</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+    }
+  </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Google Material Symbols Link -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+  <style>
+    #chat-container::-webkit-scrollbar, .ticker-carousel::-webkit-scrollbar { width: 6px; height: 6px; }
+    #chat-container::-webkit-scrollbar-track, .ticker-carousel::-webkit-scrollbar-track { background: transparent; }
+    #chat-container::-webkit-scrollbar-thumb, .ticker-carousel::-webkit-scrollbar-thumb { background-color: rgba(0,0,0,0.1); border-radius: 10px; }
+    .dark #chat-container::-webkit-scrollbar-thumb, .dark .ticker-carousel::-webkit-scrollbar-thumb { background-color: rgba(255,255,255,0.1); }
+    .chart-host-container {
+        position: relative; height: 300px; width: 100%; border-radius: 0.5rem;
+        border: 1px solid #e2e8f0;
+        padding: 1rem;
+    }
+    .dark .chart-host-container { border-color: #334155; }
+    .step-icon {
+        height: 2rem; width: 2rem;
+        display: flex; align-items: center; justify-content: center;
+        border-radius: 9999px; flex-shrink: 0;
+    }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 dark:bg-slate-900 dark:text-slate-200 antialiased">
+
+  <div id="app" class="flex flex-col h-screen w-full">
+    <!-- Header -->
+    <header class="flex-shrink-0 backdrop-blur-xl flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-700">
+      <h1 class="text-xl font-bold text-zinc-800 dark:text-zinc-200">StockSight AI</h1>
+      <button @click="openSettingsModal" class="p-2 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100" title="Settings">
+        <span class="material-symbols-outlined !text-xl">settings</span>
+      </button>
+    </header>
+
+    <!-- Ticker Carousel -->
+    <div class="flex-shrink-0 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-4 py-2">
+      <div class="ticker-carousel flex items-center space-x-2 overflow-x-auto pb-2 -mb-2">
+        <div v-for="ticker in tickerList" :key="ticker"
+          @click="selectTicker(ticker)"
+          :class="[
+            'flex-shrink-0 group relative cursor-pointer rounded-full text-sm font-medium transition-colors pl-4 pr-3 py-1.5',
+            activeTicker === ticker ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-700 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600'
+          ]">
+          {{ ticker }}
+          <button @click.stop="removeTicker(ticker)"
+            class="absolute -top-1 -right-1 w-5 h-5 bg-slate-400 dark:bg-slate-500 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 hover:!bg-red-500 transition-opacity"
+            title="Remove Ticker">
+            <span class="material-symbols-outlined !text-sm">close</span>
+          </button>
+        </div>
+        <button @click="addTicker"
+          class="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-slate-200 text-slate-600 rounded-full hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"
+          title="Add Ticker">
+          <span class="material-symbols-outlined !text-xl">add</span>
+        </button>
+      </div>
+    </div>
+
+    <div id="chat-ui-area" class="flex-1 flex flex-col overflow-hidden bg-white dark:bg-slate-800">
+      <!-- Main Content Area -->
+      <div ref="chatContainerRef" id="chat-container" class="flex-1 p-4 sm:p-6 overflow-y-auto">
+        <!-- Initial State -->
+        <div v-if="reportData.status === 'idle'" class="text-center py-16 flex flex-col items-center justify-center h-full">
+            <div v-if="activeTicker" class="max-w-md">
+                <h2 class="text-2xl font-semibold text-slate-700 dark:text-slate-300">Analysis for <span class="text-blue-600 dark:text-blue-400 font-bold">{{ activeTicker }}</span></h2>
+                <p class="mt-2 text-slate-500 dark:text-slate-400">Ready to begin the automated research process.</p>
+                <button @click="startAnalysis" :disabled="isLoading" class="mt-6 px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors text-lg shadow-md hover:shadow-lg disabled:bg-blue-400 disabled:cursor-not-allowed">
+                    Generate Report
+                </button>
+            </div>
+            <div v-else>
+                <h2 class="text-2xl font-semibold text-slate-700 dark:text-slate-300">Automated Stock Analysis</h2>
+                <p class="mt-2 text-slate-500 dark:text-slate-400">Select a ticker above or enter a new one below to get started.</p>
+            </div>
+        </div>
+
+        <!-- Report View (Loading or Complete) -->
+        <div v-if="reportData.status === 'loading' || reportData.status === 'complete'" class="max-w-4xl mx-auto">
+          <!-- Report Body -->
+          <div class="space-y-6">
+            <!-- Header Section -->
+            <div class="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+                <div v-if="reportData.status === 'loading' && !reportData.companyProfile.name" class="h-8 bg-slate-200 dark:bg-slate-700 rounded w-3/4 animate-pulse"></div>
+                <h2 v-else class="text-3xl font-bold text-slate-900 dark:text-slate-100">{{ reportData.companyProfile.name }} ({{ reportData.companyProfile.ticker }})</h2>
+                
+                <div v-if="reportData.status === 'loading' && !reportData.companyProfile.sector" class="h-5 bg-slate-200 dark:bg-slate-700 rounded w-1/2 mt-2 animate-pulse"></div>
+                <p v-else class="text-slate-600 dark:text-slate-400 mt-1">{{ reportData.companyProfile.sector }}</p>
+            </div>
+
+            <!-- Overview Section -->
+            <div>
+              <div class="flex items-center mb-2">
+                <div :class="['step-icon', stepStatusMap['Profile']?.status === 'success' ? 'bg-green-100 text-green-700 dark:bg-green-800 dark:text-green-300' : stepStatusMap['Profile']?.status === 'running' ? 'bg-blue-100 text-blue-700 dark:bg-blue-800 dark:text-blue-300' : stepStatusMap['Profile']?.status === 'error' ? 'bg-red-100 text-red-700 dark:bg-red-800 dark:text-red-300' : 'bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-400']">
+                    <span v-if="stepStatusMap['Profile']?.status === 'success'" class="material-symbols-outlined !text-base">check</span>
+                    <span v-else-if="stepStatusMap['Profile']?.status === 'running'" class="material-symbols-outlined !text-base">{{ toolIconMap[stepStatusMap['Profile']?.currentTool] || 'progress_activity' }}</span>
+                    <span v-else-if="stepStatusMap['Profile']?.status === 'error'" class="material-symbols-outlined !text-base">error</span>
+                    <span v-else class="material-symbols-outlined !text-base">{{ stepStatusMap['Profile']?.icon }}</span>
+                </div>
+                <h3 class="text-xl font-semibold ml-3">🏢 Company Overview</h3>
+              </div>
+              <div v-if="reportData.status === 'loading' && stepStatusMap['Profile']?.status !== 'success'" class="space-y-2 pl-11">
+                  <div class="h-4 bg-slate-200 dark:bg-slate-700 rounded w-full animate-pulse"></div>
+                  <div class="h-4 bg-slate-200 dark:bg-slate-700 rounded w-full animate-pulse"></div>
+                  <div class="h-4 bg-slate-200 dark:bg-slate-700 rounded w-5/6 animate-pulse"></div>
+              </div>
+              <p v-else-if="reportData.companyProfile.description" class="text-slate-700 dark:text-slate-300 leading-relaxed pl-11">{{ reportData.companyProfile.description }}</p>
+              <!-- Sources Accordion -->
+              <div v-if="stepStatusMap['Profile']?.status === 'success' && stepStatusMap['Profile']?.sources.length > 0" class="pl-11 mt-4">
+                <button @click="toggleAccordion('Profile')" class="w-full flex justify-between items-center text-left text-sm font-medium text-slate-600 dark:text-slate-400 p-2 rounded-md hover:bg-slate-200/60 dark:hover:bg-slate-700/50">
+                  <span>Sources ({{ stepStatusMap['Profile'].sources.length }})</span>
+                  <span class="material-symbols-outlined !text-lg transition-transform" :class="{'rotate-180': openAccordions['Profile']}">expand_more</span>
+                </button>
+                <div v-show="openAccordions['Profile']" class="border-l border-slate-300 dark:border-slate-600 ml-2 mt-2 pl-4 py-2 space-y-2">
+                  <div v-for="(sourceUrl, index) in stepStatusMap['Profile'].sources" :key="index" class="text-xs">
+                    <a :href="getRealUrl(sourceUrl)" target="_blank" rel="noopener noreferrer" class="text-blue-600 dark:text-blue-400 hover:underline truncate block" :title="getRealUrl(sourceUrl)">
+                      {{ formatUrl(getRealUrl(sourceUrl)) }}
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Key Metrics & Charts Section -->
+            <div>
+                <div class="flex items-center mb-2">
+                    <div :class="['step-icon', stepStatusMap['Key Metrics & Charts']?.status === 'success' ? 'bg-green-100 text-green-700 dark:bg-green-800 dark:text-green-300' : stepStatusMap['Key Metrics & Charts']?.status === 'running' ? 'bg-blue-100 text-blue-700 dark:bg-blue-800 dark:text-blue-300' : stepStatusMap['Key Metrics & Charts']?.status === 'error' ? 'bg-red-100 text-red-700 dark:bg-red-800 dark:text-red-300' : 'bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-400']">
+                        <span v-if="stepStatusMap['Key Metrics & Charts']?.status === 'success'" class="material-symbols-outlined !text-base">check</span>
+                        <span v-else-if="stepStatusMap['Key Metrics & Charts']?.status === 'running'" class="material-symbols-outlined !text-base">{{ toolIconMap[stepStatusMap['Key Metrics & Charts']?.currentTool] || 'progress_activity' }}</span>
+                        <span v-else-if="stepStatusMap['Key Metrics & Charts']?.status === 'error'" class="material-symbols-outlined !text-base">error</span>
+                        <span v-else class="material-symbols-outlined !text-base">{{ stepStatusMap['Key Metrics & Charts']?.icon }}</span>
+                    </div>
+                    <h3 class="text-xl font-semibold ml-3">⚖️ Key Metrics & Charts</h3>
+                </div>
+                <!-- Valuation Metrics Cards -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center pl-11">
+                    <div class="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+                        <p class="text-sm text-slate-500 dark:text-slate-400">P/E Ratio</p>
+                        <div v-if="reportData.status === 'loading' && stepStatusMap['Key Metrics & Charts']?.status !== 'success'" class="h-7 mt-1 bg-slate-200 dark:bg-slate-700 rounded w-1/2 mx-auto animate-pulse"></div>
+                        <p v-else class="text-2xl font-bold">{{ reportData.valuation.peRatio || 'N/A' }}</p>
+                    </div>
+                    <div class="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+                        <p class="text-sm text-slate-500 dark:text-slate-400">Industry P/E</p>
+                        <div v-if="reportData.status === 'loading' && stepStatusMap['Key Metrics & Charts']?.status !== 'success'" class="h-7 mt-1 bg-slate-200 dark:bg-slate-700 rounded w-1/2 mx-auto animate-pulse"></div>
+                        <p v-else class="text-2xl font-bold">{{ reportData.valuation.industryPe || 'N/A' }}</p>
+                    </div>
+                    <div class="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+                        <p class="text-sm text-slate-500 dark:text-slate-400">P/S Ratio</p>
+                         <div v-if="reportData.status === 'loading' && stepStatusMap['Key Metrics & Charts']?.status !== 'success'" class="h-7 mt-1 bg-slate-200 dark:bg-slate-700 rounded w-1/2 mx-auto animate-pulse"></div>
+                        <p v-else class="text-2xl font-bold">{{ reportData.valuation.psRatio || 'N/A' }}</p>
+                    </div>
+                    <div class="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+                        <p class="text-sm text-slate-500 dark:text-slate-400">Industry P/S</p>
+                        <div v-if="reportData.status === 'loading' && stepStatusMap['Key Metrics & Charts']?.status !== 'success'" class="h-7 mt-1 bg-slate-200 dark:bg-slate-700 rounded w-1/2 mx-auto animate-pulse"></div>
+                        <p v-else class="text-2xl font-bold">{{ reportData.valuation.industryPs || 'N/A' }}</p>
+                    </div>
+                </div>
+
+                <!-- Charts Carousel -->
+                <div v-if="reportData.charts.length > 0 || (reportData.status === 'loading' && stepStatusMap['Key Metrics & Charts']?.status === 'running')" class="pl-11 mt-4">
+                  <div class="ticker-carousel overflow-x-auto py-2">
+                    <div class="flex space-x-4">
+                      <div v-for="chart in reportData.charts" :key="chart.id" class="flex-shrink-0 w-full md:w-[48%]">
+                          <div class="chart-host-container bg-white/50 dark:bg-slate-800/50">
+                              <canvas :ref="el => chartRefs[chart.id] = el"></canvas>
+                          </div>
+                      </div>
+                      <!-- Loading skeleton for charts -->
+                      <div v-if="reportData.status === 'loading' && reportData.charts.length === 0" v-for="i in 2" class="flex-shrink-0 w-full md:w-[48%]">
+                          <div class="chart-host-container bg-slate-50 dark:bg-slate-800/50 flex items-center justify-center animate-pulse">
+                              <div class="h-3/4 w-11/12 bg-slate-200 dark:bg-slate-700 rounded-md"></div>
+                          </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Sources Accordion for Key Metrics & Charts -->
+                <div v-if="stepStatusMap['Key Metrics & Charts']?.status === 'success' && stepStatusMap['Key Metrics & Charts']?.sources.length > 0" class="pl-11 mt-2">
+                    <button @click="toggleAccordion('Key Metrics & Charts')" class="w-full flex justify-between items-center text-left text-sm font-medium text-slate-600 dark:text-slate-400 p-2 rounded-md hover:bg-slate-200/60 dark:hover:bg-slate-700/50">
+                    <span>Sources ({{ stepStatusMap['Key Metrics & Charts'].sources.length }})</span>
+                    <span class="material-symbols-outlined !text-lg transition-transform" :class="{'rotate-180': openAccordions['Key Metrics & Charts']}">expand_more</span>
+                    </button>
+                    <div v-show="openAccordions['Key Metrics & Charts']" class="border-l border-slate-300 dark:border-slate-600 ml-2 mt-2 pl-4 py-2 space-y-2">
+                      <div v-for="(sourceUrl, index) in stepStatusMap['Key Metrics & Charts'].sources" :key="index" class="text-xs">
+                          <a :href="getRealUrl(sourceUrl)" target="_blank" rel="noopener noreferrer" class="text-blue-600 dark:text-blue-400 hover:underline truncate block" :title="getRealUrl(sourceUrl)">
+                          {{ formatUrl(getRealUrl(sourceUrl)) }}
+                          </a>
+                      </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- News & Analyst Section -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pl-11">
+                <div>
+                     <div class="flex items-center mb-2 -ml-11">
+                        <div :class="['step-icon', stepStatusMap['News']?.status === 'success' ? 'bg-green-100 text-green-700 dark:bg-green-800 dark:text-green-300' : stepStatusMap['News']?.status === 'running' ? 'bg-blue-100 text-blue-700 dark:bg-blue-800 dark:text-blue-300' : stepStatusMap['News']?.status === 'error' ? 'bg-red-100 text-red-700 dark:bg-red-800 dark:text-red-300' : 'bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-400']">
+                            <span v-if="stepStatusMap['News']?.status === 'success'" class="material-symbols-outlined !text-base">check</span>
+                            <span v-else-if="stepStatusMap['News']?.status === 'running'" class="material-symbols-outlined !text-base">{{ toolIconMap[stepStatusMap['News']?.currentTool] || 'progress_activity' }}</span>
+                            <span v-else-if="stepStatusMap['News']?.status === 'error'" class="material-symbols-outlined !text-base">error</span>
+                            <span v-else class="material-symbols-outlined !text-base">{{ stepStatusMap['News']?.icon }}</span>
+                        </div>
+                        <h3 class="text-xl font-semibold ml-3">📰 Recent News</h3>
+                    </div>
+                    <div v-if="reportData.status === 'loading' && stepStatusMap['News']?.status !== 'success'" class="space-y-3">
+                         <div v-for="i in 3" class="h-12 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
+                    </div>
+                    <ul v-else-if="reportData.news.length" class="space-y-3">
+                        <li v-for="item in reportData.news" class="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                            <a :href="item.href" target="_blank" rel="noopener noreferrer" class="font-semibold text-blue-600 dark:text-blue-400">{{ item.title }}</a>
+                            <p class="text-sm text-slate-600 dark:text-slate-400 mt-1">{{ item.snippet }}</p>
+                        </li>
+                    </ul>
+                    <!-- Sources Accordion -->
+                    <div v-if="stepStatusMap['News']?.status === 'success' && stepStatusMap['News']?.sources.length > 0" class="mt-4">
+                        <button @click="toggleAccordion('News')" class="w-full flex justify-between items-center text-left text-sm font-medium text-slate-600 dark:text-slate-400 p-2 rounded-md hover:bg-slate-200/60 dark:hover:bg-slate-700/50">
+                        <span>Sources ({{ stepStatusMap['News'].sources.length }})</span>
+                        <span class="material-symbols-outlined !text-lg transition-transform" :class="{'rotate-180': openAccordions['News']}">expand_more</span>
+                        </button>
+                        <div v-show="openAccordions['News']" class="border-l border-slate-300 dark:border-slate-600 ml-2 mt-2 pl-4 py-2 space-y-2">
+                        <div v-for="(sourceUrl, index) in stepStatusMap['News'].sources" :key="index" class="text-xs">
+                            <a :href="getRealUrl(sourceUrl)" target="_blank" rel="noopener noreferrer" class="text-blue-600 dark:text-blue-400 hover:underline truncate block" :title="getRealUrl(sourceUrl)">
+                            {{ formatUrl(getRealUrl(sourceUrl)) }}
+                            </a>
+                        </div>
+                        </div>
+                    </div>
+                </div>
+                 <div>
+                    <div class="flex items-center mb-2 -ml-11">
+                        <div :class="['step-icon', stepStatusMap['Consensus']?.status === 'success' ? 'bg-green-100 text-green-700 dark:bg-green-800 dark:text-green-300' : stepStatusMap['Consensus']?.status === 'running' ? 'bg-blue-100 text-blue-700 dark:bg-blue-800 dark:text-blue-300' : stepStatusMap['Consensus']?.status === 'error' ? 'bg-red-100 text-red-700 dark:bg-red-800 dark:text-red-300' : 'bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-400']">
+                            <span v-if="stepStatusMap['Consensus']?.status === 'success'" class="material-symbols-outlined !text-base">check</span>
+                            <span v-else-if="stepStatusMap['Consensus']?.status === 'running'" class="material-symbols-outlined !text-base">{{ toolIconMap[stepStatusMap['Consensus']?.currentTool] || 'progress_activity' }}</span>
+                            <span v-else-if="stepStatusMap['Consensus']?.status === 'error'" class="material-symbols-outlined !text-base">error</span>
+                            <span v-else class="material-symbols-outlined !text-base">{{ stepStatusMap['Consensus']?.icon }}</span>
+                        </div>
+                        <h3 class="text-xl font-semibold ml-3">🎯 Analyst Consensus</h3>
+                    </div>
+                    <div class="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg text-center">
+                        <p class="text-sm text-slate-500 dark:text-slate-400">Overall Rating</p>
+                        <div v-if="reportData.status === 'loading' && stepStatusMap['Consensus']?.status !== 'success'" class="h-8 mt-1 bg-slate-200 dark:bg-slate-700 rounded w-1/2 mx-auto animate-pulse"></div>
+                        <p v-else class="text-3xl font-bold mt-1 text-blue-600 dark:text-blue-400">{{ reportData.analystConsensus.rating || 'N/A' }}</p>
+                        <p v-if="reportData.analystConsensus.priceTarget" class="text-sm text-slate-500 dark:text-slate-400 mt-2">Price Target: {{ reportData.analystConsensus.priceTarget }}</p>
+                    </div>
+                    <!-- Sources Accordion -->
+                    <div v-if="stepStatusMap['Consensus']?.status === 'success' && stepStatusMap['Consensus']?.sources.length > 0" class="mt-4">
+                        <button @click="toggleAccordion('Consensus')" class="w-full flex justify-between items-center text-left text-sm font-medium text-slate-600 dark:text-slate-400 p-2 rounded-md hover:bg-slate-200/60 dark:hover:bg-slate-700/50">
+                        <span>Sources ({{ stepStatusMap['Consensus'].sources.length }})</span>
+                        <span class="material-symbols-outlined !text-lg transition-transform" :class="{'rotate-180': openAccordions['Consensus']}">expand_more</span>
+                        </button>
+                        <div v-show="openAccordions['Consensus']" class="border-l border-slate-300 dark:border-slate-600 ml-2 mt-2 pl-4 py-2 space-y-2">
+                        <div v-for="(sourceUrl, index) in stepStatusMap['Consensus'].sources" :key="index" class="text-xs">
+                            <a :href="getRealUrl(sourceUrl)" target="_blank" rel="noopener noreferrer" class="text-blue-600 dark:text-blue-400 hover:underline truncate block" :title="getRealUrl(sourceUrl)">
+                            {{ formatUrl(getRealUrl(sourceUrl)) }}
+                            </a>
+                        </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Error State -->
+        <div v-if="reportData.status === 'error'" class="text-center py-16">
+            <h2 class="text-2xl font-semibold text-red-600 dark:text-red-400">An Error Occurred</h2>
+            <p class="mt-2 text-slate-500 dark:text-slate-400 max-w-lg mx-auto">{{ reportData.errorMessage }}</p>
+            <button @click="resetState" class="mt-4 px-4 py-2 bg-zinc-700 text-white rounded-md hover:bg-zinc-800">Try Again</button>
+        </div>
+      </div>
+
+      <!-- Input Form -->
+      <form @submit.prevent="handleSendMessage" class="p-3 sm:p-4 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+        <div class="relative flex items-end space-x-2 max-w-4xl mx-auto">
+          <div class="relative w-full min-w-[200px] flex-grow">
+            <input
+              id="input" v-model="newMessageText"
+              :disabled="isLoading"
+              placeholder="Enter a stock ticker (e.g., AAPL)..."
+              class="w-full border-b-2 border-slate-300 dark:border-slate-600 bg-transparent py-2.5 font-sans text-sm font-normal text-slate-800 dark:text-slate-200 outline outline-0 transition-all focus:border-zinc-800 dark:focus:border-zinc-300 focus:outline-0 disabled:border-0 disabled:bg-white dark:disabled:bg-slate-800"
+            />
+          </div>
+          <button type="submit" :disabled="isLoading || !newMessageText.trim()" class="flex-shrink-0 w-10 h-10 flex items-center justify-center text-white bg-zinc-800 rounded-full hover:bg-zinc-900 focus:ring-2 focus:outline-none focus:ring-zinc-500 disabled:bg-zinc-800/60 disabled:cursor-not-allowed transition-colors dark:bg-zinc-300 dark:text-zinc-900 dark:hover:bg-zinc-200 dark:disabled:bg-zinc-300/60" title="Generate Report">
+            <span v-if="isLoading"><span class="material-symbols-outlined animate-spin !text-xl">progress_activity</span></span>
+            <span v-else><span class="material-symbols-outlined !text-xl">send</span></span>
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Settings Modal -->
+    <div v-if="showSettingsModal" @click.self="closeSettingsModal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 transition-opacity">
+      <div class="bg-slate-50 dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-md p-6 relative">
+        <button @click="closeSettingsModal" class="absolute top-2 right-2 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100 text-2xl leading-none font-bold p-2">×</button>
+        <h2 class="text-lg font-bold text-zinc-800 dark:text-zinc-200 mb-4 border-b border-slate-300 dark:border-slate-600 pb-2">Settings</h2>
+        <form @submit.prevent="saveSettings">
+          <div class="space-y-4">
+            <div>
+              <label for="model-select" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">AI Model</label>
+              <select id="model-select" v-model="settingsModel" class="w-full p-2 border border-slate-300 rounded-md focus:ring-zinc-500 focus:border-zinc-500 bg-white dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200">
+                <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash Lite</option>
+                <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+              </select>
+            </div>
+            <div>
+              <label for="api-key-input" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Gemini API Key</label>
+              <input type="password" id="api-key-input" v-model="settingsApiKey" placeholder="Enter your Gemini API Key" class="w-full p-2 border border-slate-300 rounded-md focus:ring-zinc-500 focus:border-zinc-500 bg-white dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200">
+              <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Get a key from Google AI Studio. It's stored in your browser's local storage.</p>
+            </div>
+          </div>
+          <div class="mt-6 flex justify-end">
+            <button type="submit" class="px-4 py-2 bg-zinc-800 text-white rounded-md hover:bg-zinc-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-zinc-500 dark:bg-zinc-700 dark:hover:bg-zinc-600">Save & Close</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { createApp, ref, nextTick, watch, onMounted, onUnmounted, computed } from 'https://unpkg.com/vue@3/dist/vue.esm-browser.js'
+    
+    createApp({
+      setup() {
+        const newMessageText = ref('');
+        const isLoading = computed(() => reportData.value.status === 'loading');
+        const chatContainerRef = ref(null);
+        
+        // --- Ticker Carousel State ---
+        const tickerList = ref([]);
+        const activeTicker = ref('');
+        const LS_TICKERS_KEY = 'stocksight_tickers_v1';
+
+        // --- Report State Management ---
+        const getInitialReportData = () => ({
+            status: 'idle', // idle, loading, complete, error
+            errorMessage: '',
+            companyProfile: { name: '', ticker: '', sector: '', description: '' },
+            valuation: { peRatio: null, psRatio: null, industryPe: null, industryPs: null },
+            charts: [], // DYNAMIC: Array to hold all generated charts
+            news: [],
+            analystConsensus: { rating: '', priceTarget: '' },
+            activeSteps: [
+                { name: 'Profile', icon: 'business_center', status: 'pending', currentTool: null, sources: [] },
+                // MERGED: Financials and Valuation are now one step
+                { name: 'Key Metrics & Charts', icon: 'query_stats', status: 'pending', currentTool: null, sources: [] },
+                { name: 'News', icon: 'feed', status: 'pending', currentTool: null, sources: [] },
+                { name: 'Consensus', icon: 'groups', status: 'pending', currentTool: null, sources: [] },
+                { name: 'Finalizing', icon: 'summarize', status: 'pending', currentTool: null, sources: [] },
+            ],
+        });
+        const reportData = ref(getInitialReportData());
+
+        // --- Accordion State ---
+        const openAccordions = ref({});
+        const toggleAccordion = (stepName) => {
+            openAccordions.value[stepName] = !openAccordions.value[stepName];
+        };
+        const getRealUrl = (proxyUrl) => {
+          try {
+            const urlObj = new URL(proxyUrl);
+            return urlObj.searchParams.get('url') || proxyUrl;
+          } catch (e) {
+            return proxyUrl;
+          }
+        };
+        const formatUrl = (urlString) => {
+            try {
+                const urlObject = new URL(urlString);
+                return urlObject.hostname.replace(/^www\./, '');
+            } catch (e) {
+                return urlString.length > 50 ? urlString.substring(0, 47) + '...' : urlString;
+            }
+        };
+
+        // --- Icon Mapping ---
+        const toolIconMap = {
+            web_search: 'search',
+            fetch_page_content: 'article',
+            submit_company_profile: 'assignment_ind',
+            submit_chart_data: 'add_chart', // DYNAMIC
+            submit_valuation_metrics: 'balance',
+            submit_recent_news: 'newspaper',
+            submit_analyst_consensus: 'insights',
+        };
+
+        const stepStatusMap = computed(() => {
+            const map = {};
+            for (const step of reportData.value.activeSteps) {
+                map[step.name] = { status: step.status, icon: step.icon, currentTool: step.currentTool, sources: step.sources };
+            }
+            return map;
+        });
+
+        const resetState = () => {
+          // DYNAMIC: Destroy all active chart instances before resetting state
+          Object.values(chartInstances.value).forEach(chart => chart.destroy());
+          chartInstances.value = {};
+          chartRefs.value = {};
+          reportData.value = getInitialReportData();
+          openAccordions.value = {};
+        }
+        
+        // --- Settings State ---
+        const apiKey = ref("");
+        const modelName = ref("gemini-2.5-flash-lite");
+        const apiUrl = computed(() => `https://generativelanguage.googleapis.com/v1beta/models/${modelName.value}:generateContent?key=${apiKey.value}`);
+        const showSettingsModal = ref(false);
+        const settingsModel = ref('');
+        const settingsApiKey = ref('');
+        const LS_API_KEY_KEY = 'stocksight_gemini_api_key_v1';
+        const LS_MODEL_NAME_KEY = 'stocksight_gemini_model_name_v1';
+        
+        const openSettingsModal = () => { settingsModel.value = modelName.value; settingsApiKey.value = apiKey.value; showSettingsModal.value = true; };
+        const closeSettingsModal = () => { showSettingsModal.value = false; };
+        const saveSettings = () => { if (!settingsApiKey.value || settingsApiKey.value.trim() === '') { alert("API Key cannot be empty."); return; } localStorage.setItem(LS_API_KEY_KEY, settingsApiKey.value); localStorage.setItem(LS_MODEL_NAME_KEY, settingsModel.value); apiKey.value = settingsApiKey.value; modelName.value = settingsModel.value; closeSettingsModal(); };
+
+        // --- DYNAMIC Chart Management ---
+        const chartRefs = ref({}); // Holds the canvas elements
+        const chartInstances = ref({}); // Holds the Chart.js instances
+
+        const createChart = (canvasEl, chartConfig) => {
+            if (!canvasEl) return null;
+            const isDark = document.documentElement.classList.contains('dark');
+            const tickColor = isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)';
+            const fontColor = isDark ? '#cbd5e1' : '#475569';
+            return new Chart(canvasEl, {
+                type: chartConfig.type || 'bar',
+                data: { 
+                    labels: chartConfig.data.labels, 
+                    datasets: chartConfig.data.datasets.map(ds => ({
+                        ...ds,
+                        backgroundColor: isDark ? 'rgba(59, 130, 246, 0.5)' : 'rgba(59, 130, 246, 0.7)', 
+                        borderColor: 'rgb(59, 130, 246)', 
+                        borderWidth: 1 
+                    }))
+                },
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false, 
+                    plugins: { 
+                        legend: { display: (chartConfig.data.datasets?.length > 1), labels: { color: fontColor } }, 
+                        title: { display: true, text: chartConfig.title, color: fontColor, font: { size: 16 } } 
+                    }, 
+                    scales: { 
+                        y: { ticks: { color: fontColor }, grid: { color: tickColor } }, 
+                        x: { ticks: { color: fontColor }, grid: { color: 'transparent' } } 
+                    } 
+                }
+            });
+        };
+        
+        // Watch for new charts added by the AI and render them
+        watch(() => reportData.value.charts, async (newCharts) => {
+          if (newCharts.length > 0) {
+            await nextTick(); // Wait for the DOM to update with the new canvas elements
+            for (const chartConfig of newCharts) {
+              if (!chartInstances.value[chartConfig.id] && chartRefs.value[chartConfig.id]) {
+                const newChart = createChart(chartRefs.value[chartConfig.id], chartConfig);
+                if (newChart) {
+                  chartInstances.value[chartConfig.id] = newChart;
+                }
+              }
+            }
+          }
+        }, { deep: true });
+
+        // --- Core AI Logic & Tool Definitions (New Architecture) ---
+        const toolDefinitions = {
+            web_search: { name: "web_search", description: "Performs a web search.", parameters: { type: "OBJECT", properties: { query: { type: "STRING", description: "The search query." } }, required: ["query"] } },
+            fetch_page_content: { name: "fetch_page_content", description: "Fetches text content from a URL.", parameters: { type: "OBJECT", properties: { url: { type: "STRING", description: "The page URL." } }, required: ["url"] } },
+            submit_company_profile: { name: "submit_company_profile", description: "Submits the company profile data.", parameters: { type: "OBJECT", properties: { name: { type: "STRING" }, ticker: { type: "STRING" }, sector: { type: "STRING" }, description: { type: "STRING" } }, required: ["name", "ticker", "sector", "description"] } },
+            // DYNAMIC: New flexible chart tool
+            submit_chart_data: { name: "submit_chart_data", description: "Submits data for a single chart.", parameters: { type: "OBJECT", properties: { title: { type: "STRING" }, chartType: { type: "STRING", description: "Type of chart, e.g., 'bar' or 'line'." }, labels: { type: "ARRAY", items: { type: "STRING" } }, datasetLabel: { type: "STRING" }, datasetData: { type: "ARRAY", items: { type: "NUMBER" } } }, required: ["title", "chartType", "labels", "datasetLabel", "datasetData"] } },
+            submit_valuation_metrics: { name: "submit_valuation_metrics", description: "Submits key valuation metrics like P/E and P/S ratios.", parameters: { type: "OBJECT", properties: { peRatio: { type: "NUMBER" }, psRatio: { type: "NUMBER" }, industryPe: { type: "NUMBER" }, industryPs: { type: "NUMBER" } }, required: ["peRatio", "psRatio", "industryPe", "industryPs"] } },
+            submit_recent_news: { name: "submit_recent_news", description: "Submits recent news articles.", parameters: { type: "OBJECT", properties: { news_data: { type: "ARRAY", items: { type: "OBJECT", properties: { title: { type: "STRING" }, href: { type: "STRING" }, snippet: { type: "STRING" } } } } }, required: ["news_data"] } },
+            submit_analyst_consensus: { name: "submit_analyst_consensus", description: "Submits analyst consensus data.", parameters: { type: "OBJECT", properties: { rating: { type: "STRING" }, priceTarget: { type: "STRING" } }, required: ["rating", "priceTarget"] } },
+        };
+
+        const analysisStepsConfig = {
+            'Profile': {
+                prompt: (ticker, context) => `You are a financial analyst. Your current task is to find the company profile for the stock ticker "${ticker}". Use the provided tools to find the company's full name, its stock ticker symbol, its industry sector, and a concise business description. Once you have all this information, you MUST call the "submit_company_profile" function with the data.`,
+                tools: ['web_search', 'fetch_page_content', 'submit_company_profile'],
+                submitFunction: 'submit_company_profile'
+            },
+            // DYNAMIC: New combined step
+            'Key Metrics & Charts': {
+                prompt: (ticker, context) => `Your current task is to find key metrics and chartable data for ${context.companyProfile.name} (${ticker}).
+                1. Find key valuation metrics: the company's P/E Ratio, P/S Ratio, and the average P/E and P/S ratios for its industry. Call the "submit_valuation_metrics" function with this data.
+                2. Find at least two important time-series datasets to visualize, like annual Revenue, Net Income, or EPS for the last 3-5 years. For each dataset you find, you MUST make a separate call to the "submit_chart_data" function. Ensure data is in a reasonable unit (e.g., billions for revenue).
+                You can perform multiple web searches to gather all the required information before calling the submission functions.`,
+                tools: ['web_search', 'fetch_page_content', 'submit_valuation_metrics', 'submit_chart_data'],
+                // This step is considered complete when the AI stops calling tools. We won't use a single submit function.
+                submitFunction: null 
+            },
+            'News': {
+                prompt: (ticker, context) => `Your current task is to find 3 recent, significant news headlines for ${context.companyProfile.name} (${ticker}). For each, provide the title, a direct link (href), and a brief snippet. You MUST call the "submit_recent_news" function with the list of articles.`,
+                tools: ['web_search', 'fetch_page_content', 'submit_recent_news'],
+                submitFunction: 'submit_recent_news'
+            },
+            'Consensus': {
+                prompt: (ticker, context) => `Your current task is to find the analyst consensus for ${context.companyProfile.name} (${ticker}). Find the overall rating (e.g., "Buy", "Hold", "Strong Buy") and the average analyst price target. You MUST call the "submit_analyst_consensus" function with this data.`,
+                tools: ['web_search', 'fetch_page_content', 'submit_analyst_consensus'],
+                submitFunction: 'submit_analyst_consensus'
+            }
+        };
+        
+        const proxy = 'https://api.allorigins.win/raw?url=';
+        async function doSearch(q) { const r = await fetch(proxy + encodeURIComponent('https://html.duckduckgo.com/html/?q=' + encodeURIComponent(q))); if (!r.ok) throw new Error('Search fetch failed: ' + r.status); const t = await r.text(); const p = new DOMParser(); const d = p.parseFromString(t, 'text/html'); const l = [...d.querySelectorAll('a.result__a')].slice(0, 5); const s = [...d.querySelectorAll('a.result__snippet')].slice(0, 5); return l.map((a, i) => ({ title: a.textContent.trim(), href: a.href, snippet: s[i]?.textContent.trim() || '' })); }
+        async function fetchPageText(url) { try { const r = await fetch(proxy + encodeURIComponent(url)); if (!r.ok) throw new Error('Page fetch failed: ' + r.status); const h = await r.text(); const p = new DOMParser(); const d = p.parseFromString(h, 'text/html'); [...d.querySelectorAll('script, style, noscript, iframe, meta, link, [hidden]')].forEach(el => el.remove()); return d.body.innerText.trim() || 'No visible text found.'; } catch (e) { return 'Error fetching page: ' + e.message; } }
+
+        const handleToolCall = async (functionName, args) => {
+            if (functionName === 'submit_company_profile') {
+                reportData.value.companyProfile = { ...reportData.value.companyProfile, ...args };
+                return { success: true };
+            }
+            // DYNAMIC: Handle the new chart tool
+            if (functionName === 'submit_chart_data') {
+                const newChart = {
+                    id: `chart_${Date.now()}_${Math.random()}`,
+                    title: args.title,
+                    type: args.chartType,
+                    data: {
+                        labels: args.labels,
+                        datasets: [{ label: args.datasetLabel, data: args.datasetData }]
+                    }
+                };
+                reportData.value.charts.push(newChart);
+                return { success: true, message: `Chart "${args.title}" created.`};
+            }
+            if (functionName === 'submit_valuation_metrics') {
+                reportData.value.valuation = { ...reportData.value.valuation, ...args };
+                return { success: true };
+            }
+            if (functionName === 'submit_recent_news') {
+                reportData.value.news = args.news_data || [];
+                return { success: true };
+            }
+            if (functionName === 'submit_analyst_consensus') {
+                reportData.value.analystConsensus = { ...reportData.value.analystConsensus, ...args };
+                return { success: true };
+            }
+            if (functionName === 'web_search') {
+                try {
+                    const searchResults = await doSearch(args.query);
+                    return { success: true, data: { results: searchResults } };
+                } catch (e) { return { success: false, message: e.message }; }
+            }
+            if (functionName === 'fetch_page_content') {
+                const pageText = await fetchPageText(args.url);
+                if (pageText.startsWith('Error')) return { success: false, message: pageText };
+                return { success: true, data: { content: pageText.substring(0, 20000) } };
+            }
+            return { success: false, message: `Unknown function: ${functionName}` };
+        };
+
+        const startAnalysis = () => {
+            if (activeTicker.value && !isLoading.value) {
+                generateReportForTicker(activeTicker.value);
+            }
+        };
+        
+        const handleSendMessage = async () => {
+          const txt = newMessageText.value.trim().toUpperCase();
+          if (!txt || isLoading.value) return;
+
+          if (!tickerList.value.includes(txt)) {
+              tickerList.value.unshift(txt);
+          }
+          await selectTicker(txt, true);
+          newMessageText.value = '';
+        };
+
+        async function executeStep(stepName, ticker, currentReportData) {
+            const stepConfig = analysisStepsConfig[stepName];
+            if (!stepConfig) throw new Error(`Config for step "${stepName}" not found.`);
+            
+            const stepRef = reportData.value.activeSteps.find(s => s.name === stepName);
+            const promptText = stepConfig.prompt(ticker, currentReportData);
+            const toolsForStep = { functionDeclarations: stepConfig.tools.map(name => toolDefinitions[name]) };
+
+            let history = [{ role: 'user', parts: [{ text: promptText }] }];
+
+            for (let i = 0; i < 10; i++) { 
+                if (stepRef) stepRef.currentTool = null; // AI is "thinking"
+
+                const payload = { contents: history, tools: [toolsForStep] };
+                const resp = await fetch(apiUrl.value, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                if (!resp.ok) {
+                    const errData = await resp.json().catch(() => ({ error: { message: "API error" } }));
+                    throw new Error(errData.error?.message || `Error: ${resp.status}`);
+                }
+                const data = await resp.json();
+                if (!data.candidates?.[0]?.content?.parts) {
+                    // This can happen if the AI decides it's done. If the step has no single submit function, this is OK.
+                    if (!stepConfig.submitFunction) return; 
+                    throw new Error("Invalid AI response structure.");
+                }
+                
+                const parts = data.candidates[0].content.parts;
+                const funcCalls = parts.filter(p => p.functionCall).map(p => p.functionCall);
+
+                if (funcCalls.length > 0) {
+                    // For steps with a single, required submission function
+                    if (stepConfig.submitFunction) {
+                        const submissionCall = funcCalls.find(fc => fc.name === stepConfig.submitFunction);
+                        if (submissionCall) {
+                            if (stepRef) stepRef.currentTool = submissionCall.name;
+                            await handleToolCall(submissionCall.name, submissionCall.args);
+                            return; // Step successfully completed
+                        }
+                    }
+
+                    // For all tool calls (including multi-call steps)
+                    const toolResponses = [];
+                    for (const funcCall of funcCalls) {
+                        if (stepRef) stepRef.currentTool = funcCall.name;
+                        
+                        if (funcCall.name === 'fetch_page_content' && funcCall.args.url) {
+                            const fullProxyUrl = proxy + encodeURIComponent(funcCall.args.url);
+                            if (stepRef && !stepRef.sources.includes(fullProxyUrl)) {
+                                stepRef.sources.push(fullProxyUrl);
+                            }
+                        }
+
+                        const funcRes = await handleToolCall(funcCall.name, funcCall.args);
+                        toolResponses.push({ functionResponse: { name: funcCall.name, response: { name: funcCall.name, content: funcRes } } });
+                    }
+                    history.push({ role: 'model', parts: funcCalls.map(fc => ({ functionCall: fc })) });
+                    history.push({ role: 'tool', parts: toolResponses });
+                } else {
+                    // AI responded with text instead of a tool call.
+                    // If the step was expecting a submission, it's an error.
+                    if (stepConfig.submitFunction) {
+                        const textResponse = parts.map(p => p.text).join('').trim();
+                        throw new Error(`The AI did not call function '${stepConfig.submitFunction}'. Response: "${textResponse || '[empty]'}"`);
+                    } else {
+                        // For multi-call steps, this means the AI is done with this step.
+                        return;
+                    }
+                }
+            }
+            // If the loop finishes, it means the turn limit was hit.
+            if(stepConfig.submitFunction) {
+                throw new Error(`The AI failed to complete the task by calling '${stepConfig.submitFunction}' within the 10-turn limit.`);
+            }
+        }
+
+        const generateReportForTicker = async (ticker) => {
+          if (!ticker || isLoading.value) return;
+          
+          activeTicker.value = ticker;
+          resetState();
+          reportData.value.status = 'loading';
+          reportData.value.companyProfile.ticker = ticker;
+          await nextTick();
+          chatContainerRef.value.scrollTop = 0;
+
+          const stepsToRun = reportData.value.activeSteps.filter(s => s.name !== 'Finalizing');
+          try {
+            for (const step of stepsToRun) {
+                const stepRef = reportData.value.activeSteps.find(s => s.name === step.name);
+                if (stepRef) stepRef.status = 'running';
+
+                await executeStep(step.name, ticker, reportData.value);
+                
+                if (stepRef) {
+                  stepRef.status = 'success';
+                  stepRef.currentTool = null;
+                }
+            }
+            const finalizingStep = reportData.value.activeSteps.find(s => s.name === 'Finalizing');
+            if (finalizingStep) finalizingStep.status = 'success';
+            reportData.value.status = 'complete';
+
+          } catch (err) {
+            console.error('Analysis Error:', err);
+            reportData.value.status = 'error';
+            reportData.value.errorMessage = err.message;
+            const runningStep = reportData.value.activeSteps.find(s => s.status === 'running');
+            if(runningStep) {
+              runningStep.status = 'error';
+              runningStep.currentTool = null;
+            }
+          }
+        };
+
+        // --- Ticker Management Functions ---
+        const addTicker = () => {
+          const newTicker = prompt("Enter a stock ticker to add:");
+          if (newTicker) {
+            const formattedTicker = newTicker.trim().toUpperCase();
+            if (formattedTicker && !tickerList.value.includes(formattedTicker)) {
+              tickerList.value.unshift(formattedTicker);
+              selectTicker(formattedTicker);
+            } else if (tickerList.value.includes(formattedTicker)) {
+              selectTicker(formattedTicker);
+            }
+          }
+        };
+        const removeTicker = (tickerToRemove) => {
+          tickerList.value = tickerList.value.filter(t => t !== tickerToRemove);
+          if (activeTicker.value === tickerToRemove) {
+            if (tickerList.value.length > 0) {
+              selectTicker(tickerList.value[0]);
+            } else {
+              activeTicker.value = '';
+              resetState();
+            }
+          }
+        };
+        const selectTicker = (ticker, startNow = false) => {
+            if (isLoading.value) return; 
+            if (activeTicker.value !== ticker || reportData.value.status !== 'idle') {
+                activeTicker.value = ticker;
+                resetState();
+            }
+            if (startNow) {
+                generateReportForTicker(ticker);
+            }
+        };
+        
+        onMounted(() => {
+            const savedKey = localStorage.getItem(LS_API_KEY_KEY);
+            const savedModel = localStorage.getItem(LS_MODEL_NAME_KEY);
+            if (savedKey) apiKey.value = savedKey;
+            if (savedModel) modelName.value = savedModel;
+            if (!apiKey.value) openSettingsModal();
+            
+            const savedTickers = localStorage.getItem(LS_TICKERS_KEY);
+            if (savedTickers) {
+                tickerList.value = JSON.parse(savedTickers);
+            } else {
+                tickerList.value = ['AAPL', 'GOOG', 'MSFT', 'TSLA'];
+            }
+
+            if (tickerList.value.length > 0) {
+                selectTicker(tickerList.value[0]);
+            }
+        });
+
+        onUnmounted(() => {
+          Object.values(chartInstances.value).forEach(chart => chart.destroy());
+        });
+        
+        watch(tickerList, (newVal) => {
+            localStorage.setItem(LS_TICKERS_KEY, JSON.stringify(newVal));
+        }, { deep: true });
+
+        return { 
+            reportData, isLoading, newMessageText, chatContainerRef, handleSendMessage, resetState, startAnalysis,
+            stepStatusMap, toolIconMap,
+            showSettingsModal, settingsModel, settingsApiKey, openSettingsModal, closeSettingsModal, saveSettings, 
+            chartRefs,
+            tickerList, activeTicker, addTicker, removeTicker, selectTicker,
+            openAccordions, toggleAccordion, getRealUrl, formatUrl
+        };
+      }
+    }).mount('#app');
+  </script>
+
+</body>
+</html>
