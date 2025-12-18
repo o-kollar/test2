@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MoE-minGRU Visualizer (Full Spec)</title>
+    <style>
+        :root {
+            --bg: #121212;
+            --surface: #1e1e1e;
+            --surface-dark: #161616;
+            --primary: #bb86fc;
+            --primary-dim: #372847;
+            --text: #e0e0e0;
+            --text-dim: #aaa;
+            --border: #333;
+            --accent: #03dac6;
+            --danger: #cf6679;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            padding: 10px;
+            gap: 15px;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        @media (min-width: 900px) {
+            .container {
+                display: grid;
+                grid-template-columns: 1.2fr 0.8fr;
+                height: 100%;
+                overflow: hidden;
+            }
+        }
+
+        .panel {
+            background: var(--surface);
+            padding: 15px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            min-height: 0; 
+            overflow-y: auto;
+        }
+
+        h2 {
+            margin: 0;
+            font-size: 1.1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .status-dot {
+            height: 10px;
+            width: 10px;
+            background-color: #555;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .status-dot.active { background-color: var(--accent); box-shadow: 0 0 8px var(--accent); }
+
+        /* Controls */
+        .controls-row {
+            display: flex;
+            gap: 8px;
+        }
+        button {
+            flex: 1;
+            background: var(--primary);
+            color: #000;
+            border: none;
+            padding: 10px;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        button:hover { opacity: 0.9; }
+        button:disabled { background: #444; color: #888; cursor: not-allowed; }
+        button.stop { background: var(--danger); color: white; }
+
+        .config-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            background: rgba(0,0,0,0.2);
+            padding: 8px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+        }
+        .config-item { display: flex; flex-direction: column; align-items: center; }
+        input[type=number] {
+            background: transparent;
+            border: none;
+            border-bottom: 1px solid #555;
+            color: var(--accent);
+            width: 100%;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+
+        /* --- ACCORDION STYLES --- */
+        .accordion-header {
+            background-color: #2a2a2a;
+            color: var(--text);
+            cursor: pointer;
+            padding: 12px;
+            width: 100%;
+            border: 1px solid var(--border);
+            text-align: left;
+            outline: none;
+            font-size: 0.95rem;
+            font-weight: 600;
+            transition: 0.3s;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2px;
+        }
+        
+        .accordion-header:hover { background-color: #333; }
+
+        .accordion-header.active {
+            background-color: var(--primary-dim);
+            color: var(--primary);
+            border-color: var(--primary);
+            border-bottom-right-radius: 0;
+            border-bottom-left-radius: 0;
+            margin-bottom: 0;
+        }
+
+        .accordion-header:after { content: '+'; font-size: 1.2rem; line-height: 0.8rem; }
+        .accordion-header.active:after { content: '−'; }
+
+        .accordion-content {
+            padding: 0 10px;
+            background-color: var(--surface-dark);
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+            border: 1px solid var(--border);
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            opacity: 0;
+            margin-bottom: 10px;
+        }
+        
+        .accordion-content.show { opacity: 1; padding-bottom: 10px; padding-top: 10px; }
+
+        /* Visualization Area */
+        .viz-container {
+            background: #000;
+            border-radius: 8px;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            flex: 1;
+            min-height: 250px;
+        }
+
+        .chart-label { font-size: 0.75rem; color: #888; text-transform: uppercase; letter-spacing: 1px; }
+
+        /* Loss Graph */
+        canvas#lossGraph {
+            width: 100%;
+            height: 120px;
+            border-bottom: 1px solid #333;
+        }
+
+        /* Expert Bars */
+        .experts-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            flex: 1;
+        }
+        .bars-container {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            height: 100px;
+            gap: 4px;
+            padding-top: 10px;
+        }
+        .expert-col {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            height: 100%;
+            justify-content: flex-end;
+        }
+        .bar {
+            width: 100%;
+            background: var(--primary-dim);
+            border-top: 2px solid var(--primary);
+            transition: height 0.2s ease;
+            min-height: 2px;
+            border-radius: 2px 2px 0 0;
+            opacity: 0.7;
+        }
+        .bar.active { opacity: 1; background: var(--primary); }
+        .x-label { font-size: 0.6rem; color: #666; text-align:center; }
+
+        /* Data Input */
+        textarea.data-input {
+            width: 100%;
+            height: 150px;
+            background: #0d0d0d;
+            color: #999;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 8px;
+            font-family: monospace;
+            font-size: 12px;
+            resize: vertical;
+            box-sizing: border-box;
+        }
+
+        /* Output / Terminal Area */
+        .output-area {
+            flex: 1;
+            background: #0d0d0d;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px;
+            overflow-y: auto;
+            font-family: "Courier New", Courier, monospace;
+            color: #d1c4e9;
+            white-space: pre-wrap; /* Preserve newlines */
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+        
+        .input-bar { display: flex; gap: 8px; }
+        input[type=text] {
+            flex: 1; background: #222; border: 1px solid #444; color: white;
+            padding: 10px; border-radius: 6px; outline: none;
+        }
+        input[type=text]:focus { border-color: var(--accent); }
+
+    </style>
+</head>
+<body>
+
+<div class="container">
+    
+    <!-- Left Panel: Training & Viz -->
+    <div class="panel">
+        <h2>
+            MoE Training Monitor
+            <span id="status-indicator" class="status-dot"></span>
+        </h2>
+        
+        <div class="controls-row">
+            <button id="btnTrain">Start Training</button>
+            <button id="btnStop" class="stop" disabled>Stop</button>
+        </div>
+
+        <div class="config-grid">
+            <div class="config-item"><label>Dim</label><input type="number" id="hiddenSize" value="64"></div>
+            <div class="config-item"><label>LR</label><input type="number" id="learnRate" value="0.005"></div>
+            <div class="config-item"><label>Experts</label><input type="number" id="numExperts" value="8"></div>
+            <div class="config-item"><label>Top-K</label><input type="number" id="topK" value="2"></div>
+        </div>
+
+        <!-- ACCORDION 1: VISUALIZATION -->
+        <button class="accordion-header active">Visualization</button>
+        <div class="accordion-content show">
+            <div class="viz-container">
+                <div class="chart-label">Loss Curve (Log Scale)</div>
+                <canvas id="lossGraph"></canvas>
+                
+                <div class="experts-wrapper">
+                    <div class="chart-label">Expert Load (Slow ← → Fast)</div>
+                    <div id="expertBars" class="bars-container"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ACCORDION 2: TRAINING DATA -->
+        <button class="accordion-header">Training Data</button>
+        <div class="accordion-content">
+            <textarea id="training-data" class="data-input" spellcheck="false">Q: what is the weather in London?
+A: GET /weather?q=London
+Q: show me weather for Paris
+A: GET /weather?q=Paris
+Q: Tokyo weather please
+A: GET /weather?q=Tokyo
+Q: how is the weather in Berlin
+A: GET /weather?q=Berlin
+Q: check weather Madrid
+A: GET /weather?q=Madrid
+Q: weather in Rome
+A: GET /weather?q=Rome
+Q: New York weather status
+A: GET /weather?q=New York
+Q: what's the forecast for Oslo?
+A: GET /forecast?q=Oslo
+Q: give me forecast for Cairo
+A: GET /forecast?q=Cairo
+Q: forecast in Dublin
+A: GET /forecast?q=Dublin
+Q: is it raining in Seattle?
+A: GET /weather?q=Seattle&type=rain
+Q: is it sunny in Miami?
+A: GET /weather?q=Miami&type=sun
+Q: check rain for Portland
+A: GET /weather?q=Portland&type=rain
+Q: temperature in Chicago
+A: GET /weather?q=Chicago&units=metric
+Q: how hot is Phoenix?
+A: GET /weather?q=Phoenix&units=imperial
+Q: weather in Sydney
+A: GET /weather?q=Sydney
+Q: weather in Moscow
+A: GET /weather?q=Moscow
+Q: forecast Beijing
+A: GET /forecast?q=Beijing
+Q: check weather in Toronto
+A: GET /weather?q=Toronto
+Q: Seoul weather report
+A: GET /weather?q=Seoul
+Q: weather Mumbai
+A: GET /weather?q=Mumbai
+Q: forecast for Lima
+A: GET /forecast?q=Lima</textarea>
+        </div>
+
+    </div>
+
+    <!-- Right Panel: Interaction (RAW OUTPUT) -->
+    <div class="panel">
+        <h2>Inference Output</h2>
+        <div id="output-area" class="output-area">// System ready.
+// Train the model, then enter a query below.
+</div>
+        <div class="input-bar">
+            <input type="text" id="user-query" placeholder="e.g. weather in..." autocomplete="off">
+            <button id="btnAsk" style="flex:0 0 80px; background: var(--accent); color: #000;">Generate</button>
+        </div>
+    </div>
+
+</div>
+
+<script type="module">
+// ============================================================================
+// 1. MATH LIBRARY (Micrograd-ish)
+// ============================================================================
+
+const Utils = {
+    randf: (a, b) => Math.random() * (b - a) + a,
+    zeros: (n) => new Float64Array(n),
+    sig: (x) => 1.0 / (1 + Math.exp(-x)),
+    softmax: function(w) {
+        var out = new Float64Array(w.length), maxval = -Number.MAX_VALUE;
+        for (let i = 0; i < w.length; i++) if (w[i] > maxval) maxval = w[i];
+        var s = 0.0;
+        for (let i = 0; i < w.length; i++) { out[i] = Math.exp(w[i] - maxval); s += out[i]; }
+        for (let i = 0; i < w.length; i++) out[i] /= s;
+        return out;
+    },
+    maxi: function(w) {
+        let maxv = w[0], maxix = 0;
+        for (let i = 1; i < w.length; i++) if (w[i] > maxv) { maxv = w[i]; maxix = i; }
+        return maxix;
+    },
+    topKIndices: function(w, k) {
+        let indices = Array.from(w.keys());
+        indices.sort((a, b) => w[b] - w[a]);
+        return indices.slice(0, k);
+    }
+};
+
+class Mat {
+    constructor(n, d) { this.n = n; this.d = d; this.w = Utils.zeros(n * d); this.dw = Utils.zeros(n * d); }
+    get(r, c) { return this.w[this.d * r + c]; }
+    set(r, c, v) { this.w[this.d * r + c] = v; }
+}
+
+class RandMat extends Mat {
+    constructor(n, d, mu, std) {
+        super(n, d);
+        for (let i = 0; i < this.w.length; i++) this.w[i] = Utils.randf(-std, std);
+    }
+}
+
+class Graph {
+    constructor(needsBackprop = true) { this.needsBackprop = needsBackprop; this.backprop = []; }
+    backward() { for (let i = this.backprop.length - 1; i >= 0; i--) this.backprop[i](); }
+    
+    tanh(m) {
+        var out = new Mat(m.n, m.d), n = m.w.length;
+        for (let i = 0; i < n; i++) out.w[i] = Math.tanh(m.w[i]);
+        if (this.needsBackprop) this.backprop.push(() => {
+            for (let i = 0; i < n; i++) m.dw[i] += (1.0 - out.w[i] * out.w[i]) * out.dw[i];
+        });
+        return out;
+    }
+    sigmoid(m) {
+        var out = new Mat(m.n, m.d), n = m.w.length;
+        for (let i = 0; i < n; i++) out.w[i] = Utils.sig(m.w[i]);
+        if (this.needsBackprop) this.backprop.push(() => {
+            for (let i = 0; i < n; i++) m.dw[i] += out.w[i] * (1.0 - out.w[i]) * out.dw[i];
+        });
+        return out;
+    }
+    mul(m1, m2) {
+        var n = m1.n, d = m2.d, out = new Mat(n, d);
+        for (let i = 0; i < m1.n; i++) {
+            for (let j = 0; j < m2.d; j++) {
+                var dot = 0.0;
+                for (let k = 0; k < m1.d; k++) dot += m1.w[m1.d * i + k] * m2.w[m2.d * k + j];
+                out.w[d * i + j] = dot;
+            }
+        }
+        if (this.needsBackprop) this.backprop.push(() => {
+            for (let i = 0; i < m1.n; i++) {
+                for (let j = 0; j < m2.d; j++) {
+                    var b = out.dw[d * i + j];
+                    for (let k = 0; k < m1.d; k++) {
+                        m1.dw[m1.d * i + k] += m2.w[m2.d * k + j] * b;
+                        m2.dw[m2.d * k + j] += m1.w[m1.d * i + k] * b;
+                    }
+                }
+            }
+        });
+        return out;
+    }
+    add(m1, m2) {
+        var out = new Mat(m1.n, m1.d), n = m1.w.length;
+        for (let i = 0; i < n; i++) out.w[i] = m1.w[i] + m2.w[i];
+        if (this.needsBackprop) this.backprop.push(() => {
+            for (let i = 0; i < n; i++) { m1.dw[i] += out.dw[i]; m2.dw[i] += out.dw[i]; }
+        });
+        return out;
+    }
+    eltmul(m1, m2) {
+        var out = new Mat(m1.n, m1.d), n = m1.w.length;
+        for (let i = 0; i < n; i++) out.w[i] = m1.w[i] * m2.w[i];
+        if (this.needsBackprop) this.backprop.push(() => {
+            for (let i = 0; i < n; i++) { m1.dw[i] += m2.w[i] * out.dw[i]; m2.dw[i] += m1.w[i] * out.dw[i]; }
+        });
+        return out;
+    }
+    softmaxMat(m) {
+        var out = new Mat(m.n, m.d);
+        var sm = Utils.softmax(m.w);
+        for(let i=0; i<sm.length; i++) out.w[i] = sm[i];
+        if (this.needsBackprop) this.backprop.push(() => {
+            for(let i=0; i<m.n; i++) {
+                for(let j=0; j<m.n; j++) {
+                    if(i === j) m.dw[i] += out.w[i] * (1 - out.w[i]) * out.dw[j];
+                    else m.dw[i] -= out.w[i] * out.w[j] * out.dw[j];
+                }
+            }
+        });
+        return out;
+    }
+    oneMinus(m) {
+        var out = new Mat(m.n, m.d), n = m.w.length;
+        for (let i = 0; i < n; i++) out.w[i] = 1.0 - m.w[i];
+        if (this.needsBackprop) this.backprop.push(() => {
+            for (let i = 0; i < n; i++) m.dw[i] -= out.dw[i];
+        });
+        return out;
+    }
+    rowSlice(m, rowIndex) {
+        var d = m.d;
+        var out = new Mat(1, d);
+        for(let i=0; i<d; i++) out.w[i] = m.w[d*rowIndex + i];
+        if(this.needsBackprop) this.backprop.push(() => {
+            for(let i=0; i<d; i++) m.dw[d*rowIndex + i] += out.dw[i];
+        });
+        return out;
+    }
+}
+
+class Solver {
+    constructor() {
+        this.m = new Map(); this.v = new Map(); this.t = 0;
+        this.beta1 = 0.9; this.beta2 = 0.999; this.eps = 1e-8;
+    }
+    step(model, lr, wd, clip) {
+        this.t++;
+        const c1 = 1.0 - Math.pow(this.beta1, this.t);
+        const c2 = 1.0 - Math.pow(this.beta2, this.t);
+        for (const k in model) {
+            if (Object.prototype.hasOwnProperty.call(model, k)) {
+                const mat = model[k];
+                if (!this.m.has(k)) { this.m.set(k, new Float64Array(mat.w.length)); this.v.set(k, new Float64Array(mat.w.length)); }
+                const m = this.m.get(k), v = this.v.get(k);
+                for (let i = 0, n = mat.w.length; i < n; i++) {
+                    let g = mat.dw[i];
+                    if (g > clip) g = clip; else if (g < -clip) g = -clip;
+                    m[i] = this.beta1 * m[i] + (1.0 - this.beta1) * g;
+                    v[i] = this.beta2 * v[i] + (1.0 - this.beta2) * g * g;
+                    if (wd > 0) mat.w[i] -= lr * wd * mat.w[i];
+                    mat.w[i] -= lr * (m[i]/c1) / (Math.sqrt(v[i]/c2) + this.eps);
+                    mat.dw[i] = 0;
+                }
+            }
+        }
+    }
+}
+
+// ============================================================================
+// 2. MOE-minGRU (With State Coupling, Time-Scale Init, Concatenated Router)
+// ============================================================================
+
+function initMoEGRU(inputSize, hiddenSize, outputSize, numExperts, topK) {
+    var model = {};
+    
+    // UPDATED: Router now takes [x; h_prev] so dimension is inputSize + hiddenSize
+    model['W_router'] = new RandMat(numExperts, inputSize + hiddenSize, 0, 0.08);
+    
+    for(let e = 0; e < numExperts; e++) {
+        // --- STANDARD WEIGHTS ---
+        model[`E${e}_Wz`] = new RandMat(hiddenSize, inputSize, 0, 0.08); // Input -> Update
+        model[`E${e}_Wh`] = new RandMat(hiddenSize, inputSize, 0, 0.08); // Input -> Candidate
+        
+        // --- RECURRENCE WEIGHTS (Coupling) ---
+        model[`E${e}_Uz`] = new RandMat(hiddenSize, hiddenSize, 0, 0.08); // State -> Update
+        model[`E${e}_Uh`] = new RandMat(hiddenSize, hiddenSize, 0, 0.08); // State -> Candidate
+        
+        // --- TIME SCALE SPECIALIZATION ---
+        // Range: -2.5 (Slow/Memory) to +2.5 (Fast/Reactive)
+        let timeScaleBias = -2.5 + (e / Math.max(1, numExperts - 1)) * 5.0;
+        
+        model[`E${e}_bz`] = new Mat(hiddenSize, 1);
+        for(let k=0; k<hiddenSize; k++) model[`E${e}_bz`].w[k] = timeScaleBias;
+
+        model[`E${e}_bh`] = new Mat(hiddenSize, 1);
+    }
+    
+    // Output Head
+    model['Whd'] = new RandMat(outputSize, hiddenSize, 0, 0.08);
+    model['bd'] = new Mat(outputSize, 1);
+    
+    return model;
+}
+
+function forwardMoEGRU(G, model, hiddenSize, numExperts, topK, x, prev) {
+    // Ensure h_prev exists
+    let h_prev = (prev && prev.h) ? prev.h : new Mat(hiddenSize, 1);
+
+    // --- CONCATENATION [x; h_prev] for Router ---
+    let routerInput = new Mat(x.n + h_prev.n, 1);
+    
+    // Forward Copy
+    for(let i=0; i<x.n; i++) routerInput.w[i] = x.w[i];
+    for(let i=0; i<h_prev.n; i++) routerInput.w[x.n + i] = h_prev.w[i];
+
+    // Backward Connection
+    if(G.needsBackprop) {
+        G.backprop.push(() => {
+            for(let i=0; i<x.n; i++) x.dw[i] += routerInput.dw[i];
+            for(let i=0; i<h_prev.n; i++) h_prev.dw[i] += routerInput.dw[x.n + i];
+        });
+    }
+
+    // 1. Router (Uses Concatenated Input)
+    const routerLogitsFull = G.mul(model['W_router'], routerInput);
+    
+    // Track dense probs for Load Balancing
+    const denseProbs = G.softmaxMat(routerLogitsFull);
+    const indices = Utils.topKIndices(routerLogitsFull.w, topK);
+    
+    // 2. Softmax for chosen experts
+    let selectedLogits = new Mat(topK, 1);
+    for(let i=0; i<topK; i++) {
+        const row = G.rowSlice(model['W_router'], indices[i]); 
+        const logit = G.mul(row, routerInput); // Route on [x; h]
+        selectedLogits.w[i] = logit.w[0];
+        if (G.needsBackprop) G.backprop.push(() => { logit.dw[0] += selectedLogits.dw[i]; });
+    }
+    const routingWeights = G.softmaxMat(selectedLogits);
+    
+    // 3. Experts Execution
+    let final_h = new Mat(hiddenSize, 1);
+
+    for(let i=0; i<topK; i++) {
+        let expertIdx = indices[i];
+        let weight = routingWeights.w[i];
+
+        // Recurrence & Time-Scale Logic
+        // z = sigmoid(Wz*x + Uz*h + bz_specialized)
+        let z_sum = G.add(G.add(G.mul(model[`E${expertIdx}_Wz`], x), G.mul(model[`E${expertIdx}_Uz`], h_prev)), model[`E${expertIdx}_bz`]);
+        let z = G.sigmoid(z_sum);
+        
+        // hTilde = tanh(Wh*x + Uh*h + bh)
+        let h_sum = G.add(G.add(G.mul(model[`E${expertIdx}_Wh`], x), G.mul(model[`E${expertIdx}_Uh`], h_prev)), model[`E${expertIdx}_bh`]);
+        let hTilde = G.tanh(h_sum);
+        
+        // GRU Update
+        let h_expert = G.add(G.eltmul(G.oneMinus(z), h_prev), G.eltmul(z, hTilde));
+
+        let weightMat = new Mat(hiddenSize, 1);
+        for(let k=0; k<hiddenSize; k++) weightMat.w[k] = weight;
+        
+        if (G.needsBackprop) G.backprop.push(() => {
+             let sum = 0; for(let k=0; k<hiddenSize; k++) sum += weightMat.dw[k];
+             routingWeights.dw[i] += sum;
+        });
+
+        final_h = G.add(final_h, G.eltmul(weightMat, h_expert));
+    }
+    
+    var output = G.add(G.mul(model['Whd'], final_h), model['bd']);
+    return { h: final_h, o: output, indices: indices, denseProbs: denseProbs };
+}
+
+// ============================================================================
+// 3. APP LOGIC & VISUALIZATION
+// ============================================================================
+
+const els = {
+    input: document.getElementById('training-data'),
+    outputArea: document.getElementById('output-area'),
+    userQuery: document.getElementById('user-query'),
+    btnAsk: document.getElementById('btnAsk'),
+    btnTrain: document.getElementById('btnTrain'),
+    btnStop: document.getElementById('btnStop'),
+    hiddenSize: document.getElementById('hiddenSize'),
+    learnRate: document.getElementById('learnRate'),
+    numExperts: document.getElementById('numExperts'),
+    topK: document.getElementById('topK'),
+    status: document.getElementById('status-indicator'),
+    lossCanvas: document.getElementById('lossGraph'),
+    expertBars: document.getElementById('expertBars')
+};
+
+let model, solver, vocab, charToIx, ixToChar;
+let isTraining = false, dataIdx = 0, epoch = 0, iter = 0, smoothLoss = 1.0;
+let lossHistory = [];
+let expertUsage = [];
+
+function initModel() {
+    const text = els.input.value;
+    const chars = [...new Set(text)].sort();
+    if(!chars.includes('\n')) chars.push('\n');
+    vocab = chars;
+    charToIx = {}; ixToChar = {};
+    chars.forEach((c, i) => { charToIx[c] = i; ixToChar[i] = c; });
+
+    const hSize = parseInt(els.hiddenSize.value);
+    const nExp = parseInt(els.numExperts.value);
+    const topK = parseInt(els.topK.value);
+
+    model = initMoEGRU(chars.length, hSize, chars.length, nExp, topK);
+    solver = new Solver();
+    
+    // Reset Stats
+    dataIdx = 0; epoch = 0; iter = 0; smoothLoss = -Math.log(1.0/chars.length);
+    lossHistory = [];
+    expertUsage = new Array(nExp).fill(0);
+    
+    // Init Bars UI
+    els.expertBars.innerHTML = '';
+    for(let i=0; i<nExp; i++) {
+        const col = document.createElement('div');
+        col.className = 'expert-col';
+        let label = (i === 0) ? 'Slow' : (i === nExp-1) ? 'Fast' : `E${i}`;
+        col.innerHTML = `<div class="bar" id="bar-${i}" style="height: 0%"></div><div class="x-label">${label}</div>`;
+        els.expertBars.appendChild(col);
+    }
+    
+    els.outputArea.innerText = `// MoE-minGRU Initialized.\n// Vocab: ${chars.length}, Hidden: ${hSize}, Experts: ${nExp} (Top ${topK})`;
+}
+
+function getOneHot(charIndex, size) {
+    const m = new Mat(size, 1);
+    m.set(charIndex, 0, 1.0);
+    return m;
+}
+
+// --- VISUALIZATION FUNCTIONS ---
+
+function drawLossGraph() {
+    if (els.lossCanvas.offsetParent === null) return;
+
+    const ctx = els.lossCanvas.getContext('2d');
+    const w = els.lossCanvas.width = els.lossCanvas.clientWidth;
+    const h = els.lossCanvas.height = els.lossCanvas.clientHeight;
+    
+    ctx.clearRect(0, 0, w, h);
+    ctx.strokeStyle = '#333';
+    ctx.lineWidth = 1;
+    
+    ctx.beginPath();
+    ctx.moveTo(0, h/2); ctx.lineTo(w, h/2);
+    ctx.stroke();
+
+    if(lossHistory.length < 2) return;
+
+    ctx.beginPath();
+    ctx.strokeStyle = '#03dac6';
+    ctx.lineWidth = 2;
+    
+    const maxVal = Math.max(...lossHistory) * 1.1;
+    const minVal = 0;
+    
+    for(let i=0; i<lossHistory.length; i++) {
+        const x = (i / (lossHistory.length - 1)) * w;
+        const y = h - ((lossHistory[i] - minVal) / (maxVal - minVal)) * h;
+        if(i===0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+    
+    ctx.fillStyle = '#aaa';
+    ctx.font = '10px monospace';
+    ctx.fillText(`L: ${smoothLoss.toFixed(3)}`, 5, 15);
+}
+
+function updateExpertVis() {
+    const maxUsage = Math.max(...expertUsage, 1);
+    for(let i=0; i<expertUsage.length; i++) {
+        const bar = document.getElementById(`bar-${i}`);
+        if(bar) {
+            const pct = (expertUsage[i] / maxUsage) * 100;
+            bar.style.height = `${pct}%`;
+            if(pct > 80) bar.style.background = '#bb86fc';
+            else bar.style.background = '#372847';
+        }
+    }
+}
+
+// --- TRAINING LOOP (With Aux Loss) ---
+
+function trainStep() {
+    if (!model) initModel();
+    const text = els.input.value;
+    const lr = parseFloat(els.learnRate.value);
+    const hSize = parseInt(els.hiddenSize.value);
+    const nExp = parseInt(els.numExperts.value);
+    const topK = parseInt(els.topK.value);
+    const seqLength = 16;
+    const lambda = 0.05; // Aux loss weight
+    
+    if (iter % 200 === 0) expertUsage.fill(0);
+
+    for (let k = 0; k < 5; k++) { 
+        if (dataIdx + seqLength + 1 >= text.length) { dataIdx = 0; epoch++; }
+
+        const G = new Graph();
+        let loss = 0;
+        let prev = {}; 
+        let batchProbs = []; // Track for Aux Loss
+
+        for (let t = 0; t < seqLength; t++) {
+            const charIx = charToIx[text[dataIdx + t]];
+            const targetIx = charToIx[text[dataIdx + t + 1]];
+            if (charIx === undefined || targetIx === undefined) continue;
+
+            const x = getOneHot(charIx, vocab.length);
+            const result = forwardMoEGRU(G, model, hSize, nExp, topK, x, prev);
+            prev = result;
+            
+            // Collect Probs
+            batchProbs.push(result.denseProbs);
+
+            // Track Usage
+            result.indices.forEach(idx => expertUsage[idx]++);
+
+            const probs = Utils.softmax(result.o.w);
+            loss += -Math.log(probs[targetIx]);
+            result.o.dw = new Float64Array(probs);
+            result.o.dw[targetIx] -= 1;
+        }
+
+        // --- LOAD BALANCING AUX LOSS ---
+        if (batchProbs.length > 0) {
+            const T = batchProbs.length;
+            const targetP = 1.0 / nExp;
+            
+            // Compute mean probability per expert
+            let avgProbs = new Float64Array(nExp);
+            for(let t = 0; t < T; t++) {
+                for(let e = 0; e < nExp; e++) avgProbs[e] += batchProbs[t].w[e];
+            }
+            
+            // Aux Loss Gradient Injection
+            for(let e = 0; e < nExp; e++) {
+                avgProbs[e] /= T;
+                // d(L_balance)/d(avg) = 2 * (avg - target)
+                // d(avg)/d(prob) = 1/T
+                const grad = 2 * (avgProbs[e] - targetP) * lambda / T;
+                
+                // Backprop into each step
+                for(let t = 0; t < T; t++) {
+                    batchProbs[t].dw[e] += grad;
+                }
+            }
+        }
+
+        smoothLoss = smoothLoss * 0.99 + (loss/seqLength) * 0.01;
+        G.backward();
+        solver.step(model, lr, 0.01, 5.0);
+        dataIdx += seqLength;
+        iter++;
+    }
+
+    lossHistory.push(smoothLoss);
+    if(lossHistory.length > 300) lossHistory.shift();
+
+    drawLossGraph();
+    updateExpertVis();
+}
+
+async function generateResponse(query, onChar) {
+    if (!model) {
+        if(onChar) onChar("\n[Error: Model not trained]");
+        return;
+    }
+    const hSize = parseInt(els.hiddenSize.value);
+    const nExp = parseInt(els.numExperts.value);
+    const topK = parseInt(els.topK.value);
+    
+    let prev = {}; 
+    const inputSeq = "Q: " + query + "\nA: ";
+    
+    // Seed the RNN state
+    for (let i = 0; i < inputSeq.length; i++) {
+        const ch = inputSeq[i];
+        if (!charToIx.hasOwnProperty(ch)) continue;
+        const x = getOneHot(charToIx[ch], vocab.length);
+        const G = new Graph(false); 
+        prev = forwardMoEGRU(G, model, hSize, nExp, topK, x, prev);
+        
+        prev.indices.forEach(idx => {
+            const b = document.getElementById(`bar-${idx}`);
+            if(b) { b.classList.add('active'); setTimeout(()=>b.classList.remove('active'), 100); }
+        });
+    }
+
+    let lastCharIx = charToIx[inputSeq[inputSeq.length-1]] || charToIx[' '];
+    
+    // Generate
+    for (let i = 0; i < 150; i++) {
+        const x = getOneHot(lastCharIx, vocab.length);
+        const G = new Graph(false);
+        const result = forwardMoEGRU(G, model, hSize, nExp, topK, x, prev);
+        prev = result;
+        
+        if(i % 5 === 0) {
+            await new Promise(r => setTimeout(r, 20));
+            result.indices.forEach(idx => {
+                const b = document.getElementById(`bar-${idx}`);
+                if(b) { b.classList.add('active'); setTimeout(()=>b.classList.remove('active'), 100); }
+            });
+        }
+
+        const probs = Utils.softmax(result.o.w);
+        const ix = Utils.maxi(probs);
+        const char = ixToChar[ix];
+
+        if (onChar) onChar(char);
+        if (char === '\n') break;
+
+        lastCharIx = ix;
+    }
+}
+
+els.btnTrain.onclick = () => {
+    if (isTraining) return;
+    isTraining = true;
+    els.status.classList.add('active');
+    els.btnTrain.disabled = true;
+    els.btnStop.disabled = false;
+    els.hiddenSize.disabled = true;
+    els.numExperts.disabled = true;
+    
+    const loop = () => {
+        if (!isTraining) return;
+        trainStep();
+        requestAnimationFrame(loop);
+    };
+    loop();
+};
+
+els.btnStop.onclick = () => {
+    isTraining = false;
+    els.status.classList.remove('active');
+    els.btnTrain.disabled = false;
+    els.btnStop.disabled = true;
+};
+
+els.btnAsk.onclick = async () => {
+    const q = els.userQuery.value.trim();
+    if (!q) return;
+
+    els.outputArea.innerText = '';
+    const fullPrompt = "Q: " + q + "\nA: ";
+    els.outputArea.innerText = fullPrompt;
+    
+    els.btnAsk.disabled = true;
+    
+    await generateResponse(q, (char) => {
+        els.outputArea.innerText += char;
+        els.outputArea.scrollTop = els.outputArea.scrollHeight;
+    });
+    
+    els.btnAsk.disabled = false;
+};
+
+els.userQuery.addEventListener("keyup", (e) => {
+    if (e.key === "Enter") els.btnAsk.click();
+});
+
+document.querySelectorAll('.accordion-header').forEach(button => {
+    const content = button.nextElementSibling;
+    if (button.classList.contains('active')) {
+        content.style.maxHeight = content.scrollHeight + "px";
+    }
+
+    button.addEventListener('click', () => {
+        const isOpen = button.classList.contains('active');
+        const content = button.nextElementSibling;
+        
+        button.classList.toggle('active');
+        content.classList.toggle('show');
+
+        if (!isOpen) {
+            content.style.maxHeight = content.scrollHeight + "px";
+            if(content.querySelector('#lossGraph')) setTimeout(drawLossGraph, 310);
+        } else {
+            content.style.maxHeight = "0px";
+        }
+    });
+});
+
+setTimeout(drawLossGraph, 100);
+
+</script>
+</body>
+</html>
