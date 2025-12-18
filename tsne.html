@@ -1,0 +1,1360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF--8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>mem0</title>
+  <!-- Google Material Symbols (Optimized for faster rendering) -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" />
+  <style>
+    :root {
+      --bg-color: #F8F9FA;
+      --editor-bg: #FFFFFF;
+      --text-color: #1c1c1c;
+      --secondary-text-color: #666;
+      --border-color: #EAE2D1;
+      --primary-color: #4A90E2;
+      --highlight-color: #FFECB3;
+      --toolbar-bg: #262626;
+      --toolbar-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+      --font-sans-serif: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --font-serif: "Georgia", "Times New Roman", serif;
+      --graph-bg: #f5f5f5;
+      --hover-bg: #F1F3F4;
+    }
+    [data-theme="dark"] {
+      --bg-color: #1c1c1c;
+      --editor-bg: #262626;
+      --text-color: #F8F9FA;
+      --secondary-text-color: #aaa;
+      --border-color: #444;
+      --primary-color: #4A90E2;
+      --graph-bg: #333;
+      --hover-bg: #3a3a3a;
+    }
+    body {
+      font-family: var(--font-sans-serif);
+      margin: 0;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      transition: background-color 0.3s, color 0.3s;
+    }
+    #app-container { width: 100%; }
+    #main-content {
+      padding: 40px;
+      display: flex;
+      justify-content: center;
+      position: relative;
+    }
+    .container { width: 100%; max-width: 720px; position: relative; }
+
+    #header-sticky-wrapper {
+        position: -webkit-sticky;
+        position: sticky;
+        top: 0;
+        z-index: 50;
+        background-color: var(--bg-color);
+        padding-top: 20px;
+        padding-bottom: 10px;
+        margin-top: -20px;
+        transition: background-color 0.3s;
+    }
+
+    #top-network-container {
+      position: relative;
+      height: 100px; /* Collapsed height */
+      margin-bottom: 0;
+      border: 1px solid var(--border-color);
+      border-radius: 25px; /* Updated border-radius */
+      background-color: var(--graph-bg);
+      box-sizing: border-box;
+      padding: 0;
+      overflow: hidden;
+      transition: height 0.4s ease-in-out, background-color 0.3s, border-color 0.3s;
+    }
+    #top-network-container.expanded {
+        height: 250px; /* Expanded height */
+    }
+    #main-network-graph {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--secondary-text-color);
+    }
+    #main-network-graph canvas { display: block; width: 100%; height: 100%; }
+
+    #search-container {
+        position: absolute;
+        top: 50%; left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 10;
+        width: 80%; max-width: 450px;
+        display: flex;
+        align-items: center;
+        border-radius: 25px;
+        transition: all 0.4s ease-in-out;
+        background-color: rgba(255, 255, 255, 0.2);
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+    #top-network-container.expanded #search-container {
+        top: 20px;
+        transform: translateX(-50%);
+        background-color: rgba(255, 255, 255, 0.65);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    #search-input {
+        flex-grow: 1; width: 100%; padding: 10px 20px;
+        border: none; background-color: transparent; font-size: 16px;
+        outline: none; color: var(--text-color);
+        transition: all 0.4s ease-in-out;
+        text-align: center;
+    }
+     #top-network-container.expanded #search-input {
+        text-align: left;
+    }
+    #search-input::placeholder {
+        transition: all 0.4s ease-in-out;
+        color: var(--text-color);
+        opacity: 0.8;
+        font-weight: 500;
+        font-size: 18px;
+    }
+    #top-network-container.expanded #search-input::placeholder {
+      color: #666;
+      font-weight: normal;
+      font-size: 16px;
+    }
+    #clear-search-btn {
+        background: none; border: none; cursor: pointer; display: none;
+        padding: 8px; margin-right: 8px; color: #555;
+        line-height: 0;
+    }
+
+    .material-symbols-outlined {
+      font-size: 20px;
+      vertical-align: middle;
+      line-height: 1;
+    }
+    #clear-search-btn .material-symbols-outlined {
+        font-size: 18px;
+    }
+
+    #main-actions {
+      position: relative;
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 10px;
+      margin-bottom: 20px;
+    }
+    #main-actions button {
+      padding: 8px; border-radius: 6px; cursor: pointer;
+      border: 1px solid var(--border-color);
+      background-color: var(--editor-bg);
+      color: var(--text-color);
+      font-weight: 500; font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+    }
+    #main-actions button:hover { background-color: var(--hover-bg); }
+    #deleteNoteBtn { color: #D93025; }
+    #deleteNoteBtn:hover { background-color: #FCE8E6 !important; }
+
+    #settings-menu {
+        position: absolute;
+        top: calc(100% + 5px);
+        right: 0;
+        background-color: var(--editor-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+        z-index: 200;
+        padding: 8px;
+        display: none;
+        flex-direction: column;
+        gap: 4px;
+        min-width: 250px;
+    }
+    #settings-menu.visible { display: flex; }
+    #settings-menu button, .settings-item {
+        border: none; background-color: transparent; text-align: left;
+        padding: 8px 12px; width: 100%; display: flex;
+        align-items: center; gap: 12px; font-weight: 500;
+        font-size: 14px; cursor: pointer; color: var(--text-color);
+    }
+    #settings-menu button:hover { background-color: var(--hover-bg); }
+    .settings-separator { height: 1px; background-color: var(--border-color); margin: 4px 0; }
+    .settings-item { cursor: default; }
+    .settings-item label { display: flex; align-items: center; gap: 12px; flex-shrink: 0;}
+    .settings-item select {
+        width: 100%;
+        background-color: var(--bg-color);
+        color: var(--text-color);
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        padding: 4px 6px;
+        font-size: 13px;
+    }
+
+    #notes-container {
+        display: flex;
+        flex-direction: column;
+        min-height: 50vh;
+    }
+    .note-card {
+        background-color: var(--editor-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        margin-bottom: 1em;
+        transition: all 0.3s ease-in-out;
+        position: relative;
+    }
+    .note-faded { opacity: 0.4; }
+    
+    .note-card summary {
+        font-family: var(--font-serif);
+        font-weight: 700;
+        font-size: 1.5em;
+        padding: 16px 24px;
+        outline: none;
+        list-style: none;
+        cursor: text;
+    }
+    .note-card summary::-webkit-details-marker { display: none; }
+
+    .note-body-wrapper {
+        border-top: 1px solid var(--border-color);
+        transition: box-shadow 0.3s;
+    }
+    .note-body-wrapper:first-child {
+        border-top: none;
+    }
+    .note-card > .note-body-wrapper { /* Standalone note */
+         border-top: none;
+    }
+
+    .note-selected {
+        box-shadow: 0 0 0 2px var(--primary-color) inset;
+    }
+    .note-card.note-selected {
+        border-color: var(--primary-color);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    
+    .note-meta {
+        padding: 0 24px 12px;
+        font-size: 0.8em;
+        color: var(--secondary-text-color);
+        border-bottom: 1px solid var(--border-color);
+        margin: 12px 24px 12px;
+        transition: color 0.3s, border-color 0.3s;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+     .grouped-note-card .note-body-wrapper:first-of-type .note-meta {
+        margin-top: -8px;
+    }
+    .extend-note-btn {
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: var(--secondary-text-color);
+        padding: 4px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .extend-note-btn:hover {
+        background-color: var(--hover-bg);
+        color: var(--text-color);
+    }
+    .extend-note-btn .material-symbols-outlined {
+        font-size: 18px;
+    }
+    
+    .note-content-editor {
+      padding: 12px 24px 24px;
+      font-size: 17px;
+      line-height: 1.7;
+      outline: none;
+      caret-color: var(--primary-color);
+    }
+    [data-placeholder]:empty:before {
+        content: attr(data-placeholder);
+        color: var(--secondary-text-color);
+        pointer-events: none;
+        display: block;
+    }
+
+    #floating-toolbar { position: fixed; z-index: 100; display: none; padding: 5px; display: flex; gap: 4px; align-items: center; }
+    .liquid-glass {
+      position: relative; border-radius: 100vmax; isolation: isolate;
+      background-color: rgba(255, 255, 255, 0.25);
+      box-shadow: 0 6px 6px rgba(0, 0, 0, 0.2), 0 0 20px rgba(0, 0, 0, 0.1);
+      text-align: center;
+    }
+    .liquid-glass::before, .liquid-glass::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }
+    .liquid-glass::before { backdrop-filter: blur(3px); filter: url(#glass-distortion); z-index: -1; }
+    .liquid-glass::after { box-shadow: inset 2px 2px 1px 0 rgba(255, 255, 255, 0.5), inset -1px -1px 1px 1px rgba(255, 255, 255, 0.5); pointer-events: none; }
+    #floating-toolbar button { background: none; border: none; color: var(--toolbar-bg); cursor: pointer; padding: 8px; border-radius: 50%; width: 38px; height: 38px; display: grid; place-items: center; position: relative; z-index: 1; }
+    #floating-toolbar button:hover { background-color: rgba(0, 0, 0, 0.1); }
+    .toolbar-separator { width: 1px; height: 20px; background-color: rgba(0, 0, 0, 0.2); margin: 0 4px; }
+
+    /* --- Pop-up Menus --- */
+    .popup-menu {
+        position: absolute;
+        z-index: 200;
+        background-color: var(--editor-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+        padding: 8px;
+        display: none;
+        flex-direction: column;
+        gap: 4px;
+        min-width: 220px;
+        max-height: 300px;
+        overflow-y: auto;
+    }
+    .popup-menu.visible { display: flex; }
+    .popup-menu-item {
+        border: none; background-color: transparent; text-align: left;
+        padding: 8px 12px; width: 100%; display: flex; align-items: center;
+        gap: 12px; font-weight: 500; font-size: 14px;
+        cursor: pointer; border-radius: 4px; color: var(--text-color);
+    }
+    .popup-menu-item:hover, .popup-menu-item.selected { background-color: var(--hover-bg); }
+    .popup-menu-item .item-meta {
+        margin-left: auto;
+        font-size: 12px;
+        color: var(--secondary-text-color);
+    }
+
+    @media (max-width: 768px) {
+      #main-content { padding: 20px 15px; }
+      #header-sticky-wrapper {
+          padding-top: 15px;
+          margin-top: -15px;
+      }
+      #top-network-container {
+        height: 90px;
+      }
+      #top-network-container.expanded {
+        height: 220px;
+      }
+      #top-network-container.expanded #search-container {
+        top: 15px;
+      }
+      #search-input { font-size: 14px; padding: 8px 15px; }
+      #search-input::placeholder { font-size: 16px; }
+      #top-network-container.expanded #search-input::placeholder { font-size: 14px; }
+      .note-card summary { font-size: 1.2em; padding: 12px 16px; }
+      .note-meta { padding: 0 16px 8px; margin: -4px 16px 8px; }
+      .note-content-editor { padding: 8px 16px 16px; }
+    }
+  </style>
+</head>
+<body id="app-body">
+
+<svg style="display: none;"><filter id="glass-distortion"><feTurbulence type="fractalNoise" baseFrequency="0.05 0.05" numOctaves="3" result="noise" /><feDisplacementMap in="SourceGraphic" in2="noise" scale="10" xChannelSelector="R" yChannelSelector="G" /></filter></svg>
+
+<div id="app-container">
+  <main id="main-content">
+    <div class="container">
+      <div id="header-sticky-wrapper">
+        <div id="top-network-container">
+          <div id="search-container">
+              <input type="search" id="search-input" placeholder="Search the note network..." disabled>
+              <button id="clear-search-btn" title="Clear search">
+                  <span class="material-symbols-outlined">close</span>
+              </button>
+          </div>
+          <div id="main-network-graph"></div>
+        </div>
+
+        <div id="main-actions">
+          <button id="newNoteBtn" title="New Note"><span class="material-symbols-outlined">add_circle</span></button>
+          <button id="deleteNoteBtn" title="Delete Note"><span class="material-symbols-outlined">delete</span></button>
+          <button id="settingsBtn" title="Settings">
+              <span class="material-symbols-outlined">settings</span>
+          </button>
+          <div id="settings-menu" class="hidden">
+               <div class="settings-item">
+                  <label for="theme-select"><span class="material-symbols-outlined">contrast</span>Theme</label>
+                  <select id="theme-select">
+                      <option value="light">Light</option>
+                      <option value="dark">Dark</option>
+                  </select>
+              </div>
+              <div class="settings-item">
+                  <label for="model-select"><span class="material-symbols-outlined">memory</span>AI Model</label>
+                  <select id="model-select"></select>
+              </div>
+              <div class="settings-separator"></div>
+              <button id="importDbBtn"><span class="material-symbols-outlined">upload_file</span>Import mem0</button>
+              <button id="exportDbBtn"><span class="material-symbols-outlined">download_for_offline</span>Export mem0</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="floating-toolbar" class="liquid-glass">
+        <button class="format-btn" data-command="bold" title="Bold"><span class="material-symbols-outlined">format_bold</span></button>
+        <button class="format-btn" data-command="italic" title="Italic"><span class="material-symbols-outlined">format_italic</span></button>
+        <button class="format-btn" id="createLinkBtn" title="Create Link"><span class="material-symbols-outlined">link</span></button>
+        <div class="toolbar-separator"></div>
+        <button class="format-btn" data-command="formatBlock" data-value="H2" title="Heading 2"><span class="material-symbols-outlined">title</span></button>
+        <button class="format-btn" data-command="formatBlock" data-value="H3" title="Heading 3"><span class="material-symbols-outlined">format_size</span></button>
+        <button class="format-btn" data-command="insertUnorderedList" title="Bulleted List"><span class="material-symbols-outlined">format_list_bulleted</span></button>
+        <button class="format-btn" data-command="formatBlock" data-value="P" title="Paragraph"><span class="material-symbols-outlined">short_text</span></button>
+      </div>
+
+      <div id="slash-command-menu" class="popup-menu">
+        <div class="popup-menu-item" data-command="formatBlock" data-value="H2">
+            <span class="material-symbols-outlined">title</span>
+            <span>Heading 2</span>
+        </div>
+        <div class="popup-menu-item" data-command="formatBlock" data-value="H3">
+            <span class="material-symbols-outlined">format_size</span>
+            <span>Heading 3</span>
+        </div>
+        <div class="popup-menu-item" data-command="insertUnorderedList" data-value="">
+            <span class="material-symbols-outlined">format_list_bulleted</span>
+            <span>Bulleted List</span>
+        </div>
+         <div class="popup-menu-item" data-command="formatBlock" data-value="P">
+            <span class="material-symbols-outlined">short_text</span>
+            <span>Paragraph</span>
+        </div>
+      </div>
+      
+      <input type="file" id="db-file-input" accept=".sqlite,.db" style="display: none;">
+
+      <div id="notes-container"></div>
+
+    </div>
+  </main>
+</div>
+
+<!-- Scripts are moved to the end and deferred for non-blocking rendering -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js" defer></script>
+<script src="https://cdn.jsdelivr.net/gh/karpathy/tsnejs/tsne.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/apexcharts" defer></script>
+
+<!-- App Logic -->
+<script type="module">
+    import { pipeline } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.1';
+
+    // --- DOM Elements ---
+    const notesContainer = document.getElementById('notes-container');
+    const newNoteBtn = document.getElementById('newNoteBtn');
+    const deleteNoteBtn = document.getElementById('deleteNoteBtn');
+    const floatingToolbar = document.getElementById('floating-toolbar');
+    const tsneContainer = document.getElementById('top-network-container');
+    const mainNetworkGraph = document.getElementById('main-network-graph');
+    const searchInput = document.getElementById('search-input');
+    const clearSearchBtn = document.getElementById('clear-search-btn');
+    const importDbBtn = document.getElementById('importDbBtn');
+    const dbFileInput = document.getElementById('db-file-input');
+    const exportDbBtn = document.getElementById('exportDbBtn');
+    const settingsBtn = document.getElementById('settingsBtn');
+    const settingsMenu = document.getElementById('settings-menu');
+    const slashCommandMenu = document.getElementById('slash-command-menu');
+
+    // --- Config & Constants ---
+    const AVAILABLE_MODELS = {
+        'Xenova/all-MiniLM-L6-v2': 'MiniLM-L6 (Fast, Default)',
+        'Xenova/gte-small': 'GTE-Small (Balanced)',
+        'Xenova/msmarco-distilbert-base-tas-b': 'DistilBERT-TAS-B (Search)',
+        'Xenova/paraphrase-albert-small-v2': 'Albert-Small (Compact)'
+    };
+    const DEFAULT_MODEL = 'Xenova/all-MiniLM-L6-v2';
+    const MODEL_STORAGE_KEY = 'inspired-notes-model';
+    const THEME_STORAGE_KEY = 'inspired-notes-theme';
+    const MAX_EMBEDDING_WORDS = 250; 
+
+    // --- State & DB Management ---
+    let db;
+    let SQL;
+    let allNotesCache = [];
+    let state = {
+        currentNoteId: null,
+        searchResults: new Map(),
+        searchScoreRange: null,
+        activeMenu: null, // 'slash', null
+        slashCommandTriggerRange: null,
+        settings: { model: DEFAULT_MODEL, theme: 'light' }
+    };
+    let debounceTimer, searchDebounceTimer;
+    let embedder = null;
+
+    // --- T-SNE & 3D Visualization State ---
+    let scene, camera, renderer, controls, pointCloud;
+    let tsneInstance, tsneIteration = 0, isTsneRunning = false, noteIndexMap = [];
+    const TSNE_MAX_ITERATIONS = 300;
+    const TSNE_VIEW_SIZE = 100;
+    const selectedColor = new THREE.Color('#FFFF00');
+    const searchMatchColor = new THREE.Color('#FF9800');
+    let defaultColor = new THREE.Color('#000000');
+    let fadedColor = new THREE.Color('#bbbbbb');
+
+    const DB_NAME = 'InspiredNotesDB';
+    const DB_STORE_NAME = 'databaseFile';
+    const DB_KEY = 'sqliteDb';
+    const idb = {
+        get: () => new Promise((resolve, reject) => {
+            const request = indexedDB.open(DB_NAME, 1);
+            request.onupgradeneeded = () => request.result.createObjectStore(DB_STORE_NAME);
+            request.onsuccess = () => {
+                const tx = request.result.transaction(DB_STORE_NAME, 'readonly');
+                tx.objectStore(DB_STORE_NAME).get(DB_KEY).onsuccess = (e) => resolve(e.target.result);
+                tx.oncomplete = () => request.result.close();
+            };
+            request.onerror = (e) => reject(e.target.error);
+        }),
+        set: (value) => new Promise((resolve, reject) => {
+            const request = indexedDB.open(DB_NAME, 1);
+            request.onupgradeneeded = () => request.result.createObjectStore(DB_STORE_NAME);
+            request.onsuccess = () => {
+                const tx = request.result.transaction(DB_STORE_NAME, 'readwrite');
+                tx.objectStore(DB_STORE_NAME).put(value, DB_KEY);
+                tx.oncomplete = () => { request.result.close(); resolve(); };
+            };
+            request.onerror = (e) => reject(e.target.error);
+        }),
+    };
+    async function persistDb() {
+        if (!db) return;
+        const data = db.export();
+        await idb.set(data);
+    }
+    const debouncedPersist = () => { clearTimeout(debounceTimer); debounceTimer = setTimeout(persistDb, 500); };
+
+    // --- Editor Utilities ---
+    function saveSelection(element) {
+        const selection = window.getSelection();
+        if (selection.rangeCount > 0 && element.contains(selection.anchorNode)) {
+            const range = selection.getRangeAt(0);
+            if (range.startContainer.parentNode === element || range.startContainer === element) {
+                 return { start: range.startOffset, end: range.endOffset };
+            }
+        }
+        return null;
+    }
+
+    function restoreSelection(element, savedSelection) {
+        if (!savedSelection) return;
+        element.focus();
+        const textNode = element.firstChild;
+        if (textNode && textNode.nodeType === Node.TEXT_NODE) {
+            const range = document.createRange();
+            const start = Math.min(savedSelection.start, textNode.length);
+            const end = Math.min(savedSelection.end, textNode.length);
+            range.setStart(textNode, start);
+            range.setEnd(textNode, end);
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+        }
+    }
+
+
+    // --- Settings & Theme ---
+    function loadSettings() {
+        state.settings.theme = localStorage.getItem(THEME_STORAGE_KEY) || 'light';
+        state.settings.model = localStorage.getItem(MODEL_STORAGE_KEY) || DEFAULT_MODEL;
+    }
+    function applyTheme() {
+        document.body.dataset.theme = state.settings.theme;
+        if (state.settings.theme === 'dark') {
+            defaultColor.set('#FFFFFF');
+            fadedColor.set('#555555');
+        } else {
+            defaultColor.set('#000000');
+            fadedColor.set('#bbbbbb');
+        }
+        if (pointCloud) updatePointColors();
+    }
+    function populateSettingsUI() {
+        const themeSelect = document.getElementById('theme-select');
+        themeSelect.value = state.settings.theme;
+        const modelSelect = document.getElementById('model-select');
+        modelSelect.innerHTML = '';
+        for (const [id, name] of Object.entries(AVAILABLE_MODELS)) {
+            const option = document.createElement('option');
+            option.value = id;
+            option.textContent = name;
+            modelSelect.appendChild(option);
+        }
+        modelSelect.value = state.settings.model;
+    }
+
+    // --- Semantic Search & Embedding ---
+    async function generateEmbedding(text) {
+        if (!embedder || !text) return null;
+        try {
+            const embedding = await embedder(text, { pooling: 'mean', normalize: true });
+            return embedding.data;
+        } catch (e) { console.error("Embedding generation failed:", e); return null; }
+    }
+    function cosineSimilarity(vecA, vecB) {
+        let dotProduct = 0;
+        for (let i = 0; i < vecA.length; i++) { dotProduct += vecA[i] * vecB[i]; }
+        return dotProduct;
+    }
+    async function performSearch(query) {
+        const allNoteElements = document.querySelectorAll('.note-card');
+        if (!query) {
+            state.searchResults.clear();
+            state.searchScoreRange = null;
+            updatePointColors();
+            allNoteElements.forEach(el => {
+                el.style.order = '';
+                el.classList.remove('note-faded');
+            });
+            return;
+        }
+        const queryEmbedding = await generateEmbedding(query);
+        if (!queryEmbedding) return;
+        const notesWithScores = allNotesCache.filter(note => note.embedding).map(note => {
+            const noteEmbedding = new Float32Array(note.embedding.buffer);
+            const score = cosineSimilarity(queryEmbedding, noteEmbedding);
+            return { id: note.id, title: note.title, score };
+        }).filter(item => item && item.score > 0.45)
+          .sort((a, b) => b.score - a.score);
+
+        if (notesWithScores.length > 0) {
+            state.searchScoreRange = {
+                max: notesWithScores[0].score,
+                min: notesWithScores[notesWithScores.length - 1].score
+            };
+        } else {
+            state.searchScoreRange = null;
+        }
+
+        state.searchResults = new Map(notesWithScores.map(n => [n.id, n.score]));
+        updatePointColors();
+        const rankMap = new Map(notesWithScores.map((note, index) => [note.id.toString(), index]));
+        const nonMatchOrder = notesWithScores.length;
+        // This part needs adjustment for grouped cards
+        // For simplicity, we fade the whole card if none of its notes are in the search results
+        allNoteElements.forEach(el => {
+            const noteIds = Array.from(el.querySelectorAll('[data-note-id]')).map(n => n.dataset.noteId);
+            const isInResults = noteIds.some(id => rankMap.has(id));
+            if(isInResults) {
+                // Find the best score within the card to order it
+                const bestRank = Math.min(...noteIds.filter(id => rankMap.has(id)).map(id => rankMap.get(id)));
+                el.style.order = bestRank;
+                el.classList.remove('note-faded');
+            } else {
+                el.style.order = nonMatchOrder;
+                el.classList.add('note-faded');
+            }
+        });
+    }
+
+    // --- 3D Visualization Logic ---
+    function initThreeJS() {
+        scene = new THREE.Scene();
+        camera = new THREE.PerspectiveCamera(75, tsneContainer.clientWidth / tsneContainer.clientHeight, 0.1, 1000);
+        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(tsneContainer.clientWidth, tsneContainer.clientHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        mainNetworkGraph.innerHTML = '';
+        mainNetworkGraph.appendChild(renderer.domElement);
+        camera.position.z = 120;
+        controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.1;
+        scene.add(new THREE.AmbientLight(0xffffff, 1.0));
+        renderer.domElement.addEventListener('click', onCanvasClick);
+        const resizeObserver = new ResizeObserver(entries => {
+            if (!entries || !entries.length) return;
+            const { width, height } = entries[0].contentRect;
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height);
+        });
+        resizeObserver.observe(tsneContainer);
+        animate3D();
+    }
+    function animate3D() {
+        requestAnimationFrame(animate3D);
+        if(controls) controls.update();
+        if (isTsneRunning && tsneIteration < TSNE_MAX_ITERATIONS) {
+            tsneInstance.step();
+            updatePointPositions();
+            tsneIteration++;
+        } else if (isTsneRunning) {
+            isTsneRunning = false;
+        }
+        if(scene && camera) renderer.render(scene, camera);
+    }
+    async function renderTsne() {
+        if (!scene) initThreeJS();
+        const notesWithEmbeddings = allNotesCache.filter(n => n.embedding);
+        if (notesWithEmbeddings.length < 2) {
+            mainNetworkGraph.innerHTML = 'Need at least 2 notes with content to generate a map.';
+            if (pointCloud) scene.remove(pointCloud);
+            pointCloud = null;
+            return;
+        }
+        noteIndexMap = notesWithEmbeddings.map(n => n.id);
+        const embeddingVectors = notesWithEmbeddings.map(n => Array.from(new Float32Array(n.embedding.buffer)));
+        tsneInstance = new tsnejs.tSNE({
+            epsilon: 10,
+            perplexity: Math.min(30, Math.floor((notesWithEmbeddings.length -1) / 3)),
+            dim: 3
+        });
+        tsneInstance.initDataRaw(embeddingVectors);
+        isTsneRunning = true;
+        tsneIteration = 0;
+        if (pointCloud) scene.remove(pointCloud);
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(noteIndexMap.length * 3), 3));
+        geometry.setAttribute('color', new THREE.BufferAttribute(new Float32Array(noteIndexMap.length * 3), 3));
+        const material = new THREE.PointsMaterial({ size: 4, vertexColors: true, sizeAttenuation: true });
+        pointCloud = new THREE.Points(geometry, material);
+        scene.add(pointCloud);
+        updatePointPositions();
+        updatePointColors();
+    }
+    function updatePointPositions() {
+        if (!pointCloud || !tsneInstance) return;
+        const solution = tsneInstance.getSolution();
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity, minZ = Infinity, maxZ = -Infinity;
+        for (let i = 0; i < solution.length; i++) {
+            minX = Math.min(minX, solution[i][0]); maxX = Math.max(maxX, solution[i][0]);
+            minY = Math.min(minY, solution[i][1]); maxY = Math.max(maxY, solution[i][1]);
+            minZ = Math.min(minZ, solution[i][2]); maxZ = Math.max(maxZ, solution[i][2]);
+        }
+        const centerX = (minX + maxX) / 2;
+        const centerY = (minY + maxY) / 2;
+        const centerZ = (minZ + maxZ) / 2;
+        const scale = Math.max(maxX - minX, maxY - minY, maxZ - minZ);
+        const positions = pointCloud.geometry.getAttribute('position');
+        for (let i = 0; i < noteIndexMap.length; i++) {
+            const x = scale > 0 ? ((solution[i][0] - centerX) / scale) * TSNE_VIEW_SIZE : 0;
+            const y = scale > 0 ? ((solution[i][1] - centerY) / scale) * TSNE_VIEW_SIZE : 0;
+            const z = scale > 0 ? ((solution[i][2] - centerZ) / scale) * TSNE_VIEW_SIZE : 0;
+            positions.setXYZ(i, x, y, z);
+        }
+        positions.needsUpdate = true;
+    }
+    function updatePointColors() {
+        if (!pointCloud) return;
+        const colors = pointCloud.geometry.getAttribute('color');
+        const color = new THREE.Color();
+        const isSearchActive = state.searchResults.size > 0;
+        for (let i = 0; i < noteIndexMap.length; i++) {
+            const noteId = noteIndexMap[i];
+            if (noteId === state.currentNoteId) {
+                color.set(selectedColor);
+            } else if (state.searchResults.has(noteId)) {
+                const score = state.searchResults.get(noteId);
+                const range = state.searchScoreRange.max - state.searchScoreRange.min;
+                const t = range > 0.001 ? (score - state.searchScoreRange.min) / range : 1.0;
+                const lowScoreColor = defaultColor.clone();
+                const highScoreColor = searchMatchColor.clone();
+                color.copy(lowScoreColor).lerp(highScoreColor, t);
+            } else if (isSearchActive) {
+                color.set(fadedColor);
+            } else {
+                color.set(defaultColor);
+            }
+            colors.setXYZ(i, color.r, color.g, color.b);
+        }
+        colors.needsUpdate = true;
+    }
+    function onCanvasClick(event) {
+        if (!pointCloud) return;
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        const rect = renderer.domElement.getBoundingClientRect();
+        mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+        raycaster.setFromCamera(mouse, camera);
+        raycaster.params.Points.threshold = 3;
+        const intersects = raycaster.intersectObject(pointCloud);
+        if (intersects.length > 0) {
+            const clickedNoteId = noteIndexMap[intersects[0].index];
+            if (clickedNoteId) {
+                selectNote(clickedNoteId);
+                const noteElement = document.querySelector(`[data-note-id="${clickedNoteId}"]`);
+                if(noteElement) noteElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+    }
+
+    // --- Note Management (SQL & Cache) ---
+    async function refreshNoteCache() {
+        if (!db) { allNotesCache = []; return; }
+        const query = `SELECT id, title, content, created_at, embedding FROM notes ORDER BY created_at DESC`;
+        const res = db.exec(query);
+        if (res.length === 0 || !res[0].values) { allNotesCache = []; return; }
+        const colNames = res[0].columns;
+        allNotesCache = res[0].values.map(row => {
+            const note = {};
+            colNames.forEach((col, i) => note[col] = row[i]);
+            return note;
+        });
+    }
+
+    function renderNoteBody(note, isLast = true) {
+        const formattedDate = new Date(note.created_at || note.id).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+        return `
+            <div class="note-body-wrapper" data-note-id="${note.id}">
+                <div class="note-meta">
+                    <span>${formattedDate}</span>
+                    ${isLast ? `
+                    <button class="extend-note-btn" title="Extend this note with a new section">
+                        <span class="material-symbols-outlined">add_notes</span>
+                    </button>
+                    ` : ''}
+                </div>
+                <div class="note-content-editor" contenteditable="true" data-placeholder="Start writing here...">${note.content || ''}</div>
+            </div>
+        `;
+    }
+
+    async function renderAllNotes() {
+        const notesByTitle = allNotesCache.reduce((acc, note) => {
+            const title = note.title || 'Untitled Note';
+            if (!acc[title]) acc[title] = [];
+            acc[title].push(note);
+            return acc;
+        }, {});
+
+        notesContainer.innerHTML = Object.values(notesByTitle).map(notes => {
+            if (notes.length === 1) {
+                const note = notes[0];
+                return `
+                    <details class="note-card" open>
+                        <summary contenteditable="true" data-note-id-ref="${note.id}">${note.title || 'Untitled Note'}</summary>
+                        ${renderNoteBody(note)}
+                    </details>
+                `;
+            } else {
+                // Sort by date to ensure the chronological last is at the bottom
+                notes.sort((a, b) => a.created_at - b.created_at);
+                return `
+                    <details class="note-card grouped-note-card" open>
+                        <summary contenteditable="false">${notes[0].title || 'Untitled Note'}</summary>
+                        ${notes.map((note, index, arr) => renderNoteBody(note, index === arr.length - 1)).join('')}
+                    </details>
+                `;
+            }
+        }).join('');
+    }
+
+    async function selectNote(id) {
+        clearSearchBtn.click();
+        const noteId = parseInt(id, 10);
+        state.currentNoteId = noteId;
+        localStorage.setItem('inspired-notes-app-last-note', id);
+        
+        document.querySelectorAll('.note-selected').forEach(el => el.classList.remove('note-selected'));
+        
+        const selectedNoteElement = document.querySelector(`[data-note-id="${noteId}"]`);
+        if (selectedNoteElement) {
+            selectedNoteElement.classList.add('note-selected');
+            const parentCard = selectedNoteElement.closest('.note-card');
+            if(parentCard) parentCard.classList.add('note-selected');
+        }
+        
+        updatePointColors();
+    }
+    async function createNewNote() {
+        const newId = new Date().getTime();
+        const title = 'Untitled Note';
+        const content = '<p><br></p>';
+        db.run("INSERT INTO notes (id, title, content, created_at) VALUES (?, ?, ?, ?)", [newId, title, content, newId]);
+        await persistDb();
+        await refreshNoteCache();
+        await renderAllNotes();
+        await renderTsne();
+        await selectNote(newId);
+        const newNoteElement = document.querySelector(`summary[data-note-id-ref="${newId}"]`);
+        if (newNoteElement) {
+             newNoteElement.focus();
+             document.execCommand('selectAll', false, null);
+        }
+    }
+    async function extendNote(sourceNoteId) {
+        const sourceNote = allNotesCache.find(n => n.id === sourceNoteId);
+        if (!sourceNote) {
+            console.error("Source note for extension not found.");
+            return;
+        }
+
+        const newId = new Date().getTime();
+        const title = sourceNote.title; // Use the same title
+        const content = '<p><br></p>'; // Start with blank content
+
+        db.run("INSERT INTO notes (id, title, content, created_at) VALUES (?, ?, ?, ?)", [newId, title, content, newId]);
+
+        await persistDb();
+        await refreshNoteCache();
+        await renderAllNotes();
+        await renderTsne();
+
+        await selectNote(newId);
+        const newNoteElement = document.querySelector(`[data-note-id="${newId}"] .note-content-editor`);
+        if (newNoteElement) {
+            newNoteElement.focus();
+        }
+    }
+    async function deleteCurrentNote() {
+        if (!state.currentNoteId) return;
+        if (confirm('Are you sure you want to delete this note?')) {
+            db.run("DELETE FROM notes WHERE id = ?", [state.currentNoteId]);
+            await persistDb();
+            await refreshNoteCache();
+            await renderAllNotes();
+            await renderTsne();
+            const nextNoteId = allNotesCache.length > 0 ? allNotesCache[0].id : null;
+            if (nextNoteId) {
+                await selectNote(nextNoteId);
+            } else {
+                notesContainer.innerHTML = '';
+            }
+        }
+    }
+    async function updateNoteContent(noteId, newTitle = null) {
+        if (!noteId || !db) return false;
+        
+        const currentNote = allNotesCache.find(n => n.id === noteId);
+        if (!currentNote) return false;
+
+        let needsReRender = false;
+        if (newTitle !== null && newTitle !== currentNote.title) {
+            const oldTitle = currentNote.title;
+            const notesWithOldTitle = allNotesCache.filter(n => n.title === oldTitle).length;
+            const notesWithNewTitle = allNotesCache.filter(n => n.title === newTitle).length;
+
+            if (notesWithOldTitle > 1 || notesWithNewTitle > 0) {
+                needsReRender = true;
+            }
+        }
+
+        const noteElement = document.querySelector(`[data-note-id="${noteId}"]`);
+        if (!noteElement) return false; // Should exist unless UI is out of sync
+
+        const title = newTitle !== null ? newTitle : currentNote.title;
+        const content = noteElement.querySelector('.note-content-editor').innerHTML;
+        
+        let textToEmbed = noteElement.querySelector('.note-content-editor').innerText.trim();
+        if (textToEmbed) {
+            textToEmbed = textToEmbed.split(/\s+/).slice(0, MAX_EMBEDDING_WORDS).join(" ");
+        }
+        const embeddingData = await generateEmbedding(textToEmbed);
+        const embeddingBlob = embeddingData ? new Uint8Array(embeddingData.buffer) : null;
+        
+        db.run("UPDATE notes SET title = ?, content = ?, embedding = ? WHERE id = ?", [title, content, embeddingBlob, noteId]);
+        
+        await refreshNoteCache(); 
+        await debouncedPersist();
+        
+        if (embeddingBlob) await renderTsne();
+        
+        if (needsReRender) {
+            await renderAllNotes();
+            await selectNote(noteId);
+            return true;
+        }
+        return false;
+    }
+
+
+    // --- Editor & Menus Logic ---
+    function format(command, value = null) {
+        document.execCommand(command, false, value);
+        const activeEditor = document.querySelector(`[data-note-id="${state.currentNoteId}"] .note-content-editor`);
+        if (activeEditor) activeEditor.focus();
+        hideAllMenus();
+    }
+    function hideAllMenus() {
+        floatingToolbar.style.display = 'none';
+        slashCommandMenu.classList.remove('visible');
+        state.activeMenu = null;
+        state.slashCommandTriggerRange = null;
+    }
+    function handleSelectionChange() {
+        const selection = window.getSelection();
+        if (state.activeMenu) return; 
+        const activeEditor = document.querySelector(`[data-note-id="${state.currentNoteId}"] .note-content-editor`);
+        if (!selection || selection.rangeCount === 0 || !activeEditor || !activeEditor.contains(selection.anchorNode)) {
+            hideAllMenus(); return;
+        }
+        const range = selection.getRangeAt(0);
+        const rect = range.getBoundingClientRect();
+        if (selection.isCollapsed || (rect.width === 0 && rect.height === 0)) {
+            hideAllMenus(); return;
+        }
+        const toolbarHeight = floatingToolbar.offsetHeight;
+        const margin = 8;
+        let topPosition = rect.top - toolbarHeight - margin + window.scrollY;
+        if (topPosition < 0) topPosition = rect.bottom + margin + window.scrollY;
+        const leftPosition = rect.left + (rect.width / 2) - (floatingToolbar.offsetWidth / 2) + window.scrollX;
+        floatingToolbar.style.top = `${topPosition}px`;
+        floatingToolbar.style.left = `${leftPosition}px`;
+        floatingToolbar.style.display = 'flex';
+    }
+    async function handleInput(e) {
+        const target = e.target;
+        
+        if (target.matches('summary[contenteditable="true"]')) {
+            const refId = parseInt(target.dataset.noteIdRef, 10);
+            if (!refId) return;
+
+            const selection = saveSelection(target);
+            const newTitle = target.textContent.trim() || 'Untitled Note';
+            
+            const didReRender = await updateNoteContent(refId, newTitle);
+            
+            if (didReRender) {
+                const newSummaryEl = document.querySelector(`summary[data-note-id-ref="${refId}"]`);
+                if (newSummaryEl && selection) {
+                    restoreSelection(newSummaryEl, selection);
+                }
+            }
+        } else if (target.matches('.note-content-editor')) {
+            const noteElement = target.closest('[data-note-id]');
+            const noteId = noteElement ? parseInt(noteElement.dataset.noteId, 10) : null;
+            if (noteId) await updateNoteContent(noteId);
+        }
+
+        const selection = window.getSelection();
+        if (!selection.rangeCount) return;
+        const range = selection.getRangeAt(0);
+        const node = range.startContainer;
+        if (node.nodeType === Node.TEXT_NODE && node.textContent.includes('/')) {
+            let parentBlock = node;
+            while(parentBlock && !parentBlock.classList?.contains('note-content-editor')) {
+                parentBlock = parentBlock.parentNode;
+                if (parentBlock === document.body) { parentBlock = null; break; }
+            }
+            if (!parentBlock) return;
+            const blockText = parentBlock.textContent.trim();
+            if(blockText.startsWith('/')) {
+                showSlashMenu(range); return;
+            }
+        } else if (state.activeMenu) {
+             hideAllMenus();
+        }
+    }
+    
+    function showSlashMenu(range) {
+        state.slashCommandTriggerRange = range.cloneRange();
+        const rect = range.getBoundingClientRect();
+        slashCommandMenu.style.top = `${rect.bottom + window.scrollY}px`;
+        slashCommandMenu.style.left = `${rect.left + window.scrollX}px`;
+        slashCommandMenu.classList.add('visible');
+        state.activeMenu = 'slash';
+        const items = slashCommandMenu.querySelectorAll('.popup-menu-item');
+        items.forEach((item, index) => {
+            item.style.display = 'flex';
+            item.classList.toggle('selected', index === 0);
+        });
+    }
+    function handleKeyDown(e) {
+        if (!state.activeMenu) return;
+
+        const menu = slashCommandMenu;
+        if (['ArrowDown', 'ArrowUp', 'Enter', 'Escape'].includes(e.key)) {
+             e.preventDefault();
+             e.stopPropagation();
+        }
+
+        const items = Array.from(menu.querySelectorAll('.popup-menu-item'));
+        if (items.length === 0) return;
+        let currentIndex = items.findIndex(item => item.classList.contains('selected'));
+        if (currentIndex === -1) currentIndex = 0; 
+
+        if (e.key === 'ArrowDown') {
+            items[currentIndex]?.classList.remove('selected');
+            const nextIndex = (currentIndex + 1) % items.length;
+            items[nextIndex]?.classList.add('selected');
+            items[nextIndex]?.scrollIntoView({ block: 'nearest' });
+        } else if (e.key === 'ArrowUp') {
+            items[currentIndex]?.classList.remove('selected');
+            const prevIndex = (currentIndex - 1 + items.length) % items.length;
+            items[prevIndex]?.classList.add('selected');
+            items[prevIndex]?.scrollIntoView({ block: 'nearest' });
+        } else if (e.key === 'Enter') {
+            const selectedItem = items[currentIndex];
+            if (selectedItem) {
+                if (state.activeMenu === 'slash') executeSlashCommand(selectedItem);
+            }
+        } else if (e.key === 'Escape') {
+            hideAllMenus();
+        }
+    }
+    function executeSlashCommand(button) {
+        if (!button) return;
+        const { command, value } = button.dataset;
+        const sel = window.getSelection();
+        const range = state.slashCommandTriggerRange;
+        if (!range) return;
+        sel.removeAllRanges();
+        sel.addRange(range);
+        let block = range.startContainer;
+        const activeEditor = document.querySelector(`[data-note-id="${state.currentNoteId}"] .note-content-editor`);
+        while(block && block.nodeName !== 'DIV' && block.nodeName !== 'P'){
+            block = block.parentNode;
+        }
+        if(block && activeEditor && block.parentNode === activeEditor){
+            block.innerHTML = '<br>';
+            const newRange = document.createRange();
+            newRange.setStart(block, 0);
+            newRange.collapse(true);
+            sel.removeAllRanges();
+            sel.addRange(newRange);
+        }
+        format(command, value || null);
+    }
+
+    // --- Utilities (Import/Export) ---
+    async function handleFileImport(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            try {
+                const Uints = new Uint8Array(e.target.result);
+                SQL = await initSqlJs({ locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${file}` });
+                db = new SQL.Database(Uints);
+                await persistDb();
+                alert('Database imported successfully! The application will now reload.');
+                window.location.reload();
+            } catch (err) {
+                console.error("Error importing database:", err);
+                alert("Failed to import database.");
+            }
+        };
+        reader.readAsArrayBuffer(file);
+        event.target.value = '';
+    }
+    async function exportDatabase() {
+        if (!db) { alert("Database is not ready yet."); return; }
+        await persistDb();
+        const blob = new Blob([db.export()], { type: "application/x-sqlite3" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = `mem0-backup-${new Date().toISOString().slice(0, 10)}.sqlite`;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    // --- Event Listeners ---
+    function setupEventListeners() {
+        newNoteBtn.addEventListener('click', createNewNote);
+        deleteNoteBtn.addEventListener('click', deleteCurrentNote);
+        exportDbBtn.addEventListener('click', exportDatabase);
+        importDbBtn.addEventListener('click', () => { if (confirm('Importing a database will overwrite all your current notes. Are you sure?')) { dbFileInput.click(); } });
+        dbFileInput.addEventListener('change', handleFileImport);
+        
+        notesContainer.addEventListener('input', handleInput);
+        notesContainer.addEventListener('keydown', handleKeyDown, true);
+        
+        document.addEventListener('selectionchange', handleSelectionChange);
+
+        notesContainer.addEventListener('click', (event) => {
+            const extendBtn = event.target.closest('.extend-note-btn');
+            if (extendBtn) {
+                event.preventDefault();
+                const noteBody = extendBtn.closest('[data-note-id]');
+                if (noteBody) {
+                    const noteId = parseInt(noteBody.dataset.noteId, 10);
+                    extendNote(noteId);
+                }
+                return;
+            }
+
+            const noteElement = event.target.closest('[data-note-id]');
+            if (noteElement) {
+                const noteId = parseInt(noteElement.dataset.noteId, 10);
+                if (state.currentNoteId !== noteId) selectNote(noteId);
+            }
+        });
+        
+        slashCommandMenu.addEventListener('click', e => {
+            const item = e.target.closest('.popup-menu-item');
+            if (item) executeSlashCommand(item);
+        });
+
+        floatingToolbar.addEventListener('mousedown', e => {
+            e.preventDefault();
+            const button = e.target.closest('button.format-btn');
+            if (!button) return;
+            if (button.id === 'createLinkBtn') {
+                const url = prompt('Enter URL for the link:');
+                if (url) format('createLink', url);
+            } else {
+                format(button.dataset.command, button.dataset.value);
+            }
+        });
+
+        searchInput.addEventListener('focus', () => tsneContainer.classList.add('expanded'));
+        searchInput.addEventListener('blur', () => { if (searchInput.value.trim() === '') tsneContainer.classList.remove('expanded'); });
+        searchInput.addEventListener('input', (e) => {
+            clearTimeout(searchDebounceTimer);
+            const query = e.target.value.trim();
+            clearSearchBtn.style.display = query ? 'block' : 'none';
+            if (query) tsneContainer.classList.add('expanded');
+            else if (document.activeElement !== searchInput) tsneContainer.classList.remove('expanded');
+            searchDebounceTimer = setTimeout(() => performSearch(query), 300);
+        });
+        clearSearchBtn.addEventListener('click', () => {
+            searchInput.value = '';
+            searchInput.dispatchEvent(new Event('input'));
+            if (document.activeElement !== searchInput) tsneContainer.classList.remove('expanded');
+        });
+        
+        settingsBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            settingsMenu.classList.toggle('visible');
+        });
+        window.addEventListener('click', (e) => {
+            if(!settingsMenu.contains(e.target) && !settingsBtn.contains(e.target)) settingsMenu.classList.remove('visible');
+            if(state.activeMenu) {
+                const activeMenuEl = slashCommandMenu;
+                if(!activeMenuEl.contains(e.target) && !notesContainer.contains(e.target)){
+                    hideAllMenus();
+                }
+            }
+        });
+
+        document.getElementById('theme-select').addEventListener('change', (e) => {
+            const newTheme = e.target.value;
+            localStorage.setItem(THEME_STORAGE_KEY, newTheme);
+            state.settings.theme = newTheme;
+            applyTheme();
+        });
+        document.getElementById('model-select').addEventListener('change', (e) => {
+            const newModel = e.target.value;
+            if (newModel !== state.settings.model) {
+                if (confirm('Changing the AI model requires re-calculating all note embeddings and will reload the page. Are you sure?')) {
+                    localStorage.setItem(MODEL_STORAGE_KEY, newModel);
+                    window.location.reload();
+                } else {
+                    e.target.value = state.settings.model;
+                }
+            }
+        });
+    }
+
+    // --- App Initialization ---
+    
+    // This new function handles the slow, non-essential startup tasks
+    async function initializeHeavyTasks() {
+        try {
+            mainNetworkGraph.textContent = 'Loading AI model...';
+            embedder = await pipeline('feature-extraction', state.settings.model, {
+                quantized: true,
+                progress_callback: data => { if (data.status === 'progress') mainNetworkGraph.textContent = `Loading model: ${(data.progress).toFixed(1)}%`; }
+            });
+            searchInput.disabled = false;
+            searchInput.placeholder = "Search the note network...";
+            
+            const storedModelRes = db.exec("SELECT value FROM meta WHERE key = 'embedding_model'");
+            const storedModel = storedModelRes.length > 0 && storedModelRes[0].values.length > 0 ? storedModelRes[0].values[0][0] : null;
+
+            if (storedModel !== state.settings.model) {
+                mainNetworkGraph.textContent = 'Model changed. Clearing old embeddings...';
+                db.run("UPDATE notes SET embedding = NULL;");
+                db.run("INSERT OR REPLACE INTO meta (key, value) VALUES ('embedding_model', ?)", [state.settings.model]);
+                await persistDb();
+            }
+
+            mainNetworkGraph.textContent = 'Backfilling embeddings...';
+            const notesToBackfillRes = db.exec("SELECT id, content FROM notes WHERE embedding IS NULL");
+            if (notesToBackfillRes.length > 0 && notesToBackfillRes[0].values.length > 0) {
+                for (const row of notesToBackfillRes[0].values) {
+                    const [id, content] = row;
+                    const tempDiv = document.createElement('div'); tempDiv.innerHTML = content || '';
+                    let textToEmbed = tempDiv.innerText.trim();
+                    if (textToEmbed) {
+                       textToEmbed = textToEmbed.split(/\s+/).slice(0, MAX_EMBEDDING_WORDS).join(" ");
+                    }
+                    const embeddingData = await generateEmbedding(textToEmbed);
+                    const embeddingBlob = embeddingData ? new Uint8Array(embeddingData.buffer) : null;
+                    if(embeddingBlob) db.run("UPDATE notes SET embedding = ? WHERE id = ?", [embeddingBlob, id]);
+                }
+                await persistDb();
+                await refreshNoteCache(); // Refresh cache after backfill
+            }
+            
+            mainNetworkGraph.textContent = 'Initializing visualization...';
+            await renderTsne();
+
+        } catch(err) {
+            console.error("Failed to initialize heavy tasks:", err);
+            mainNetworkGraph.textContent = 'Error during AI initialization.';
+        }
+    }
+    
+    // The main initialization function now prioritizes rendering notes first.
+    async function initialize() {
+        loadSettings();
+        applyTheme();
+        populateSettingsUI();
+        setupEventListeners();
+
+        mainNetworkGraph.textContent = 'Loading note database...';
+        
+        try {
+            const sqlJsReady = initSqlJs({ locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${file}` });
+            SQL = await sqlJsReady;
+            const dbFile = await idb.get();
+            db = dbFile ? new SQL.Database(dbFile) : new SQL.Database();
+            
+            db.run("CREATE TABLE IF NOT EXISTS notes (id INTEGER PRIMARY KEY, title TEXT, content TEXT, embedding BLOB, created_at INTEGER);");
+            db.run("CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT);");
+            
+            const tableInfoRes = db.exec("PRAGMA table_info(notes);");
+            const columns = tableInfoRes[0].values.map(col => col[1]);
+            if (!columns.includes('embedding')) db.run("ALTER TABLE notes ADD COLUMN embedding BLOB;");
+            if (!columns.includes('created_at')) {
+                db.run("ALTER TABLE notes ADD COLUMN created_at INTEGER;");
+                db.run("UPDATE notes SET created_at = id WHERE created_at IS NULL;");
+            }
+            
+            await refreshNoteCache();
+            await renderAllNotes();
+            mainNetworkGraph.textContent = 'Loading note network...';
+
+            if (allNotesCache.length === 0) {
+                await createNewNote();
+            } else {
+                const lastNoteId = localStorage.getItem('inspired-notes-app-last-note');
+                const noteExists = lastNoteId && allNotesCache.some(n => n.id == lastNoteId);
+                await selectNote(noteExists ? lastNoteId : allNotesCache[0].id);
+            }
+            
+            // Defer the heavy lifting until after the first render
+            setTimeout(initializeHeavyTasks, 100);
+
+        } catch(err) {
+            console.error("Failed to initialize:", err);
+            mainNetworkGraph.textContent = 'Error during initialization. Check console for details.';
+        }
+    }
+
+    initialize();
+</script>
+</body>
+</html>
