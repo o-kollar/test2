@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cadence Rides - Your Strava Profile</title>
+
+  <!-- Map & Fonts -->
+  <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Scripts -->
+  <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+  <script src="https://unpkg.com/@mapbox/polyline@1.1.1/src/polyline.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: #f1f1f1; }
+    ::-webkit-scrollbar-thumb { background: #888; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #555; }
+
+    .activity-item.selected {
+      background-color: #fffbeb;
+      border-left: 3px solid #f59e0b;
+      padding-left: calc(1rem - 3px);
+    }
+    .loader { border: 3px solid #f3f4f6; border-top: 3px solid #f59e0b; border-radius: 50%; width: 24px; height: 24px; animation: spin 0.8s linear infinite; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    [x-cloak] { display: none !important; }
+
+    .resizer-handle { cursor: ns-resize; }
+    .resizer-handle:hover .resizer-dots { background: #9ca3af; }
+    .is-resizing { user-select: none; }
+  </style>
+</head>
+<body class="bg-gray-50">
+
+  <div
+    class="h-screen w-screen p-4 lg:p-6"
+    x-data="stravaMap()"
+    x-init="init()"
+    x-cloak
+  >
+    <div
+      class="grid grid-cols-1 lg:grid-cols-2 lg:gap-6 h-full w-full"
+      :style="isMobile ? { gridTemplateRows: `${mapHeight}% auto 1fr`, gap: 0 } : {}"
+    >
+
+      <!-- Map -->
+      <div class="rounded-t-xl lg:rounded-xl overflow-hidden relative min-h-0 shadow">
+        <div id="map" class="w-full h-full"></div>
+      </div>
+
+      <!-- Mobile Resizer -->
+      <div
+        class="resizer-handle lg:hidden bg-gray-50 h-4 flex items-center justify-center"
+        @mousedown.prevent="startResize"
+        @touchstart.prevent="startResize"
+      >
+        <div class="resizer-dots w-10 h-1 bg-gray-300 rounded-full transition-colors"></div>
+      </div>
+
+      <!-- Sidebar -->
+      <div id="sidebar" class="bg-white z-10 flex flex-col rounded-b-xl lg:rounded-xl overflow-hidden relative min-h-0 shadow">
+
+        <!-- Scrollable Content -->
+        <div class="flex-grow overflow-y-auto">
+
+          <!-- Profile Header -->
+          <div x-show="isLoggedIn" class="sticky top-0 z-10 bg-white p-6 border-b border-gray-200">
+
+            <div class="flex items-center justify-between gap-4 mb-4">
+              <div class="flex items-center gap-4 flex-1 min-w-0">
+                <img :src="athlete.profile_medium" alt="Profile" class="w-16 h-16 rounded-full">
+                <div class="flex-1 min-w-0">
+                  <h1 class="text-xl font-semibold text-gray-900 truncate" x-text="`${athlete.firstname} ${athlete.lastname}`"></h1>
+                  <p class="text-sm text-gray-500">Strava Athlete</p>
+                </div>
+              </div>
+
+              <button @click="fetchAndProcessActivities()" :disabled="isLoading" class="flex-shrink-0 w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 disabled:bg-gray-100 text-gray-600 disabled:text-gray-300 transition-colors flex items-center justify-center" aria-label="Refresh Activities">
+                  <svg x-show="!isLoading" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                  <div x-show="isLoading" class="loader w-5 h-5" style="border-width: 2px;"></div>
+              </button>
+            </div>
+
+            <div x-show="activities.length > 0" class="min-h-[110px]">
+              <div x-show="!selectedActivity" x-transition.opacity>
+                <div class="flex justify-around py-3 border-t border-gray-100">
+                  <div class="text-center">
+                    <div class="text-2xl font-semibold text-gray-900" x-text="totalRides"></div>
+                    <div class="text-xs text-gray-500 uppercase tracking-wide">Rides</div>
+                  </div>
+                  <div class="text-center">
+                    <div class="text-2xl font-semibold text-gray-900" x-text="totalDistance.toFixed(0) + 'km'"></div>
+                    <div class="text-xs text-gray-500 uppercase tracking-wide">Distance</div>
+                  </div>
+                  <div class="text-center">
+                    <div class="text-2xl font-semibold text-gray-900" x-text="formatDuration(totalDurationSeconds)"></div>
+                    <div class="text-xs text-gray-500 uppercase tracking-wide">Time</div>
+                  </div>
+                </div>
+              </div>
+
+              <div x-show="selectedActivity" x-transition.opacity style="display: none;">
+                <template x-if="selectedActivity">
+                  <div class="py-3 border-t border-gray-100">
+                    <h3 class="font-semibold text-gray-900 mb-1 truncate" x-text="selectedActivity.properties.name"></h3>
+                    <div class="flex justify-around text-center mb-2">
+                      <div>
+                          <div class="text-2xl font-semibold text-gray-900" x-text="selectedActivity.properties.distance"></div>
+                          <div class="text-xs text-gray-500 uppercase tracking-wide">Distance (km)</div>
+                      </div>
+                      <div>
+                          <div class="text-2xl font-semibold text-gray-900" x-text="formatDuration(selectedActivity.properties.moving_time)"></div>
+                          <div class="text-xs text-gray-500 uppercase tracking-wide">Time</div>
+                      </div>
+                      <div>
+                          <div class="text-2xl font-semibold text-gray-900" x-text="selectedActivity.properties.elevation_gain"></div>
+                          <div class="text-xs text-gray-500 uppercase tracking-wide">Elevation (m)</div>
+                      </div>
+                    </div>
+                     <p class="text-sm text-gray-500" x-text="selectedActivity.properties.date"></p>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </div>
+
+          <!-- Login State -->
+          <div x-show="!isLoggedIn" class="p-6 text-center">
+            <div class="mb-6">
+              <div class="inline-flex items-center justify-center w-16 h-16 bg-amber-100 rounded-full mb-4">
+                <svg class="w-8 h-8 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+              </div>
+              <h2 class="text-xl font-semibold text-gray-900 mb-2">Connect to Strava</h2>
+              <p class="text-sm text-gray-500">View and explore your cycling activities</p>
+            </div>
+            <button @click="login()" class="w-full bg-amber-500 hover:bg-amber-600 text-white font-medium py-3 rounded-lg transition-colors">
+              Connect with Strava
+            </button>
+          </div>
+
+          <!-- Activity Feed -->
+          <div x-show="isLoggedIn">
+            <div x-show="isLoading" class="flex justify-center items-center py-12">
+              <div class="loader"></div>
+            </div>
+
+            <div x-show="!isLoading && activities.length === 0" class="p-6 text-center text-gray-400">
+              <p class="text-sm">No activities yet. Load your rides to get started!</p>
+            </div>
+
+            <div x-show="!isLoading && activities.length > 0">
+              <template x-for="activity in activities" :key="activity.properties.id">
+                <button
+                  class="activity-item w-full text-left p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer"
+                  :class="{ 'selected': selectedActivityId === activity.properties.id }"
+                  @click="selectedActivityId = (selectedActivityId === activity.properties.id) ? null : activity.properties.id"
+                >
+                  <div class="flex items-center justify-between">
+                    <div class="flex-1 min-w-0">
+                      <h4 class="font-medium text-gray-900 truncate" x-text="activity.properties.name"></h4>
+                      <p class="text-sm text-gray-500 mt-0.5">
+                        <span x-text="`${activity.properties.distance} km`"></span>
+                        <span class="mx-1">·</span>
+                        <span x-text="activity.properties.date"></span>
+                      </p>
+                    </div>
+                  </div>
+                </button>
+              </template>
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div x-show="isLoggedIn" class="p-4 border-t border-gray-200">
+          <button @click="logout()" class="w-full text-sm text-gray-600 hover:text-gray-900 font-medium py-2 transition-colors">
+            Sign Out
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('alpine:init', () => {
+      Alpine.data('stravaMap', stravaMap);
+    });
+
+    function stravaMap() {
+      const stravaApi = {
+        clientId: '183437',
+        clientSecret: 'a20d3ee66bd037b42375c3c4a07831050cf79c0f',
+        redirectUri: window.location.origin,
+        scope: 'read,activity:read_all',
+        async getAccessToken(code) {
+          const r = await fetch('https://www.strava.com/oauth/token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              client_id: this.clientId,
+              client_secret: this.clientSecret,
+              code,
+              grant_type: 'authorization_code'
+            })
+          });
+          if (!r.ok) {
+            const e = await r.json();
+            throw new Error(`Token Error: ${e.message}`);
+          }
+          return r.json();
+        },
+        async getActivities(token) {
+          const r = await fetch(`https://www.strava.com/api/v3/athlete/activities?per_page=100`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (!r.ok) {
+            const e = await r.json();
+            throw new Error(`Activities Error: ${e.message}`);
+          }
+          return r.json();
+        },
+        async getActivityDetail(token, id) {
+          const r = await fetch(`https://www.strava.com/api/v3/activities/${id}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (!r.ok) {
+            const e = await r.json();
+            throw new Error(`Detail Error: ${e.message}`);
+          }
+          return r.json();
+        }
+      };
+
+      const mapManager = {
+        map: null,
+        init(containerId) {
+          this.map = new maplibregl.Map({
+            container: containerId,
+            style: 'https://tiles.stadiamaps.com/styles/osm_bright.json',
+          });
+          this.map.addControl(new maplibregl.NavigationControl(), 'top-right');
+          return this.map;
+        },
+
+        addRoutes(fc) {
+          const sId = 'all-routes-source', bId = 'all-routes-layer', hId = 'highlight-layer';
+          const s = this.map.getSource(sId);
+
+          if (s) {
+            s.setData(fc);
+          } else {
+            this.map.addSource(sId, { type: 'geojson', data: fc });
+
+            /* ------------------------- UPDATED COLORS HERE ------------------------- */
+
+            /* BASE ROUTES → STRAVA ORANGE */
+            this.map.addLayer({
+              id: bId,
+              type: 'line',
+              source: sId,
+              layout: { 'line-join': 'round', 'line-cap': 'round' },
+              paint: {
+                'line-color': '#FC4C02',  // Strava Orange
+                'line-width': 2.5,
+                'line-opacity': 0.6
+              }
+            });
+
+            /* SELECTED ROUTE → PURPLE */
+            this.map.addLayer({
+              id: hId,
+              type: 'line',
+              source: sId,
+              layout: { 'line-join': 'round', 'line-cap': 'round' },
+              paint: {
+                'line-color': '#A855F7', // Purple
+                'line-width': 3.5,
+                'line-opacity': 1
+              },
+              filter: ['==', 'id', '']
+            });
+
+            /* ---------------------------------------------------------------------- */
+          }
+
+          this.zoomToAll(fc.features);
+        },
+
+        zoomToAll(features){
+            if (features.length === 0) return;
+            const b = features.reduce((bounds, feature) => {
+                feature.geometry.coordinates.forEach(coord => bounds.extend(coord));
+                return bounds;
+            }, new maplibregl.LngLatBounds());
+
+            if (!b.isEmpty()) {
+                this.map.fitBounds(b, { padding: 60, duration: 1000 });
+            }
+        },
+
+        highlightRoute(id, fs) {
+          if (id) {
+              this.map.setPaintProperty('all-routes-layer', 'line-opacity', 0.25);
+              this.map.setFilter('highlight-layer', ['==', 'id', id]);
+
+              const f = fs.find(f => f.properties.id === id);
+              if (f) {
+                  const b = f.geometry.coordinates.reduce(
+                    (b, c) => b.extend(c),
+                    new maplibregl.LngLatBounds(
+                      f.geometry.coordinates[0],
+                      f.geometry.coordinates[0]
+                    )
+                  );
+                  if (!b.isEmpty()) {
+                      this.map.fitBounds(b, { padding: 80, maxZoom: 15, duration: 1000 });
+                  }
+              }
+          } else {
+              this.map.setPaintProperty('all-routes-layer', 'line-opacity', 0.6);
+              this.map.setFilter('highlight-layer', ['==', 'id', '']);
+              this.zoomToAll(fs);
+          }
+        }
+      };
+
+      return {
+        isLoggedIn: false,
+        isLoading: false,
+        athlete: {},
+        activities: [],
+        selectedActivityId: null,
+        accessToken: null,
+        totalRides: 0,
+        totalDistance: 0,
+        totalDurationSeconds: 0,
+        isResizing: false,
+        isMobile: false,
+        mapHeight: 45,
+        _doResizeHandler: null,
+        _stopResizeHandler: null,
+
+        get selectedActivity() {
+          if (!this.selectedActivityId) return null;
+          return this.activities.find(a => a.properties.id === this.selectedActivityId);
+        },
+
+        init() {
+          this.isMobile = window.innerWidth < 1024;
+          window.addEventListener('resize', () => { this.isMobile = window.innerWidth < 1024; });
+
+          this._doResizeHandler = this.doResize.bind(this);
+          this._stopResizeHandler = this.stopResize.bind(this);
+
+          const map = mapManager.init('map');
+          const mapContainer = document.getElementById('map');
+          const mapResizeObserver = new ResizeObserver(() => map.resize());
+          mapResizeObserver.observe(mapContainer);
+
+          map.on('load', async () => {
+            this.$watch('selectedActivityId', (id) => mapManager.highlightRoute(id, this.activities));
+            const storedAuth = localStorage.getItem('strava_auth');
+
+            if (storedAuth) {
+              this.handleLogin(JSON.parse(storedAuth));
+              const storedActivities = localStorage.getItem('strava_activities');
+              if (storedActivities) {
+                this.activities = JSON.parse(storedActivities);
+                this.calculateAggregates(this.activities);
+                mapManager.addRoutes({ type: 'FeatureCollection', features: this.activities });
+              }
+              return;
+            }
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const authCode = urlParams.get('code');
+            if (authCode) {
+              window.history.replaceState({}, document.title, window.location.pathname);
+              try {
+                const tokenData = await stravaApi.getAccessToken(authCode);
+                localStorage.setItem('strava_auth', JSON.stringify(tokenData));
+                this.handleLogin(tokenData);
+              } catch (error) {
+                console.error('Strava Auth Error:', error);
+                alert(`Error: ${error.message}.`);
+              }
+            }
+          });
+        },
+
+        startResize(event) {
+          if (!this.isMobile) return;
+          this.isResizing = true;
+          document.body.classList.add('is-resizing');
+          window.addEventListener('mousemove', this._doResizeHandler);
+          window.addEventListener('touchmove', this._doResizeHandler);
+          window.addEventListener('mouseup', this._stopResizeHandler);
+          window.addEventListener('touchend', this._stopResizeHandler);
+        },
+
+        doResize(event) {
+          if (!this.isResizing) return;
+          requestAnimationFrame(() => {
+            const gridContainer = this.$el;
+            const rect = gridContainer.getBoundingClientRect();
+            const y = (event.clientY || event.touches[0].clientY) - rect.top;
+            let newHeightPercent = (y / rect.height) * 100;
+            this.mapHeight = Math.max(20, Math.min(80, newHeightPercent));
+          });
+        },
+
+        stopResize() {
+          if (!this.isResizing) return;
+          this.isResizing = false;
+          document.body.classList.remove('is-resizing');
+          window.removeEventListener('mousemove', this._doResizeHandler);
+          window.removeEventListener('touchmove', this._doResizeHandler);
+          window.removeEventListener('mouseup', this._stopResizeHandler);
+          window.removeEventListener('touchend', this._stopResizeHandler);
+        },
+
+        handleLogin(authData) {
+          this.accessToken = authData.access_token;
+          this.athlete = authData.athlete;
+          this.isLoggedIn = true;
+        },
+
+        login() {
+          window.location.href = `https://www.strava.com/oauth/authorize?client_id=${stravaApi.clientId}&redirect_uri=${encodeURIComponent(stravaApi.redirectUri)}&response_type=code&scope=${stravaApi.scope}`;
+        },
+
+        logout() {
+          localStorage.clear();
+          window.location.reload();
+        },
+
+        formatDuration(totalSeconds) {
+          if (!totalSeconds) return '0h 0m';
+          const h = Math.floor(totalSeconds / 3600);
+          const m = Math.floor((totalSeconds % 3600) / 60);
+          return `${h}h ${m}m`;
+        },
+
+        calculateAggregates(features) {
+          if (!features || features.length === 0) {
+            this.totalRides = 0;
+            this.totalDistance = 0;
+            this.totalDurationSeconds = 0;
+            return;
+          }
+          this.totalRides = features.length;
+          this.totalDistance = features.reduce((sum, act) => sum + parseFloat(act.properties.distance), 0);
+          this.totalDurationSeconds = features.reduce((sum, act) => sum + act.properties.moving_time, 0);
+        },
+
+        async fetchAndProcessActivities() {
+          if (!this.accessToken) return;
+          this.isLoading = true;
+          this.activities = [];
+          this.selectedActivityId = null;
+
+          try {
+            const activityList = await stravaApi.getActivities(this.accessToken);
+            const detailedActivities = await Promise.all(
+              activityList.map(act => stravaApi.getActivityDetail(this.accessToken, act.id))
+            );
+
+            const features = detailedActivities.map(activity => {
+              const polylineStr = activity.map?.summary_polyline;
+              if (!polylineStr) return null;
+
+              const decodedCoords = polyline.decode(polylineStr).map(c => [c[1], c[0]]);
+              if (decodedCoords.length === 0) return null;
+
+              return {
+                type: 'Feature',
+                geometry: { type: 'LineString', coordinates: decodedCoords },
+                properties: {
+                  id: activity.id,
+                  name: activity.name,
+                  distance: (activity.distance / 1000).toFixed(2),
+                  date: new Date(activity.start_date_local).toLocaleDateString(),
+                  type: activity.type,
+                  moving_time: activity.moving_time,
+                  elevation_gain: activity.total_elevation_gain,
+                  dateObject: activity.start_date_local
+                }
+              };
+            }).filter(Boolean);
+
+            this.activities = features.sort(
+              (a, b) => new Date(b.properties.dateObject) - new Date(a.properties.dateObject)
+            );
+
+            this.calculateAggregates(this.activities);
+
+            if (features.length === 0) {
+              alert("No activities with map data found.");
+            }
+
+            localStorage.setItem('strava_activities', JSON.stringify(this.activities));
+            mapManager.addRoutes({ type: 'FeatureCollection', features: this.activities });
+
+          } catch (error) {
+            console.error('Fetch Error:', error);
+            alert(`Could not fetch activities: ${error.message}`);
+          } finally {
+            this.isLoading = false;
+          }
+        }
+      };
+    }
+  </script>
+</body>
+</html>
