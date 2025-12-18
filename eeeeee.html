@@ -24,47 +24,45 @@
             color: var(--text);
             margin: 0;
             padding: 0;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
+            min-height: 100vh;
         }
 
         .container {
             display: flex;
             flex-direction: column;
-            padding: 10px;
-            gap: 15px;
-            flex: 1;
-            overflow-y: auto;
-        }
-
-        @media (min-width: 900px) {
-            .container {
-                display: grid;
-                grid-template-columns: 1.2fr 0.8fr;
-                height: 100%;
-                overflow: hidden;
-            }
+            padding: 20px;
+            gap: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
         }
 
         .panel {
             background: var(--surface);
-            padding: 15px;
-            border-radius: 12px;
-            border: 1px solid var(--border);
+            padding: 20px;
+            border-radius: 16px;
+            border: 2px solid var(--border);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3), 0 1px 3px rgba(0,0,0,0.2);
             display: flex;
             flex-direction: column;
-            gap: 12px;
-            min-height: 0; 
-            overflow-y: auto;
+            gap: 15px;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        
+        .panel:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 12px rgba(0,0,0,0.4), 0 2px 4px rgba(0,0,0,0.3);
         }
 
         h2 {
             margin: 0;
-            font-size: 1.1rem;
+            font-size: 1.3rem;
+            font-weight: 700;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            padding-bottom: 12px;
+            border-bottom: 2px solid var(--border);
+            color: var(--primary);
         }
 
         .status-dot {
@@ -79,41 +77,66 @@
         /* Controls */
         .controls-row {
             display: flex;
-            gap: 8px;
+            gap: 10px;
         }
         button {
             flex: 1;
             background: var(--primary);
             color: #000;
             border: none;
-            padding: 10px;
-            border-radius: 6px;
+            padding: 12px 20px;
+            border-radius: 8px;
             font-weight: 600;
             cursor: pointer;
-            transition: opacity 0.2s;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
-        button:hover { opacity: 0.9; }
-        button:disabled { background: #444; color: #888; cursor: not-allowed; }
+        button:hover { 
+            opacity: 0.9; 
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+        button:disabled { background: #444; color: #888; cursor: not-allowed; box-shadow: none; transform: none; }
         button.stop { background: var(--danger); color: white; }
 
         .config-grid {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 8px;
-            background: rgba(0,0,0,0.2);
-            padding: 8px;
-            border-radius: 8px;
-            font-size: 0.8rem;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            background: rgba(0,0,0,0.3);
+            padding: 16px;
+            border-radius: 10px;
+            font-size: 0.85rem;
+            border: 1px solid rgba(255,255,255,0.05);
         }
-        .config-item { display: flex; flex-direction: column; align-items: center; }
+        .config-item { 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            gap: 6px;
+        }
+        .config-item label {
+            color: var(--text-dim);
+            font-weight: 600;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
         input[type=number] {
-            background: transparent;
-            border: none;
-            border-bottom: 1px solid #555;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid #555;
+            border-radius: 6px;
             color: var(--accent);
             width: 100%;
             text-align: center;
-            font-size: 0.9rem;
+            font-size: 0.95rem;
+            padding: 6px;
+            transition: all 0.2s ease;
+        }
+        input[type=number]:focus {
+            outline: none;
+            border-color: var(--accent);
+            background: rgba(3, 218, 198, 0.1);
         }
 
         /* --- ACCORDION STYLES --- */
@@ -121,22 +144,26 @@
             background-color: #2a2a2a;
             color: var(--text);
             cursor: pointer;
-            padding: 12px;
+            padding: 16px;
             width: 100%;
-            border: 1px solid var(--border);
+            border: 2px solid var(--border);
             text-align: left;
             outline: none;
-            font-size: 0.95rem;
+            font-size: 1rem;
             font-weight: 600;
-            transition: 0.3s;
-            border-radius: 8px;
+            transition: all 0.3s ease;
+            border-radius: 12px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 2px;
+            margin-bottom: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
         
-        .accordion-header:hover { background-color: #333; }
+        .accordion-header:hover { 
+            background-color: #333;
+            transform: translateX(4px);
+        }
 
         .accordion-header.active {
             background-color: var(--primary-dim);
@@ -145,39 +172,53 @@
             border-bottom-right-radius: 0;
             border-bottom-left-radius: 0;
             margin-bottom: 0;
+            box-shadow: 0 4px 8px rgba(187, 134, 252, 0.2);
         }
 
-        .accordion-header:after { content: '+'; font-size: 1.2rem; line-height: 0.8rem; }
+        .accordion-header:after { content: '+'; font-size: 1.4rem; line-height: 1rem; font-weight: 300; }
         .accordion-header.active:after { content: '−'; }
 
         .accordion-content {
-            padding: 0 10px;
+            padding: 0 16px;
             background-color: var(--surface-dark);
             max-height: 0;
             overflow: hidden;
-            transition: max-height 0.3s ease-out;
-            border: 1px solid var(--border);
+            transition: max-height 0.3s ease-out, padding 0.3s ease-out;
+            border: 2px solid var(--border);
             border-top: none;
-            border-radius: 0 0 8px 8px;
+            border-radius: 0 0 12px 12px;
             opacity: 0;
-            margin-bottom: 10px;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
         
-        .accordion-content.show { opacity: 1; padding-bottom: 10px; padding-top: 10px; }
+        .accordion-content.show { 
+            opacity: 1; 
+            padding-bottom: 16px; 
+            padding-top: 16px; 
+        }
 
         /* Visualization Area */
         .viz-container {
             background: #000;
-            border-radius: 8px;
-            padding: 10px;
+            border-radius: 12px;
+            padding: 16px;
             display: flex;
             flex-direction: column;
-            gap: 10px;
-            flex: 1;
-            min-height: 250px;
+            gap: 16px;
+            min-height: 300px;
+            border: 2px solid #222;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
         }
 
-        .chart-label { font-size: 0.75rem; color: #888; text-transform: uppercase; letter-spacing: 1px; }
+        .chart-label { 
+            font-size: 0.8rem; 
+            color: #999; 
+            text-transform: uppercase; 
+            letter-spacing: 1.5px; 
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
 
         /* Loss Graph */
         canvas#lossGraph {
@@ -225,39 +266,58 @@
         /* Data Input */
         textarea.data-input {
             width: 100%;
-            height: 150px;
+            height: 200px;
             background: #0d0d0d;
             color: #999;
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            padding: 8px;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            padding: 12px;
             font-family: monospace;
-            font-size: 12px;
+            font-size: 13px;
             resize: vertical;
             box-sizing: border-box;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
+            transition: border-color 0.2s ease;
+        }
+        textarea.data-input:focus {
+            outline: none;
+            border-color: var(--primary);
         }
 
         /* Output / Terminal Area */
         .output-area {
-            flex: 1;
+            min-height: 200px;
             background: #0d0d0d;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 12px;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            padding: 16px;
             overflow-y: auto;
             font-family: "Courier New", Courier, monospace;
             color: #d1c4e9;
-            white-space: pre-wrap; /* Preserve newlines */
+            white-space: pre-wrap;
             font-size: 0.95rem;
-            line-height: 1.5;
+            line-height: 1.6;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
         }
         
-        .input-bar { display: flex; gap: 8px; }
+        .input-bar { display: flex; gap: 10px; }
         input[type=text] {
-            flex: 1; background: #222; border: 1px solid #444; color: white;
-            padding: 10px; border-radius: 6px; outline: none;
+            flex: 1; 
+            background: #222; 
+            border: 2px solid #444; 
+            color: white;
+            padding: 12px 16px; 
+            border-radius: 8px; 
+            outline: none;
+            font-size: 0.95rem;
+            transition: all 0.2s ease;
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.2);
         }
-        input[type=text]:focus { border-color: var(--accent); }
+        input[type=text]:focus { 
+            border-color: var(--accent);
+            background: #2a2a2a;
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.2), 0 0 0 3px rgba(3, 218, 198, 0.1);
+        }
 
     </style>
 </head>
@@ -265,10 +325,10 @@
 
 <div class="container">
     
-    <!-- Left Panel: Training & Viz -->
+    <!-- Block 1: Training Controls -->
     <div class="panel">
         <h2>
-            MoE Training Monitor
+            Training Controls
             <span id="status-indicator" class="status-dot"></span>
         </h2>
         
@@ -279,13 +339,20 @@
 
         <div class="config-grid">
             <div class="config-item"><label>Dim</label><input type="number" id="hiddenSize" value="64"></div>
-            <div class="config-item"><label>LR</label><input type="number" id="learnRate" value="0.005"></div>
+            <div class="config-item"><label>Max LR</label><input type="number" id="learnRate" value="0.003" step="0.0001"></div>
             <div class="config-item"><label>Experts</label><input type="number" id="numExperts" value="8"></div>
             <div class="config-item"><label>Top-K</label><input type="number" id="topK" value="2"></div>
+            <div class="config-item"><label>Batch Size</label><input type="number" id="batchSize" value="8" min="1" title="Gradient accumulation steps"></div>
+            <div class="config-item"><label>λ Bal</label><input type="number" id="lambdaBal" value="0.01" step="0.01"></div>
+            <div class="config-item"><label>γ Ent</label><input type="number" id="gammaEnt" value="0.005" step="0.001"></div>
+            <div class="config-item"><label>Warmup</label><input type="number" id="warmupSteps" value="200" title="Warmup iterations"></div>
+            <div class="config-item"><label>Decay</label><input type="number" id="decaySteps" value="8000" title="Total training iterations"></div>
         </div>
+    </div>
 
-        <!-- ACCORDION 1: VISUALIZATION -->
-        <button class="accordion-header active">Visualization</button>
+    <!-- Block 2: Visualization -->
+    <div class="panel">
+        <button class="accordion-header active">📊 Loss & Expert Activity</button>
         <div class="accordion-content show">
             <div class="viz-container">
                 <div class="chart-label">Loss Curve (Log Scale)</div>
@@ -297,9 +364,11 @@
                 </div>
             </div>
         </div>
+    </div>
 
-        <!-- ACCORDION 2: TRAINING DATA -->
-        <button class="accordion-header">Training Data</button>
+    <!-- Block 3: Training Data -->
+    <div class="panel">
+        <button class="accordion-header">📝 Training Dataset</button>
         <div class="accordion-content">
             <textarea id="training-data" class="data-input" spellcheck="false">Q: what is the weather in London?
 A: GET /weather?q=London
@@ -344,20 +413,19 @@ A: GET /weather?q=Seoul
 Q: weather Mumbai
 A: GET /weather?q=Mumbai
 Q: forecast for Lima
-A: GET /forecast?q=Lima</textarea>
+Q: forecast for Lima</textarea>
         </div>
-
     </div>
 
-    <!-- Right Panel: Interaction (RAW OUTPUT) -->
+    <!-- Block 4: Inference -->
     <div class="panel">
-        <h2>Inference Output</h2>
+        <h2>💬 Model Inference</h2>
         <div id="output-area" class="output-area">// System ready.
 // Train the model, then enter a query below.
 </div>
         <div class="input-bar">
             <input type="text" id="user-query" placeholder="e.g. weather in..." autocomplete="off">
-            <button id="btnAsk" style="flex:0 0 80px; background: var(--accent); color: #000;">Generate</button>
+            <button id="btnAsk" style="flex:0 0 100px; background: var(--accent); color: #000;">Generate</button>
         </div>
     </div>
 
@@ -468,11 +536,23 @@ class Graph {
         var sm = Utils.softmax(m.w);
         for(let i=0; i<sm.length; i++) out.w[i] = sm[i];
         if (this.needsBackprop) this.backprop.push(() => {
+            // Correct softmax backward: dL/dlogit_i = Σ_j [dL/dout_j * ∂out_j/∂logit_i]
+            // Where: ∂out_j/∂logit_i = out_j * (δ_ij - out_i)
             for(let i=0; i<m.n; i++) {
+                let grad = 0;
                 for(let j=0; j<m.n; j++) {
-                    if(i === j) m.dw[i] += out.w[i] * (1 - out.w[i]) * out.dw[j];
-                    else m.dw[i] -= out.w[i] * out.w[j] * out.dw[j];
+                    if(i === j) {
+                        // ∂out_i/∂logit_i = out_i * (1 - out_i)
+                        grad += out.w[i] * (1 - out.w[i]) * out.dw[i];
+                    } else {
+                        // ∂out_j/∂logit_i = -out_j * out_i
+                        grad += -out.w[j] * out.w[i] * out.dw[j];
+                    }
                 }
+                // Clamp gradient to prevent explosion
+                if (grad > 10) grad = 10;
+                else if (grad < -10) grad = -10;
+                m.dw[i] += grad;
             }
         });
         return out;
@@ -482,6 +562,30 @@ class Graph {
         for (let i = 0; i < n; i++) out.w[i] = 1.0 - m.w[i];
         if (this.needsBackprop) this.backprop.push(() => {
             for (let i = 0; i < n; i++) m.dw[i] -= out.dw[i];
+        });
+        return out;
+    }
+    gelu(m) {
+        var out = new Mat(m.n, m.d), n = m.w.length;
+        const sqrt2OverPi = Math.sqrt(2.0 / Math.PI);
+        for (let i = 0; i < n; i++) {
+            const x = m.w[i];
+            const cdf = 0.5 * (1.0 + Math.tanh(sqrt2OverPi * (x + 0.044715 * x * x * x)));
+            out.w[i] = x * cdf;
+        }
+        if (this.needsBackprop) this.backprop.push(() => {
+            for (let i = 0; i < n; i++) {
+                const x = m.w[i];
+                const tanh_arg = sqrt2OverPi * (x + 0.044715 * x * x * x);
+                const tanh_out = Math.tanh(tanh_arg);
+                const cdf = 0.5 * (1.0 + tanh_out);
+                const pdf = sqrt2OverPi * 0.5 * (1 - tanh_out * tanh_out) * (1 + 3 * 0.044715 * x * x);
+                let grad = (cdf + x * pdf) * out.dw[i];
+                // Clamp gradient to prevent explosion
+                if (grad > 10) grad = 10;
+                else if (grad < -10) grad = -10;
+                m.dw[i] += grad;
+            }
         });
         return out;
     }
@@ -513,10 +617,20 @@ class Solver {
                 for (let i = 0, n = mat.w.length; i < n; i++) {
                     let g = mat.dw[i];
                     if (g > clip) g = clip; else if (g < -clip) g = -clip;
+                    
+                    // Update biased first and second moments
                     m[i] = this.beta1 * m[i] + (1.0 - this.beta1) * g;
                     v[i] = this.beta2 * v[i] + (1.0 - this.beta2) * g * g;
-                    if (wd > 0) mat.w[i] -= lr * wd * mat.w[i];
-                    mat.w[i] -= lr * (m[i]/c1) / (Math.sqrt(v[i]/c2) + this.eps);
+                    
+                    // Bias-corrected moments
+                    const m_hat = m[i] / c1;
+                    const v_hat = v[i] / c2;
+                    
+                    // AdamW: Apply weight decay directly to weights (decoupled)
+                    if (wd > 0) mat.w[i] *= (1.0 - lr * wd);
+                    
+                    // Adam update with bias-corrected moments
+                    mat.w[i] -= lr * m_hat / (Math.sqrt(v_hat) + this.eps);
                     mat.dw[i] = 0;
                 }
             }
@@ -528,54 +642,163 @@ class Solver {
 // 2. MOE-minGRU (With State Coupling, Time-Scale Init, Concatenated Router)
 // ============================================================================
 
-function initMoEGRU(inputSize, hiddenSize, outputSize, numExperts, topK) {
+function lookupEmbedding(G, embedMatrix, charIndex) {
+    // Extract embedding row for given character index
+    var embSize = embedMatrix.d;
+    var out = new Mat(embSize, 1);
+    
+    // Forward: copy the embedding
+    for(let i = 0; i < embSize; i++) {
+        out.w[i] = embedMatrix.w[charIndex * embSize + i];
+    }
+    
+    // Backward: accumulate gradient to the embedding
+    if(G.needsBackprop) {
+        G.backprop.push(() => {
+            for(let i = 0; i < embSize; i++) {
+                let grad = out.dw[i];
+                // Clamp gradient to prevent explosion
+                if (grad > 5) grad = 5;
+                else if (grad < -5) grad = -5;
+                embedMatrix.dw[charIndex * embSize + i] += grad;
+            }
+        });
+    }
+    
+    return out;
+}
+
+function rmsnorm(G, x, scale, eps = 1e-5) {
+    // RMSNorm: normalize by root mean square, then scale
+    var n = x.w.length;
+    var out = new Mat(x.n, x.d);
+    
+    // Compute RMS
+    var sumSquares = 0.0;
+    for(let i = 0; i < n; i++) {
+        sumSquares += x.w[i] * x.w[i];
+    }
+    var rms = Math.sqrt(sumSquares / n + eps);
+    
+    // Normalize and scale
+    for(let i = 0; i < n; i++) {
+        out.w[i] = (x.w[i] / rms) * scale.w[i];
+    }
+    
+    // Backward pass
+    if(G.needsBackprop) {
+        G.backprop.push(() => {
+            var sumSquares = 0.0;
+            for(let i = 0; i < n; i++) {
+                sumSquares += x.w[i] * x.w[i];
+            }
+            var rms = Math.sqrt(sumSquares / n + eps);
+            
+            // Gradient through scale (with clamping)
+            for(let i = 0; i < n; i++) {
+                let grad = out.dw[i] * (x.w[i] / rms);
+                if (grad > 10) grad = 10;
+                else if (grad < -10) grad = -10;
+                scale.dw[i] += grad;
+            }
+            
+            // Gradient through normalization
+            var sumGradNorm = 0.0;
+            for(let i = 0; i < n; i++) {
+                sumGradNorm += out.dw[i] * scale.w[i] * x.w[i];
+            }
+            
+            for(let i = 0; i < n; i++) {
+                var norm = x.w[i] / rms;
+                let grad = (out.dw[i] * scale.w[i] / rms) - (norm * sumGradNorm / (n * rms * rms));
+                // Clamp gradient
+                if (grad > 10) grad = 10;
+                else if (grad < -10) grad = -10;
+                x.dw[i] += grad;
+            }
+        });
+    }
+    
+    return out;
+}
+
+function initMoEGRU(vocabSize, embeddingSize, hiddenSize, outputSize, numExperts, topK) {
     var model = {};
     
-    // UPDATED: Router now takes [x; h_prev] so dimension is inputSize + hiddenSize
-    model['W_router'] = new RandMat(numExperts, inputSize + hiddenSize, 0, 0.08);
+    // Embedding Layer: vocab_size x embedding_size
+    model['W_embed'] = new RandMat(vocabSize, embeddingSize, 0, 0.08);
+    
+    // RMSNorm scale parameters for embedding
+    model['embed_scale'] = new Mat(embeddingSize, 1);
+    for(let i = 0; i < embeddingSize; i++) model['embed_scale'].w[i] = 1.0;
+    
+    // Embedding projection for residual connection (if embedding != hidden size)
+    if (embeddingSize !== hiddenSize) {
+        model['emb_proj'] = new RandMat(hiddenSize, embeddingSize, 0, 0.08);
+    }
+    
+    // UPDATED: Router now takes [emb; h_prev] so dimension is embeddingSize + hiddenSize
+    model['W_router'] = new RandMat(numExperts, embeddingSize + hiddenSize, 0, 0.02);
     
     for(let e = 0; e < numExperts; e++) {
         // --- STANDARD WEIGHTS ---
-        model[`E${e}_Wz`] = new RandMat(hiddenSize, inputSize, 0, 0.08); // Input -> Update
-        model[`E${e}_Wh`] = new RandMat(hiddenSize, inputSize, 0, 0.08); // Input -> Candidate
+        model[`E${e}_Wz`] = new RandMat(hiddenSize, embeddingSize, 0, 0.05); // Embedding -> Update
+        model[`E${e}_Wh`] = new RandMat(hiddenSize, embeddingSize, 0, 0.05); // Embedding -> Candidate
         
         // --- RECURRENCE WEIGHTS (Coupling) ---
-        model[`E${e}_Uz`] = new RandMat(hiddenSize, hiddenSize, 0, 0.08); // State -> Update
-        model[`E${e}_Uh`] = new RandMat(hiddenSize, hiddenSize, 0, 0.08); // State -> Candidate
+        model[`E${e}_Uz`] = new RandMat(hiddenSize, hiddenSize, 0, 0.02); // State -> Update
+        model[`E${e}_Uh`] = new RandMat(hiddenSize, hiddenSize, 0, 0.02); // State -> Candidate
         
-        // --- TIME SCALE SPECIALIZATION ---
-        // Range: -2.5 (Slow/Memory) to +2.5 (Fast/Reactive)
-        let timeScaleBias = -2.5 + (e / Math.max(1, numExperts - 1)) * 5.0;
+        // --- LEARNABLE TIME SCALE SPECIALIZATION ---
+        // Initialize with time-scale hint: -1.5 (Slow/Memory) to +1.5 (Fast/Reactive)
+        // But allow gradient updates to refine specialization
+        let timeScaleBias = -1.5 + (e / Math.max(1, numExperts - 1)) * 3.0;
         
-        model[`E${e}_bz`] = new Mat(hiddenSize, 1);
-        for(let k=0; k<hiddenSize; k++) model[`E${e}_bz`].w[k] = timeScaleBias;
+        model[`E${e}_bz`] = new RandMat(hiddenSize, 1, 0, 0.05);
+        for(let k=0; k<hiddenSize; k++) model[`E${e}_bz`].w[k] += timeScaleBias;
 
-        model[`E${e}_bh`] = new Mat(hiddenSize, 1);
+        model[`E${e}_bh`] = new RandMat(hiddenSize, 1, 0, 0.05);
     }
     
+    // MLP Layer (hiddenSize -> 4*hiddenSize -> hiddenSize)
+    const mlpHiddenSize = hiddenSize * 4;
+    model['W_mlp1'] = new RandMat(mlpHiddenSize, hiddenSize, 0, Math.sqrt(2.0 / hiddenSize));
+    model['b_mlp1'] = new Mat(mlpHiddenSize, 1);
+    model['W_mlp2'] = new RandMat(hiddenSize, mlpHiddenSize, 0, Math.sqrt(2.0 / mlpHiddenSize));
+    model['b_mlp2'] = new Mat(hiddenSize, 1);
+    
     // Output Head
-    model['Whd'] = new RandMat(outputSize, hiddenSize, 0, 0.08);
+    model['Whd'] = new RandMat(outputSize, hiddenSize, 0, 0.02);
     model['bd'] = new Mat(outputSize, 1);
     
     return model;
 }
 
-function forwardMoEGRU(G, model, hiddenSize, numExperts, topK, x, prev) {
+function forwardMoEGRU(G, model, hiddenSize, numExperts, topK, charIndex, prev) {
+    // Lookup embedding for input character
+    let emb = lookupEmbedding(G, model['W_embed'], charIndex);
+    
+    // Apply RMSNorm to embedding
+    emb = rmsnorm(G, emb, model['embed_scale']);
+    
+    // RESIDUAL PATH: Save normalized embedding for skip connection
+    let emb_residual = emb;
+    
     // Ensure h_prev exists
     let h_prev = (prev && prev.h) ? prev.h : new Mat(hiddenSize, 1);
 
-    // --- CONCATENATION [x; h_prev] for Router ---
-    let routerInput = new Mat(x.n + h_prev.n, 1);
+    // --- CONCATENATION [emb; h_prev] for Router ---
+    let routerInput = new Mat(emb.n + h_prev.n, 1);
     
     // Forward Copy
-    for(let i=0; i<x.n; i++) routerInput.w[i] = x.w[i];
-    for(let i=0; i<h_prev.n; i++) routerInput.w[x.n + i] = h_prev.w[i];
+    for(let i=0; i<emb.n; i++) routerInput.w[i] = emb.w[i];
+    for(let i=0; i<h_prev.n; i++) routerInput.w[emb.n + i] = h_prev.w[i];
 
     // Backward Connection
     if(G.needsBackprop) {
         G.backprop.push(() => {
-            for(let i=0; i<x.n; i++) x.dw[i] += routerInput.dw[i];
-            for(let i=0; i<h_prev.n; i++) h_prev.dw[i] += routerInput.dw[x.n + i];
+            for(let i=0; i<emb.n; i++) emb.dw[i] += routerInput.dw[i];
+            for(let i=0; i<h_prev.n; i++) h_prev.dw[i] += routerInput.dw[emb.n + i];
         });
     }
 
@@ -590,7 +813,7 @@ function forwardMoEGRU(G, model, hiddenSize, numExperts, topK, x, prev) {
     let selectedLogits = new Mat(topK, 1);
     for(let i=0; i<topK; i++) {
         const row = G.rowSlice(model['W_router'], indices[i]); 
-        const logit = G.mul(row, routerInput); // Route on [x; h]
+        const logit = G.mul(row, routerInput); // Route on [emb; h]
         selectedLogits.w[i] = logit.w[0];
         if (G.needsBackprop) G.backprop.push(() => { logit.dw[0] += selectedLogits.dw[i]; });
     }
@@ -604,12 +827,12 @@ function forwardMoEGRU(G, model, hiddenSize, numExperts, topK, x, prev) {
         let weight = routingWeights.w[i];
 
         // Recurrence & Time-Scale Logic
-        // z = sigmoid(Wz*x + Uz*h + bz_specialized)
-        let z_sum = G.add(G.add(G.mul(model[`E${expertIdx}_Wz`], x), G.mul(model[`E${expertIdx}_Uz`], h_prev)), model[`E${expertIdx}_bz`]);
+        // z = sigmoid(Wz*emb + Uz*h + bz_specialized)
+        let z_sum = G.add(G.add(G.mul(model[`E${expertIdx}_Wz`], emb), G.mul(model[`E${expertIdx}_Uz`], h_prev)), model[`E${expertIdx}_bz`]);
         let z = G.sigmoid(z_sum);
         
-        // hTilde = tanh(Wh*x + Uh*h + bh)
-        let h_sum = G.add(G.add(G.mul(model[`E${expertIdx}_Wh`], x), G.mul(model[`E${expertIdx}_Uh`], h_prev)), model[`E${expertIdx}_bh`]);
+        // hTilde = tanh(Wh*emb + Uh*h + bh)
+        let h_sum = G.add(G.add(G.mul(model[`E${expertIdx}_Wh`], emb), G.mul(model[`E${expertIdx}_Uh`], h_prev)), model[`E${expertIdx}_bh`]);
         let hTilde = G.tanh(h_sum);
         
         // GRU Update
@@ -626,8 +849,22 @@ function forwardMoEGRU(G, model, hiddenSize, numExperts, topK, x, prev) {
         final_h = G.add(final_h, G.eltmul(weightMat, h_expert));
     }
     
-    var output = G.add(G.mul(model['Whd'], final_h), model['bd']);
-    return { h: final_h, o: output, indices: indices, denseProbs: denseProbs };
+    // RESIDUAL: Combine normalized embedding with MoE output
+    // Need to project embedding to hidden size if dimensions differ
+    let emb_projected = emb_residual;
+    if (emb_residual.n !== hiddenSize) {
+        // Project embedding to hidden dimension
+        emb_projected = G.mul(model['emb_proj'], emb_residual);
+    }
+    let h_combined = G.add(final_h, emb_projected);
+    
+    // MLP Layer with GELU activation
+    let mlp1 = G.add(G.mul(model['W_mlp1'], h_combined), model['b_mlp1']);
+    let mlp1_act = G.gelu(mlp1);
+    let h_with_mlp = G.add(G.mul(model['W_mlp2'], mlp1_act), model['b_mlp2']);
+    
+    var output = G.add(G.mul(model['Whd'], h_with_mlp), model['bd']);
+    return { h: h_with_mlp, o: output, indices: indices, denseProbs: denseProbs };
 }
 
 // ============================================================================
@@ -645,6 +882,11 @@ const els = {
     learnRate: document.getElementById('learnRate'),
     numExperts: document.getElementById('numExperts'),
     topK: document.getElementById('topK'),
+    batchSize: document.getElementById('batchSize'),
+    lambdaBal: document.getElementById('lambdaBal'),
+    gammaEnt: document.getElementById('gammaEnt'),
+    warmupSteps: document.getElementById('warmupSteps'),
+    decaySteps: document.getElementById('decaySteps'),
     status: document.getElementById('status-indicator'),
     lossCanvas: document.getElementById('lossGraph'),
     expertBars: document.getElementById('expertBars')
@@ -654,6 +896,7 @@ let model, solver, vocab, charToIx, ixToChar;
 let isTraining = false, dataIdx = 0, epoch = 0, iter = 0, smoothLoss = 1.0;
 let lossHistory = [];
 let expertUsage = [];
+let batchAccumCount = 0;
 
 function initModel() {
     const text = els.input.value;
@@ -666,14 +909,16 @@ function initModel() {
     const hSize = parseInt(els.hiddenSize.value);
     const nExp = parseInt(els.numExperts.value);
     const topK = parseInt(els.topK.value);
+    const embSize = Math.max(16, Math.floor(hSize / 2)); // Embedding size proportional to hidden size
 
-    model = initMoEGRU(chars.length, hSize, chars.length, nExp, topK);
+    model = initMoEGRU(chars.length, embSize, hSize, chars.length, nExp, topK);
     solver = new Solver();
     
     // Reset Stats
     dataIdx = 0; epoch = 0; iter = 0; smoothLoss = -Math.log(1.0/chars.length);
     lossHistory = [];
     expertUsage = new Array(nExp).fill(0);
+    batchAccumCount = 0;
     
     // Init Bars UI
     els.expertBars.innerHTML = '';
@@ -685,14 +930,12 @@ function initModel() {
         els.expertBars.appendChild(col);
     }
     
-    els.outputArea.innerText = `// MoE-minGRU Initialized.\n// Vocab: ${chars.length}, Hidden: ${hSize}, Experts: ${nExp} (Top ${topK})`;
+    const batchSize = parseInt(els.batchSize.value) || 1;
+    els.outputArea.innerText = `// MoE-minGRU Initialized.\n// Vocab: ${chars.length}, Embedding: ${embSize}, Hidden: ${hSize}, Experts: ${nExp} (Top ${topK})\n// Batch Size: ${batchSize}\n// Architecture: Emb→RMSNorm+Residual→MoE→Combine→MLP→Output`;
+    console.log(`Model initialized: vocab=${chars.length}, emb=${embSize}, hidden=${hSize}, experts=${nExp}, topK=${topK}, batch=${batchSize}`);
 }
 
-function getOneHot(charIndex, size) {
-    const m = new Mat(size, 1);
-    m.set(charIndex, 0, 1.0);
-    return m;
-}
+// Note: Now using embedding layer instead of one-hot encoding
 
 // --- VISUALIZATION FUNCTIONS ---
 
@@ -730,6 +973,24 @@ function drawLossGraph() {
     ctx.fillStyle = '#aaa';
     ctx.font = '10px monospace';
     ctx.fillText(`L: ${smoothLoss.toFixed(3)}`, 5, 15);
+    
+    // Display current learning rate and aux coefficients
+    if (iter > 0) {
+        const maxLR = parseFloat(els.learnRate.value);
+        const warmupSteps = parseInt(els.warmupSteps.value);
+        const totalSteps = parseInt(els.decaySteps.value);
+        const currentLR = getLearningRate(iter, maxLR, warmupSteps, totalSteps);
+        
+        const maxLambda = parseFloat(els.lambdaBal.value);
+        const maxGamma = parseFloat(els.gammaEnt.value);
+        const auxDecayStart = Math.floor(totalSteps * 0.8);
+        const currentLambda = getAuxCoefficient(iter, maxLambda, auxDecayStart, totalSteps);
+        const currentGamma = getAuxCoefficient(iter, maxGamma, auxDecayStart, totalSteps);
+        
+        ctx.fillText(`LR: ${currentLR.toExponential(2)}`, 5, 30);
+        ctx.fillText(`λ: ${currentLambda.toFixed(4)} γ: ${currentGamma.toFixed(4)}`, 5, 45);
+        ctx.fillText(`Iter: ${iter} | Epoch: ${epoch}`, 5, 60);
+    }
 }
 
 function updateExpertVis() {
@@ -745,17 +1006,64 @@ function updateExpertVis() {
     }
 }
 
-// --- TRAINING LOOP (With Aux Loss) ---
+// --- LEARNING RATE SCHEDULE ---
+function getLearningRate(iter, maxLR, warmupSteps, totalSteps) {
+    // Linear warmup
+    if (iter < warmupSteps) {
+        return maxLR * (iter / warmupSteps);
+    }
+    
+    // Cosine decay after warmup
+    const decayIter = iter - warmupSteps;
+    const decaySteps = totalSteps - warmupSteps;
+    const progress = Math.min(decayIter / decaySteps, 1.0);
+    const cosineDecay = 0.5 * (1.0 + Math.cos(Math.PI * progress));
+    const minLR = maxLR * 0.05; // Decay to 5% of max LR for final fine-tuning
+    
+    return minLR + (maxLR - minLR) * cosineDecay;
+}
+
+// --- AUXILIARY LOSS COEFFICIENT SCHEDULE ---
+function getAuxCoefficient(iter, maxCoeff, decayStartSteps, totalSteps) {
+    // Warmup aux losses gradually (too strong initially can hurt learning)
+    const warmupSteps = Math.min(100, decayStartSteps / 4);
+    if (iter < warmupSteps) {
+        return maxCoeff * (iter / warmupSteps);
+    }
+    
+    // Hold at max value during main training
+    if (iter < decayStartSteps) {
+        return maxCoeff;
+    }
+    
+    // Linear decay to 0 in final phase (allows specialization)
+    const decayProgress = (iter - decayStartSteps) / (totalSteps - decayStartSteps);
+    return maxCoeff * Math.max(0, 1.0 - decayProgress);
+}
+
+// --- TRAINING LOOP (With Aux Loss & Temporal Entropy) ---
 
 function trainStep() {
     if (!model) initModel();
     const text = els.input.value;
-    const lr = parseFloat(els.learnRate.value);
+    const maxLR = parseFloat(els.learnRate.value);
+    const warmupSteps = parseInt(els.warmupSteps.value);
+    const totalSteps = parseInt(els.decaySteps.value);
+    const lr = getLearningRate(iter, maxLR, warmupSteps, totalSteps);
     const hSize = parseInt(els.hiddenSize.value);
     const nExp = parseInt(els.numExperts.value);
     const topK = parseInt(els.topK.value);
-    const seqLength = 16;
-    const lambda = 0.05; // Aux loss weight
+    const batchSize = parseInt(els.batchSize.value) || 1;
+    
+    // Curriculum: gradually increase sequence length
+    const seqLength = Math.min(16, 8 + Math.floor(iter / 500));
+    
+    // Aux loss coefficients with scheduling
+    const maxLambda = parseFloat(els.lambdaBal.value);
+    const maxGamma = parseFloat(els.gammaEnt.value);
+    const auxDecayStart = Math.floor(totalSteps * 0.8); // Start decay at 80% of training
+    const lambda = getAuxCoefficient(iter, maxLambda, auxDecayStart, totalSteps);
+    const gamma = getAuxCoefficient(iter, maxGamma, auxDecayStart, totalSteps);
     
     if (iter % 200 === 0) expertUsage.fill(0);
 
@@ -766,14 +1074,14 @@ function trainStep() {
         let loss = 0;
         let prev = {}; 
         let batchProbs = []; // Track for Aux Loss
+        batchAccumCount++;
 
         for (let t = 0; t < seqLength; t++) {
             const charIx = charToIx[text[dataIdx + t]];
             const targetIx = charToIx[text[dataIdx + t + 1]];
             if (charIx === undefined || targetIx === undefined) continue;
 
-            const x = getOneHot(charIx, vocab.length);
-            const result = forwardMoEGRU(G, model, hSize, nExp, topK, x, prev);
+            const result = forwardMoEGRU(G, model, hSize, nExp, topK, charIx, prev);
             prev = result;
             
             // Collect Probs
@@ -783,13 +1091,25 @@ function trainStep() {
             result.indices.forEach(idx => expertUsage[idx]++);
 
             const probs = Utils.softmax(result.o.w);
-            loss += -Math.log(probs[targetIx]);
-            result.o.dw = new Float64Array(probs);
-            result.o.dw[targetIx] -= 1;
+            // Safe log with clamping to prevent -Inf
+            const targetProb = Math.max(probs[targetIx], 1e-10);
+            loss += -Math.log(targetProb);
+            // Set gradient with label smoothing: d(CrossEntropy)/d(logit) = softmax - smoothed_target
+            // Label smoothing prevents overconfidence and improves generalization
+            const smoothing = 0.05; // Reduced from 0.1 for lower loss values
+            const smoothedTarget = 1.0 - smoothing;
+            const smoothedNonTarget = smoothing / (probs.length - 1);
+            for(let i = 0; i < probs.length; i++) {
+                if (i === targetIx) {
+                    result.o.dw[i] = probs[i] - smoothedTarget;
+                } else {
+                    result.o.dw[i] = probs[i] - smoothedNonTarget;
+                }
+            }
         }
 
         // --- LOAD BALANCING AUX LOSS ---
-        if (batchProbs.length > 0) {
+        if (batchProbs.length > 0 && lambda > 0) {
             const T = batchProbs.length;
             const targetP = 1.0 / nExp;
             
@@ -813,11 +1133,92 @@ function trainStep() {
             }
         }
 
-        smoothLoss = smoothLoss * 0.99 + (loss/seqLength) * 0.01;
+        // --- TEMPORAL ENTROPY LOSS ---
+        if (batchProbs.length > 1 && gamma > 0) {
+            const T = batchProbs.length;
+            
+            // Compute entropy at each timestep and inject gradients
+            for(let t = 0; t < T; t++) {
+                for(let e = 0; e < nExp; e++) {
+                    const p = batchProbs[t].w[e];
+                    if(p > 1e-8) {
+                        // Gradient of -H (negative entropy): d(-H)/dp = log(p) + 1
+                        // We want to maximize entropy (diverse routing), so minimize -H
+                        batchProbs[t].dw[e] += gamma * (Math.log(p) + 1) / T;
+                    }
+                }
+            }
+        }
+
+        smoothLoss = smoothLoss * 0.995 + (loss/seqLength) * 0.005;
+        
+        // Check for NaN/Inf before backward pass
+        if (!isFinite(loss) || !isFinite(smoothLoss)) {
+            console.warn('Loss became non-finite, resetting model...');
+            initModel();
+            return;
+        }
+        
         G.backward();
-        solver.step(model, lr, 0.01, 5.0);
+        
+        // Apply optimizer step only after accumulating batch_size gradients
+        if (batchAccumCount >= batchSize) {
+            // Average gradients over batch
+            for (const k in model) {
+                if (Object.prototype.hasOwnProperty.call(model, k)) {
+                    const mat = model[k];
+                    for (let i = 0; i < mat.dw.length; i++) {
+                        mat.dw[i] /= batchSize;
+                    }
+                }
+            }
+            
+            solver.step(model, lr, 0.01, 10.0);
+            batchAccumCount = 0;
+            
+            // Increment iteration counter only when weights are actually updated
+            iter++;
+            
+            // Debug: Log gradient norms every 100 iterations
+            if (iter % 100 === 0) {
+                let totalGradNorm = 0;
+                let paramCount = 0;
+                for (const k in model) {
+                    if (Object.prototype.hasOwnProperty.call(model, k)) {
+                        const mat = model[k];
+                        for (let i = 0; i < mat.w.length; i++) {
+                            totalGradNorm += mat.w[i] * mat.w[i];
+                            paramCount++;
+                        }
+                    }
+                }
+                const rms = Math.sqrt(totalGradNorm / paramCount);
+                console.log(`Iter ${iter}: Loss=${smoothLoss.toFixed(4)}, Param RMS=${rms.toFixed(6)}, LR=${lr.toExponential(2)}`);
+            }
+        }
+        
+        // Verify model weights are still finite
+        let hasNaN = false;
+        for (const k in model) {
+            if (Object.prototype.hasOwnProperty.call(model, k)) {
+                const mat = model[k];
+                for (let i = 0; i < mat.w.length; i++) {
+                    if (!isFinite(mat.w[i])) {
+                        hasNaN = true;
+                        break;
+                    }
+                }
+                if (hasNaN) break;
+            }
+        }
+        
+        if (hasNaN) {
+            console.warn('Model weights became non-finite, resetting...');
+            initModel();
+            return;
+        }
+        
         dataIdx += seqLength;
-        iter++;
     }
 
     lossHistory.push(smoothLoss);
@@ -843,9 +1244,9 @@ async function generateResponse(query, onChar) {
     for (let i = 0; i < inputSeq.length; i++) {
         const ch = inputSeq[i];
         if (!charToIx.hasOwnProperty(ch)) continue;
-        const x = getOneHot(charToIx[ch], vocab.length);
+        const charIx = charToIx[ch];
         const G = new Graph(false); 
-        prev = forwardMoEGRU(G, model, hSize, nExp, topK, x, prev);
+        prev = forwardMoEGRU(G, model, hSize, nExp, topK, charIx, prev);
         
         prev.indices.forEach(idx => {
             const b = document.getElementById(`bar-${idx}`);
@@ -857,9 +1258,8 @@ async function generateResponse(query, onChar) {
     
     // Generate
     for (let i = 0; i < 150; i++) {
-        const x = getOneHot(lastCharIx, vocab.length);
         const G = new Graph(false);
-        const result = forwardMoEGRU(G, model, hSize, nExp, topK, x, prev);
+        const result = forwardMoEGRU(G, model, hSize, nExp, topK, lastCharIx, prev);
         prev = result;
         
         if(i % 5 === 0) {
