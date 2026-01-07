@@ -2,408 +2,340 @@
 <html lang="sk">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Generátor Platobného QR kódu</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Payme & QR Generátor</title>
 
-  <!-- Tailwind CSS from CDN -->
+  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- Vue.js 3 from CDN -->
+  <!-- Vue.js 3 -->
   <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
 
-  <!-- QRCode.js from CDN -->
+  <!-- QRCode.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   
-  <!-- bysquare library for Slovak QR Code generation -->
+  <!-- bysquare library -->
   <script type="module">
     import { encode } from "https://esm.sh/bysquare@latest";
-    window.bysquare = { encode }; // Make it available globally for the Vue app
+    window.bysquare = { encode };
   </script>
 
   <style>
-    /* Use system font stack for an Apple-like feel */
-    html {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
-    }
-    /* Custom scrollbar hiding for a cleaner carousel look */
-    .scrollbar-hide::-webkit-scrollbar {
-      display: none;
-    }
-    .scrollbar-hide {
-      -ms-overflow-style: none; /* IE and Edge */
-      scrollbar-width: none; /* Firefox */
-    }
-    /* Transition for modal */
-    .fade-enter-active,
-    .fade-leave-active {
-      transition: opacity 0.3s ease;
-    }
-    .fade-enter-from,
-    .fade-leave-to {
-      opacity: 0;
-    }
+    /* System Fonts */
+    html { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    
+    /* Hide Scrollbar */
+    .scrollbar-hide::-webkit-scrollbar { display: none; }
+    .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+    /* Animations */
+    .ease-spring { transition-timing-function: cubic-bezier(0.34, 1.3, 0.64, 1); }
+    .snap-center { scroll-snap-align: center; }
+    .snap-x { scroll-snap-type: x mandatory; }
   </style>
 </head>
-<body class="bg-gradient-to-br from-rose-100 to-teal-100">
+<body class="bg-slate-50 min-h-screen text-slate-800 flex items-center justify-center p-4">
 
-  <div id="app" class="max-w-2xl mx-auto p-6 sm:p-8 bg-white/70 rounded-2xl shadow-lg mt-10 mb-10 backdrop-filter backdrop-blur-xl border border-white/50">
-    <h1 class="text-3xl font-semibold text-center text-gray-900 mb-8 tracking-tight">Platobný QR kód</h1>
+  <div id="app" class="w-full max-w-md mx-auto pb-10">
+    
+    <!-- Header -->
+    <header class="flex justify-between items-center mb-6 px-2">
+      <h1 class="text-2xl font-bold text-slate-900 tracking-tight">Platba QR</h1>
+      <span class="text-xs font-mono text-indigo-400 bg-indigo-50 px-3 py-1 rounded-full">2025</span>
+    </header>
 
-    <!-- Profile Management Carousel -->
-    <div class="mb-8">
-      <h2 class="text-lg font-semibold mb-4 text-gray-800 px-1">Vyberte Profil</h2>
-      <div
-        ref="carouselContainer"
-        class="flex overflow-x-auto snap-x snap-mandatory space-x-4 p-2 -mx-2 scrollbar-hide"
-      >
-        <!-- Profile Cards -->
-        <div
-          v-for="profile in profiles"
-          :key="profile.name"
-          :ref="el => cardElements[profile.name] = el"
-          class="flex-shrink-0 w-4/5 sm:w-3/5 md:w-1/2 snap-center transition-all duration-300"
-        >
-          <!-- *** MODIFIED: Selected state now intensifies the base color *** -->
-          <div
-            class="h-full p-5 rounded-2xl transition-all duration-300 bg-clip-padding backdrop-filter backdrop-blur-md border border-white/30"
-            :class="selectedProfile === profile.name 
-              ? [
-                  'text-white shadow-lg',
-                  profile.type === 'company' ? 'bg-teal-500 bg-opacity-70' : 'bg-violet-500 bg-opacity-70'
-                ]
-              : [
-                  'text-gray-900',
-                  profile.type === 'company' ? 'bg-teal-100 bg-opacity-60' : 'bg-violet-100 bg-opacity-60'
-                ]"
-          >
-            <div class="flex justify-between items-start">
-              <h3 class="text-lg font-bold">{{ profile.name }}</h3>
-              <!-- *** MODIFIED: Badge colors adapt to the new selected state *** -->
-              <span class="px-2 py-1 text-xs font-medium rounded-full"
-                    :class="selectedProfile === profile.name 
-                      ? (profile.type === 'company' ? 'bg-teal-400/80 text-teal-50' : 'bg-violet-400/80 text-violet-50')
-                      : (profile.type === 'company' ? 'bg-teal-500/20 text-teal-900' : 'bg-violet-500/20 text-violet-900')">
-                {{ profile.type === 'personal' ? 'Osobný' : 'Firemný' }}
-              </span>
-            </div>
-             <!-- *** MODIFIED: Text colors adapt to the new selected state *** -->
-            <p class="text-sm mt-3" :class="selectedProfile === profile.name ? 'text-white/80' : 'text-gray-700'">
-              {{ profile.recipientName }}
-            </p>
-            <p class="text-sm font-mono mt-1" :class="selectedProfile === profile.name ? 'text-white/60' : 'text-gray-500'">{{ profile.iban }}</p>
-            <button @click="deleteProfile(profile.name)" class="mt-4 text-xs font-semibold transition-colors" :class="selectedProfile === profile.name ? 'text-white/70 hover:text-white' : 'text-gray-500 hover:text-red-500'">ODSTRÁNIŤ</button>
+    <!-- 1. ADD ACCOUNT FORM -->
+    <transition enter-active-class="transition duration-300 ease-out" enter-from-class="transform -translate-y-4 opacity-0" enter-to-class="transform translate-y-0 opacity-100" leave-active-class="transition duration-200 ease-in" leave-from-class="transform translate-y-0 opacity-100" leave-to-class="transform -translate-y-4 opacity-0">
+      <div v-if="isAddingProfile" class="mb-6 bg-white p-6 rounded-[2rem] shadow-xl border border-indigo-100 relative z-30">
+          <div class="flex justify-between items-center mb-4">
+             <h3 class="font-bold text-slate-800 ml-1">Nový Účet</h3>
+             <button @click="isAddingProfile = false" class="text-xs text-slate-400 font-bold uppercase hover:text-slate-600 px-2">Zrušiť</button>
           </div>
+          <div class="space-y-3">
+            <input type="text" v-model="newProfile.name" placeholder="Názov (napr. Firma)" class="w-full bg-slate-50 border-0 rounded-2xl px-5 py-3.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-shadow">
+            <input type="text" v-model="newProfile.recipientName" placeholder="Meno príjemcu" class="w-full bg-slate-50 border-0 rounded-2xl px-5 py-3.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-shadow">
+            <input type="text" v-model="newProfile.iban" placeholder="IBAN" class="w-full bg-slate-50 border-0 rounded-2xl px-5 py-3.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-shadow">
+          </div>
+          <button @click="saveProfile" class="w-full mt-5 bg-indigo-600 hover:bg-indigo-700 text-white py-3.5 rounded-full font-bold shadow-lg shadow-indigo-200 transition-all active:scale-95">Uložiť Účet</button>
+      </div>
+    </transition>
+
+    <!-- 2. MAIN CARD AREA -->
+    <div class="relative w-full aspect-[1.586/1] mb-8 z-10">
+        
+        <!-- A. CAROUSEL -->
+        <div 
+            class="absolute inset-0 w-full h-full transition-all duration-500 ease-spring"
+            :class="isQrVisible ? 'opacity-0 scale-90 pointer-events-none' : 'opacity-100 scale-100 z-20'"
+        >
+            <div 
+                ref="carouselRef"
+                class="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide w-full h-full items-center"
+            >
+                <!-- Profile Cards -->
+                <div 
+                    v-for="profile in profiles" 
+                    :key="profile.name"
+                    class="w-full h-full flex-shrink-0 snap-center relative px-0.5" 
+                    :data-profile="profile.name"
+                >
+                    <div class="w-full h-full bg-gradient-to-br from-indigo-600 to-violet-700 rounded-3xl text-white p-7 flex flex-col justify-between shadow-xl shadow-indigo-200 border border-white/10 overflow-hidden relative">
+                        <div class="absolute -top-10 -right-10 w-48 h-48 bg-white/10 rounded-full blur-3xl pointer-events-none"></div>
+                        
+                        <div class="flex justify-between items-start z-10">
+                            <div>
+                                <p class="text-indigo-200 text-[10px] font-bold tracking-wider uppercase mb-1">Účet</p>
+                                <h3 class="text-2xl font-bold truncate max-w-[200px] tracking-tight">{{ profile.name }}</h3>
+                            </div>
+                            <button @click.stop="deleteProfile(profile.name)" class="text-indigo-200 hover:text-white p-2 hover:bg-white/10 rounded-full transition-colors -mr-2 -mt-2">
+                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                            </button>
+                        </div>
+                        
+                        <div class="z-10">
+                            <p class="text-indigo-200 text-[10px] font-bold tracking-wider uppercase mb-1">IBAN</p>
+                            <div class="bg-black/20 px-3 py-2 rounded-xl backdrop-blur-sm border border-white/10 inline-block max-w-full">
+                                <p class="font-mono text-sm sm:text-base truncate">{{ profile.iban }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Add Button -->
+                <div class="w-full h-full flex-shrink-0 snap-center px-0.5">
+                    <button 
+                        @click="isAddingProfile = true"
+                        class="w-full h-full rounded-3xl border-2 border-dashed border-slate-300 bg-white hover:bg-slate-50 hover:border-indigo-400 text-slate-400 hover:text-indigo-600 transition flex flex-col items-center justify-center gap-3 group"
+                    >
+                        <div class="w-14 h-14 rounded-full bg-slate-100 group-hover:bg-indigo-100 flex items-center justify-center transition-colors">
+                            <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                        </div>
+                        <span class="font-bold text-sm">Pridať Účet</span>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="absolute -bottom-6 left-0 w-full flex justify-center gap-2" v-if="profiles.length > 1">
+                <div v-for="(p, idx) in profiles" :key="idx" class="h-1.5 rounded-full transition-all duration-300" :class="activeProfileName === p.name ? 'bg-indigo-600 w-4' : 'bg-slate-300 w-1.5'"></div>
+                <div class="w-1.5 h-1.5 rounded-full bg-slate-300"></div>
+            </div>
         </div>
 
-        <!-- Add New Profile Card -->
-        <div class="flex-shrink-0 w-4/5 sm:w-3/5 md:w-1/2 snap-center">
-          <button @click="showAddProfileModal" class="h-full w-full flex flex-col items-center justify-center p-5 rounded-2xl border-2 border-dashed border-gray-500/40 hover:border-gray-500/80 text-gray-700 hover:text-gray-900 transition-all duration-300 bg-white/20 hover:bg-white/40 backdrop-filter backdrop-blur-sm">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v12m6-6H6" />
-            </svg>
-            <span class="mt-2 font-semibold">Pridať Profil</span>
-          </button>
+        <!-- B. QR RESULT -->
+        <div 
+            class="absolute inset-0 w-full h-full bg-white rounded-3xl border border-slate-200 p-6 flex items-center justify-between shadow-2xl transition-all duration-500 ease-spring"
+            :class="isQrVisible ? 'opacity-100 scale-100 z-30 translate-y-0' : 'opacity-0 scale-95 pointer-events-none translate-y-4'"
+        >
+            <div class="h-full aspect-square bg-white rounded-2xl flex items-center justify-center relative flex-shrink-0">
+                <div ref="qrcodeContainer" class="mix-blend-multiply"></div>
+            </div>
+
+            <div class="flex-1 pl-5 flex flex-col justify-between items-end text-right h-full py-2">
+                <div>
+                    <span class="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Spolu</span>
+                    <p class="text-3xl font-extrabold text-indigo-600 tracking-tighter leading-none">
+                        {{ payment.amount ? Number(payment.amount).toFixed(2) : '0.00' }}€
+                    </p>
+                </div>
+
+                <div class="w-full">
+                    <!-- Prominent Payme Button (Solo) -->
+                    <button @click="copyPaymeLink" class="w-full py-3 px-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-sm font-bold shadow-md shadow-indigo-200 transition-all flex items-center justify-center gap-2 active:scale-95">
+                        <span v-if="!paymeLinkCopied">Payme Link</span>
+                        <span v-else>Skopírované!</span>
+                        <svg v-if="!paymeLinkCopied" class="w-4 h-4 text-indigo-200" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
+                    </button>
+                </div>
+            </div>
         </div>
-      </div>
     </div>
 
-    <!-- Payment Details Form -->
-    <form @submit.prevent="generateQRCode" class="space-y-5">
-      <div>
-        <label for="amount" class="block text-sm font-medium text-gray-600 mb-1">Suma</label>
-        <input type="number" step="0.01" id="amount" v-model="payment.amount" required class="mt-1 block w-full p-3 text-lg bg-gray-50/50 border border-gray-500/20 rounded-lg focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition">
-      </div>
-      
-      <div>
-        <label for="vs" class="block text-sm font-medium text-gray-600 mb-1">Variabilný Symbol</label>
-        <input type="text" id="vs" v-model="payment.vs" maxlength="10" class="mt-1 block w-full p-3 bg-gray-500/20 border-transparent text-gray-500 rounded-lg cursor-not-allowed" readonly>
-      </div>
-
-      <div>
-        <label for="msg" class="block text-sm font-medium text-gray-600 mb-1">Správa pre Prijímateľa (nepovinné)</label>
-        <input type="text" id="msg" v-model="payment.msg" class="mt-1 block w-full p-3 bg-gray-50/50 border border-gray-500/20 rounded-lg focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition">
-      </div>
-      <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-full transition-colors text-lg disabled:bg-gray-400/50" :disabled="!selectedProfile">Vygenerovať QR kód</button>
-    </form>
-    
-    <!-- Add Profile Modal -->
-    <transition name="fade">
-      <div v-if="isAddProfileModalVisible" @click="closeAddProfileModal" class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-        <div @click.stop class="bg-white p-8 rounded-2xl shadow-2xl max-w-sm w-full">
-            <h3 class="text-xl font-semibold text-gray-900 mb-5">Vytvoriť Nový Profil</h3>
-            <div class="mb-4">
-              <label class="block text-sm font-medium text-gray-500 mb-2">Typ profilu</label>
-              <div class="flex gap-2 p-1 bg-gray-200 rounded-full">
-                <button type="button" @click="newProfile.type = 'personal'" class="w-full py-2 rounded-full text-sm font-semibold transition-all" :class="newProfile.type === 'personal' ? 'bg-white text-gray-800 shadow' : 'text-gray-600'">Osobný</button>
-                <button type="button" @click="newProfile.type = 'company'" class="w-full py-2 rounded-full text-sm font-semibold transition-all" :class="newProfile.type === 'company' ? 'bg-white text-gray-800 shadow' : 'text-gray-600'">Firemný</button>
-              </div>
-            </div>
-            <div class="space-y-3">
-              <input type="text" v-model="newProfile.name" placeholder="Názov profilu (napr. 'Môj účet')" class="block w-full p-3 bg-gray-100 border-transparent rounded-lg focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition">
-              <input type="text" v-model="newProfile.recipientName" :placeholder="newProfile.type === 'personal' ? 'Meno Príjemcu' : 'Názov Spoločnosti'" class="block w-full p-3 bg-gray-100 border-transparent rounded-lg focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition">
-              <input type="text" v-model="newProfile.iban" placeholder="IBAN" class="block w-full p-3 bg-gray-100 border-transparent rounded-lg focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition">
-            </div>
-            <div class="flex gap-3 mt-8">
-              <button @click="closeAddProfileModal" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-3 px-4 rounded-full transition-colors">Zrušiť</button>
-              <button @click="saveProfile" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-full transition-colors">Uložiť Profil</button>
+    <!-- 3. INPUTS (Redesigned: Same Size) -->
+    <div class="space-y-3 px-2 mt-10 transition-all duration-500" :class="isQrVisible ? 'opacity-40 blur-[1px] pointer-events-none' : 'opacity-100'">
+        
+        <!-- Suma -->
+        <div class="h-20 bg-white px-5 rounded-[1.25rem] shadow-sm border border-slate-200 flex flex-col justify-center relative focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/20 transition-all">
+            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Suma</label>
+            <div class="flex items-center">
+                <input type="number" step="0.01" v-model="payment.amount" class="w-full text-xl font-bold text-slate-800 outline-none bg-transparent placeholder-slate-300" placeholder="0.00">
+                <span class="text-xl font-bold text-slate-300 ml-2">€</span>
             </div>
         </div>
-      </div>
-    </transition>
 
-    <!-- QR Code Modal -->
-    <transition name="fade">
-      <div v-if="isQrModalVisible" @click="closeQrModal" class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-        <div @click.stop class="bg-white p-8 rounded-2xl shadow-2xl text-center max-w-sm w-full">
-          <h3 class="text-xl font-semibold mb-5 text-gray-900">Naskenujte pre platbu</h3>
-          
-          <div ref="modalQrcodeContainer" class="flex justify-center bg-gray-50 p-4 rounded-lg"></div>
-          
-          <div class="mt-6 text-left border-t border-gray-200 pt-6 space-y-4">
-            <div>
-              <span class="text-xs font-medium text-gray-500">PRÍJEMCA</span>
-              <p class="text-gray-800 font-semibold text-lg">{{ payment.name }}</p>
-            </div>
-            <div>
-              <span class="text-xs font-medium text-gray-500">IBAN</span>
-              <p class="font-mono text-sm text-gray-600">{{ payment.iban }}</p>
-            </div>
-            <div class="flex justify-between items-baseline pt-2">
-              <div>
-                <span class="text-xs font-medium text-gray-500">SUMA</span>
-                <p class="text-3xl font-bold text-blue-600">{{ payment.amount.toFixed(2) }} EUR</p>
-              </div>
-              <div class="text-right">
-                <span class="text-xs font-medium text-gray-500">VS</span>
-                <p class="font-mono text-gray-600">{{ payment.vs }}</p>
-              </div>
-            </div>
-            <div v-if="payment.msg" class="pt-2">
-              <span class="text-xs font-medium text-gray-500">SPRÁVA</span>
-              <p class="text-gray-700 italic bg-gray-100 p-3 rounded-md mt-1">"{{ payment.msg }}"</p>
-            </div>
-          </div>
-
-          <div class="flex gap-3 mt-8">
-            <button @click="closeQrModal" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-3 px-4 rounded-full transition-colors">Zrušiť</button>
-            <button @click="confirmPayment" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-full transition-colors">Hotovo</button>
-          </div>
+        <!-- VS -->
+        <div class="h-20 bg-white px-5 rounded-[1.25rem] shadow-sm border border-slate-200 flex flex-col justify-center relative focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/20 transition-all">
+            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">VS</label>
+            <input type="text" v-model="payment.vs" maxlength="10" placeholder="----" class="w-full text-xl font-bold text-slate-800 font-mono outline-none bg-transparent placeholder-slate-300">
+            <button @click="generateVariableSymbol" class="absolute top-1/2 -translate-y-1/2 right-4 text-slate-300 hover:text-indigo-600 transition p-2 hover:bg-indigo-50 rounded-full mt-1">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+            </button>
         </div>
-      </div>
-    </transition>
+
+        <!-- Správa -->
+        <div class="h-20 bg-white px-5 rounded-[1.25rem] shadow-sm border border-slate-200 flex flex-col justify-center relative focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/20 transition-all">
+            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Správa</label>
+            <input type="text" v-model="payment.msg" placeholder="Poznámka..." class="w-full text-lg font-bold text-slate-800 outline-none bg-transparent placeholder-slate-300 truncate">
+        </div>
+    </div>
+
+    <!-- 4. ACTION BUTTON (Swaps between Generate and Close) -->
+    <div class="mt-4 px-1 relative h-16">
+        <transition 
+          mode="out-in"
+          enter-active-class="transition duration-200 ease-out" 
+          enter-from-class="transform scale-90 opacity-0" 
+          enter-to-class="transform scale-100 opacity-100" 
+          leave-active-class="transition duration-150 ease-in" 
+          leave-from-class="transform scale-100 opacity-100" 
+          leave-to-class="transform scale-90 opacity-0"
+        >
+            <button 
+                v-if="!isQrVisible"
+                key="generate"
+                @click="generateQRCode" 
+                :disabled="!activeProfileName || !payment.amount"
+                class="absolute inset-0 w-full h-full rounded-full font-bold text-lg shadow-xl shadow-indigo-200 bg-indigo-600 text-white hover:bg-indigo-700 disabled:bg-slate-300 disabled:shadow-none disabled:cursor-not-allowed z-20"
+            >
+                Vygenerovať QR kód
+            </button>
+            
+            <button 
+                v-else
+                key="close"
+                @click="closeQr" 
+                class="absolute inset-0 w-full h-full rounded-full font-bold text-lg shadow-xl shadow-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800 border-2 border-slate-200 z-20"
+            >
+                Zatvoriť
+            </button>
+        </transition>
+    </div>
+
   </div>
 
   <script type="module">
-    const { createApp, ref, onMounted, onBeforeUpdate, watch, nextTick } = Vue;
+    const { createApp, ref, onMounted, watch, nextTick } = Vue;
 
     createApp({
       setup() {
-        const payment = ref({
-          iban: '',
-          name: '',
-          amount: 25.00,
-          vs: '',
-          msg: ''
-        });
-
+        // Elements
+        const carouselRef = ref(null);
+        const qrcodeContainer = ref(null);
+        
+        // App State
+        const isAddingProfile = ref(false);
+        const isQrVisible = ref(false);
+        const paymeLinkCopied = ref(false);
+        const activeProfileName = ref('');
         const profiles = ref([]);
-        const selectedProfile = ref('');
-        const carouselContainer = ref(null);
-        const cardElements = ref({});
         
-        const isAddProfileModalVisible = ref(false);
-        const isQrModalVisible = ref(false);
-        
-        const newProfile = ref({ name: '', recipientName: '', iban: '', type: 'personal' });
-        const modalQrcodeContainer = ref(null);
+        // Data - Inputs not pre-filled
+        const payment = ref({ amount: '', vs: '', msg: '' });
+        const newProfile = ref({ name: '', recipientName: '', iban: '' });
 
-        onBeforeUpdate(() => {
-          cardElements.value = {};
+        // INIT
+        onMounted(() => {
+            const stored = localStorage.getItem('payment_profiles_v2');
+            if (stored) profiles.value = JSON.parse(stored);
+            if (profiles.value.length > 0) activeProfileName.value = profiles.value[0].name;
+            
+            setupCarouselObserver();
         });
 
-        const loadProfilesFromStorage = () => {
-          const storedProfiles = localStorage.getItem('payment_profiles_v2');
-          if (storedProfiles) {
-            profiles.value = JSON.parse(storedProfiles);
-          }
+        const closeQr = () => {
+            isQrVisible.value = false;
         };
 
-        const saveProfilesToStorage = () => {
-          localStorage.setItem('payment_profiles_v2', JSON.stringify(profiles.value));
+        // --- CAROUSEL & QR ---
+        const setupCarouselObserver = () => {
+             if (!carouselRef.value) return;
+             const observer = new IntersectionObserver((entries) => {
+                 entries.forEach(entry => {
+                     if (entry.isIntersecting) {
+                         const name = entry.target.getAttribute('data-profile');
+                         activeProfileName.value = name || '';
+                     }
+                 });
+             }, { root: carouselRef.value, threshold: 0.6 });
+             Array.from(carouselRef.value.children).forEach(child => observer.observe(child));
         };
         
-        const generateVariableSymbol = () => {
-            payment.value.vs = String(Date.now()).slice(-10);
-        };
+        watch(() => profiles.value.length, () => nextTick(setupCarouselObserver));
 
-        const setupIntersectionObserver = () => {
-            const options = {
-                root: carouselContainer.value,
-                rootMargin: '0px',
-                threshold: 0.75
-            };
-            const observer = new IntersectionObserver((entries) => {
-                entries.forEach(entry => {
-                    if (entry.isIntersecting) {
-                        const profileName = Object.keys(cardElements.value).find(key => cardElements.value[key] === entry.target);
-                        if (profileName) {
-                            selectedProfile.value = profileName;
-                        }
-                    }
-                });
-            }, options);
-            Object.values(cardElements.value).forEach(card => {
-              if (card) observer.observe(card);
+        const generateVariableSymbol = () => payment.value.vs = String(Date.now()).slice(-10);
+
+        const saveProfile = () => {
+            const { name, recipientName, iban } = newProfile.value;
+            if(!name || !recipientName || !iban) return alert("Vyplňte všetky údaje");
+            profiles.value.push({ ...newProfile.value });
+            localStorage.setItem('payment_profiles_v2', JSON.stringify(profiles.value));
+            isAddingProfile.value = false;
+            newProfile.value = { name: '', recipientName: '', iban: '' };
+            nextTick(() => {
+                const el = carouselRef.value.children[profiles.value.length - 1]; 
+                if(el) el.scrollIntoView({ behavior: 'smooth', inline: 'center' });
             });
         };
 
-        const showAddProfileModal = () => {
-          isAddProfileModalVisible.value = true;
+        const deleteProfile = (name) => {
+            if(!confirm("Zmazať účet?")) return;
+            profiles.value = profiles.value.filter(p => p.name !== name);
+            localStorage.setItem('payment_profiles_v2', JSON.stringify(profiles.value));
+            activeProfileName.value = profiles.value.length > 0 ? profiles.value[0].name : '';
         };
 
-        const closeAddProfileModal = () => {
-          isAddProfileModalVisible.value = false;
-          newProfile.value = { name: '', recipientName: '', iban: '', type: 'personal' };
-        };
-
-        const saveProfile = async () => {
-          const name = newProfile.value.name.trim();
-          const recipientName = newProfile.value.recipientName.trim();
-          const iban = newProfile.value.iban.trim();
-          const type = newProfile.value.type;
-
-          if (!name || !recipientName || !iban) {
-            alert('Všetky polia profilu musia byť vyplnené.');
-            return;
-          }
-          if (profiles.value.some(p => p.name === name)) {
-            alert('Profil s týmto názvom už existuje.');
-            return;
-          }
-
-          profiles.value.push({ name, recipientName, iban, type });
-          saveProfilesToStorage();
-          closeAddProfileModal();
-
-          await nextTick();
-          
-          const newCard = cardElements.value[name];
-          if(newCard) {
-            newCard.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-          }
-          setupIntersectionObserver();
-        };
-
-        const deleteProfile = (profileNameToDelete) => {
-          if (confirm(`Naozaj chcete odstrániť profil "${profileNameToDelete}"?`)) {
-            const index = profiles.value.findIndex(p => p.name === profileNameToDelete);
-            profiles.value = profiles.value.filter(p => p.name !== profileNameToDelete);
-            
-            if (selectedProfile.value === profileNameToDelete) {
-              const newIndex = Math.max(0, index - 1);
-              selectedProfile.value = profiles.value[newIndex]?.name || '';
-            }
-            saveProfilesToStorage();
-            
-            nextTick().then(setupIntersectionObserver);
-          }
-        };
-        
-        watch(selectedProfile, (newSelectedName) => {
-          const profile = profiles.value.find(p => p.name === newSelectedName);
-          if (profile) {
-            payment.value.iban = profile.iban;
-            payment.value.name = profile.recipientName;
-          } else {
-             payment.value.iban = '';
-             payment.value.name = '';
-          }
-          generateVariableSymbol();
-        });
-
-        const closeQrModal = () => {
-          isQrModalVisible.value = false;
-        };
-
-        const confirmPayment = () => {
-          alert('Platba potvrdená.');
-          closeQrModal();
-          generateVariableSymbol(); 
-        };
+        const getActiveProfileData = () => profiles.value.find(p => p.name === activeProfileName.value);
 
         const generateQRCode = async () => {
-          if (!selectedProfile.value) {
-             alert('Prosím, vyberte platobný profil.');
-             return;
-          }
+          if(!activeProfileName.value) return alert("Vyberte alebo vytvorte účet");
+          if(!payment.value.amount) return alert("Zadajte sumu");
           
-          isQrModalVisible.value = true;
-          
+          isQrVisible.value = true;
+
           await nextTick();
-
-          modalQrcodeContainer.value.innerHTML = '';
-
+          if (!qrcodeContainer.value) return;
+          
+          qrcodeContainer.value.innerHTML = '';
+          const profile = getActiveProfileData();
+          
           try {
             const paymentData = {
-              type: 1, 
-              amount: payment.value.amount,
-              currencyCode: "EUR",
-              variableSymbol: payment.value.vs.trim(),
-              paymentNote: payment.value.msg.trim(),
-              beneficiaryName: payment.value.name.trim(),
-              bankAccounts: [{ iban: payment.value.iban.trim() }],
+              type: 1, amount: Number(payment.value.amount), currencyCode: "EUR",
+              variableSymbol: payment.value.vs ? payment.value.vs.trim() : undefined, 
+              paymentNote: payment.value.msg ? payment.value.msg.trim() : undefined,
+              beneficiaryName: profile.recipientName.trim(), bankAccounts: [{ iban: profile.iban.trim() }],
             };
-
+            // Clean undefined
             if (!paymentData.variableSymbol) delete paymentData.variableSymbol;
             if (!paymentData.paymentNote) delete paymentData.paymentNote;
 
-            const qrData = window.bysquare.encode({
-              payments: [paymentData],
-            });
-
-            new QRCode(modalQrcodeContainer.value, {
-              text: qrData,
-              width: 256,
-              height: 256,
-              colorDark: "#111827",
-              colorLight: "#f9fafb",
-              correctLevel: QRCode.CorrectLevel.M
-            });
-
-          } catch (error) {
-            console.error("Failed to generate QR code:", error);
-            modalQrcodeContainer.value.innerHTML = '<p class="text-red-500">Chyba pri generovaní QR kódu. Skontrolujte zadané údaje.</p>';
-          }
+            const qrData = window.bysquare.encode({ payments: [paymentData] });
+            new QRCode(qrcodeContainer.value, { text: qrData, width: 140, height: 140, colorDark: "#1e293b", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.L });
+          } catch (e) { console.error(e); }
         };
 
-        onMounted(async () => {
-            loadProfilesFromStorage();
-            await nextTick();
-            setupIntersectionObserver();
-            if (profiles.value.length > 0) {
-              selectedProfile.value = profiles.value[0].name;
-            } else {
-              generateVariableSymbol();
+        const copyPaymeLink = async () => {
+            const profile = getActiveProfileData();
+            if(!profile) return;
+            const params = new URLSearchParams({ V: '1', IBAN: profile.iban.replace(/\s/g, ''), AM: Number(payment.value.amount).toFixed(2), CC: 'EUR' });
+            if(payment.value.vs) params.append('PI', '/VS'+payment.value.vs);
+            if(profile.recipientName) params.append('CN', profile.recipientName);
+            const url = `https://payme.sk?${params.toString()}`;
+            try { await navigator.clipboard.writeText(url); paymeLinkCopied.value = true; setTimeout(() => paymeLinkCopied.value = false, 2000); } catch(e) { alert(url); }
+        };
+
+        watch(payment, () => {
+            if(isQrVisible.value) {
+                if(window.t) clearTimeout(window.t);
+                window.t = setTimeout(generateQRCode, 300);
             }
-        });
+        }, { deep: true });
 
         return {
-          payment,
-          profiles,
-          selectedProfile,
-          carouselContainer,
-          cardElements,
-          isAddProfileModalVisible,
-          isQrModalVisible,
-          newProfile,
-          modalQrcodeContainer,
-          closeQrModal,
-          confirmPayment,
-          showAddProfileModal,
-          closeAddProfileModal,
-          saveProfile,
-          deleteProfile,
-          generateQRCode,
+          carouselRef, qrcodeContainer,
+          isAddingProfile, isQrVisible, paymeLinkCopied,
+          payment, newProfile, profiles, activeProfileName,
+          saveProfile, deleteProfile, generateVariableSymbol, generateQRCode, copyPaymeLink,
+          closeQr
         };
       }
     }).mount('#app');
