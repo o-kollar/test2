@@ -1,0 +1,2071 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Payme & QR Generátor</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            accent: {
+              50: 'rgb(var(--accent-50) / <alpha-value>)',
+              100: 'rgb(var(--accent-100) / <alpha-value>)',
+              200: 'rgb(var(--accent-200) / <alpha-value>)',
+              300: 'rgb(var(--accent-300) / <alpha-value>)',
+              400: 'rgb(var(--accent-400) / <alpha-value>)',
+              500: 'rgb(var(--accent-500) / <alpha-value>)',
+              600: 'rgb(var(--accent-600) / <alpha-value>)',
+              700: 'rgb(var(--accent-700) / <alpha-value>)',
+              800: 'rgb(var(--accent-800) / <alpha-value>)',
+              900: 'rgb(var(--accent-900) / <alpha-value>)',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Vue.js 3 -->
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+
+  <!-- QRCode.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  
+  <!-- bysquare library -->
+  <script type="module">
+    import { encode } from "https://esm.sh/bysquare@latest";
+    window.bysquare = { encode };
+  </script>
+
+  <script>
+    // IndexedDB wrapper for application data
+    const DB_NAME = 'PaymeQRDatabase';
+    const DB_VERSION = 1;
+    const STORE_NAME = 'appData';
+
+    class IndexedDBStorage {
+      constructor() {
+        this.db = null;
+      }
+
+      async init() {
+        return new Promise((resolve, reject) => {
+          const request = indexedDB.open(DB_NAME, DB_VERSION);
+          
+          request.onerror = () => reject(request.error);
+          request.onsuccess = () => {
+            this.db = request.result;
+            resolve(this.db);
+          };
+          
+          request.onupgradeneeded = (event) => {
+            const db = event.target.result;
+            if (!db.objectStoreNames.contains(STORE_NAME)) {
+              db.createObjectStore(STORE_NAME);
+            }
+          };
+        });
+      }
+
+      async getItem(key) {
+        return new Promise((resolve, reject) => {
+          const transaction = this.db.transaction([STORE_NAME], 'readonly');
+          const store = transaction.objectStore(STORE_NAME);
+          const request = store.get(key);
+          
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () => reject(request.error);
+        });
+      }
+
+      async setItem(key, value) {
+        return new Promise((resolve, reject) => {
+          const transaction = this.db.transaction([STORE_NAME], 'readwrite');
+          const store = transaction.objectStore(STORE_NAME);
+          const request = store.put(value, key);
+          
+          request.onsuccess = () => resolve();
+          request.onerror = () => reject(request.error);
+        });
+      }
+
+      async removeItem(key) {
+        return new Promise((resolve, reject) => {
+          const transaction = this.db.transaction([STORE_NAME], 'readwrite');
+          const store = transaction.objectStore(STORE_NAME);
+          const request = store.delete(key);
+          
+          request.onsuccess = () => resolve();
+          request.onerror = () => reject(request.error);
+        });
+      }
+    }
+
+    // Create global instance
+    window.dbStorage = new IndexedDBStorage();
+  </script>
+
+  <style>
+    /* System Fonts */
+    html { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    
+    /* Hide Scrollbar */
+    .scrollbar-hide::-webkit-scrollbar { display: none; }
+    .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+    /* Animations */
+    .ease-spring { transition-timing-function: cubic-bezier(0.34, 1.3, 0.64, 1); }
+    .snap-center { scroll-snap-align: center; }
+    .snap-x { scroll-snap-type: x mandatory; }
+    
+    /* Accent Color Variables - Default: Indigo */
+    :root {
+      --accent-50: 238 242 255;
+      --accent-100: 224 231 255;
+      --accent-200: 199 210 254;
+      --accent-300: 165 180 252;
+      --accent-400: 129 140 248;
+      --accent-500: 99 102 241;
+      --accent-600: 79 70 229;
+      --accent-700: 67 56 202;
+      --accent-800: 55 48 163;
+      --accent-900: 49 46 129;
+    }
+    
+    /* Accent: Rose */
+    .accent-rose {
+      --accent-50: 255 241 242;
+      --accent-100: 255 228 230;
+      --accent-200: 254 205 211;
+      --accent-300: 253 164 175;
+      --accent-400: 251 113 133;
+      --accent-500: 244 63 94;
+      --accent-600: 225 29 72;
+      --accent-700: 190 18 60;
+      --accent-800: 159 18 57;
+      --accent-900: 136 19 55;
+    }
+    
+    /* Accent: Emerald */
+    .accent-emerald {
+      --accent-50: 236 253 245;
+      --accent-100: 209 250 229;
+      --accent-200: 167 243 208;
+      --accent-300: 110 231 183;
+      --accent-400: 52 211 153;
+      --accent-500: 16 185 129;
+      --accent-600: 5 150 105;
+      --accent-700: 4 120 87;
+      --accent-800: 6 95 70;
+      --accent-900: 6 78 59;
+    }
+    
+    /* Accent: Amber */
+    .accent-amber {
+      --accent-50: 255 251 235;
+      --accent-100: 254 243 199;
+      --accent-200: 253 230 138;
+      --accent-300: 252 211 77;
+      --accent-400: 251 191 36;
+      --accent-500: 245 158 11;
+      --accent-600: 217 119 6;
+      --accent-700: 180 83 9;
+      --accent-800: 146 64 14;
+      --accent-900: 120 53 15;
+    }
+    
+    /* Accent: Sky */
+    .accent-sky {
+      --accent-50: 240 249 255;
+      --accent-100: 224 242 254;
+      --accent-200: 186 230 253;
+      --accent-300: 125 211 252;
+      --accent-400: 56 189 248;
+      --accent-500: 14 165 233;
+      --accent-600: 2 132 199;
+      --accent-700: 3 105 161;
+      --accent-800: 7 89 133;
+      --accent-900: 12 74 110;
+    }
+    
+    /* Accent: Violet */
+    .accent-violet {
+      --accent-50: 245 243 255;
+      --accent-100: 237 233 254;
+      --accent-200: 221 214 254;
+      --accent-300: 196 181 253;
+      --accent-400: 167 139 250;
+      --accent-500: 139 92 246;
+      --accent-600: 124 58 237;
+      --accent-700: 109 40 217;
+      --accent-800: 91 33 182;
+      --accent-900: 76 29 149;
+    }
+    
+    /* Tutorial Styles */
+    .tutorial-overlay {
+      backdrop-filter: blur(2px);
+    }
+    
+    .tutorial-highlight {
+      position: relative;
+      z-index: 60 !important;
+      box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.6), 0 0 0 9999px rgba(0, 0, 0, 0.75) !important;
+      border-radius: 1rem;
+      animation: tutorial-pulse 2s ease-in-out infinite;
+      pointer-events: none;
+    }
+    
+    .tutorial-highlight-card {
+      box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.6), 0 0 0 9999px rgba(0, 0, 0, 0.75) !important;
+      border-radius: 1.5rem;
+    }
+    
+    .tutorial-highlight-button {
+      box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.6), 0 0 0 9999px rgba(0, 0, 0, 0.75) !important;
+      border-radius: 9999px;
+    }
+    
+    .tutorial-highlight-input {
+      box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.6), 0 0 0 9999px rgba(0, 0, 0, 0.75) !important;
+      border-radius: 1.25rem;
+    }
+    
+    @keyframes tutorial-pulse {
+      0%, 100% { box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.6), 0 0 0 9999px rgba(0, 0, 0, 0.75); }
+      50% { box-shadow: 0 0 0 8px rgba(99, 102, 241, 0.4), 0 0 0 9999px rgba(0, 0, 0, 0.75); }
+    }
+    
+    .tutorial-bounce {
+      animation: tutorial-bounce 1s ease-in-out infinite;
+    }
+    
+    @keyframes tutorial-bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-5px); }
+    }
+    
+    .tutorial-tooltip {
+      position: fixed;
+      z-index: 70;
+      max-width: 320px;
+      animation: tooltip-appear 0.3s ease-out;
+    }
+    
+    @keyframes tooltip-appear {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-900 min-h-screen text-slate-800 dark:text-slate-200 flex items-center justify-center p-4 transition-colors duration-300">
+
+  <div id="app" class="w-full max-w-md mx-auto pb-10">
+    
+    <!-- TUTORIAL TOOLTIP OVERLAY -->
+    <div v-if="showTutorial" class="fixed inset-0 z-40 pointer-events-none"></div>
+    
+    <!-- Tutorial Tooltip -->
+    <transition enter-active-class="transition duration-300 ease-out" enter-from-class="opacity-0 translate-y-2" enter-to-class="opacity-100 translate-y-0" leave-active-class="transition duration-200 ease-in" leave-from-class="opacity-100" leave-to-class="opacity-0">
+      <div v-if="showTutorial" class="tutorial-tooltip" :style="tooltipPosition">
+        <!-- Tooltip Card -->
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+          <!-- Progress Bar -->
+          <div class="h-1 bg-slate-200 dark:bg-slate-700">
+            <div class="h-full bg-gradient-to-r from-accent-500 to-accent-600 transition-all duration-500" :style="{ width: ((tutorialStep + 1) / tutorialSteps.length * 100) + '%' }"></div>
+          </div>
+          
+          <!-- Content -->
+          <div class="p-4">
+            <!-- Header with Icon -->
+            <div class="flex items-start gap-3 mb-3">
+              <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 tutorial-bounce" :style="{ background: tutorialSteps[tutorialStep].color }">
+                <span class="text-xl">{{ tutorialSteps[tutorialStep].icon }}</span>
+              </div>
+              <div class="flex-1 min-w-0">
+                <h3 class="font-bold text-slate-800 dark:text-slate-200 text-sm">
+                  {{ tutorialSteps[tutorialStep].title }}
+                </h3>
+                <p class="text-slate-500 dark:text-slate-400 text-xs leading-relaxed mt-1">
+                  {{ tutorialSteps[tutorialStep].description }}
+                </p>
+              </div>
+            </div>
+            
+            <!-- Step Counter -->
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase">
+                Krok {{ tutorialStep + 1 }} z {{ tutorialSteps.length }}
+              </span>
+              <div class="flex gap-1">
+                <div v-for="(step, idx) in tutorialSteps" :key="idx" 
+                     class="w-1.5 h-1.5 rounded-full transition-all duration-300"
+                     :class="idx === tutorialStep ? 'bg-accent-500 w-4' : idx < tutorialStep ? 'bg-accent-300' : 'bg-slate-300 dark:bg-slate-600'">
+                </div>
+              </div>
+            </div>
+            
+            <!-- Buttons -->
+            <div class="flex gap-2">
+              <button v-if="tutorialStep > 0" @click="prevTutorialStep" class="flex-1 py-2 px-3 rounded-lg border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-400 text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+                Späť
+              </button>
+              <button v-else @click="skipTutorial" class="flex-1 py-2 px-3 rounded-lg border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-400 text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+                Preskočiť
+              </button>
+              <button @click="nextTutorialStep" class="flex-1 py-2 px-3 rounded-lg bg-accent-600 hover:bg-accent-700 text-white text-xs font-semibold shadow-lg shadow-accent-200 dark:shadow-accent-900/50 transition-all active:scale-95">
+                {{ tutorialStep === tutorialSteps.length - 1 ? 'Dokončiť' : 'Ďalej' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </transition>
+    
+    <!-- Header -->
+    <header class="flex justify-between items-center mb-6 px-2" :class="{ 'relative z-50': showTutorial && tutorialStep === 7 }">
+      <div class="flex items-center gap-2">
+        <button ref="settingsBtn" @click="showSettings = !showSettings; showHistory = false; showTemplates = false; isQrVisible = false" class="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" :class="[showSettings ? 'bg-accent-100 dark:bg-accent-900 text-accent-600 dark:text-accent-400' : 'text-slate-400 dark:text-slate-500', showTutorial && tutorialStep === 7 ? 'tutorial-highlight-button' : '']">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+        </button>
+      </div>
+      <div class="flex items-center gap-2">
+        <button ref="templatesBtn" @click="showTemplates = !showTemplates; showHistory = false; showSettings = false; isQrVisible = false" class="relative p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" :class="[showTemplates ? 'bg-emerald-100 dark:bg-emerald-900 text-emerald-600 dark:text-emerald-400' : 'text-slate-400 dark:text-slate-500', showTutorial && tutorialStep === 5 ? 'tutorial-highlight-button' : '']">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" /></svg>
+        </button>
+        <button ref="historyBtn" @click="showHistory = !showHistory; showTemplates = false; showSettings = false; isQrVisible = false" class="relative p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" :class="[showHistory ? 'bg-accent-100 dark:bg-accent-900 text-accent-600 dark:text-accent-400' : 'text-slate-400 dark:text-slate-500', showTutorial && tutorialStep === 6 ? 'tutorial-highlight-button' : '']">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          <span v-if="unpaidPendingCount > 0" class="absolute -top-1 -right-1 w-4 h-4 bg-red-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center">{{ unpaidPendingCount > 99 ? '99' : unpaidPendingCount }}</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Panels moved to overlays in main card area -->
+
+    <!-- 1. ADD/EDIT ACCOUNT FORM -->
+    <transition enter-active-class="transition duration-300 ease-out" enter-from-class="transform -translate-y-4 opacity-0" enter-to-class="transform translate-y-0 opacity-100" leave-active-class="transition duration-200 ease-in" leave-from-class="transform translate-y-0 opacity-100" leave-to-class="transform -translate-y-4 opacity-0">
+      <div v-if="isAddingProfile || isEditingProfile" class="mb-6 bg-white dark:bg-slate-800 p-6 rounded-[2rem] shadow-xl border border-indigo-100 dark:border-slate-700 relative z-30">
+          <div class="flex justify-between items-center mb-4">
+             <h3 class="font-bold text-slate-800 dark:text-slate-200 ml-1">{{ isEditingProfile ? 'Upraviť Účet' : 'Nový Účet' }}</h3>
+             <button @click="cancelProfileForm" class="text-xs text-slate-400 dark:text-slate-500 font-bold uppercase hover:text-slate-600 dark:hover:text-slate-300 px-2">Zrušiť</button>
+          </div>
+          <div class="space-y-3">
+            <input type="text" v-model="newProfile.name" placeholder="Názov (napr. Firma)" :disabled="isEditingProfile" :class="isEditingProfile ? 'bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500' : 'bg-slate-50 dark:bg-slate-700'" class="w-full border-0 rounded-2xl px-5 py-3.5 text-sm text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 focus:ring-2 focus:ring-accent-500 outline-none transition-shadow">
+            <input type="text" v-model="newProfile.recipientName" placeholder="Meno príjemcu" class="w-full bg-slate-50 dark:bg-slate-700 border-0 rounded-2xl px-5 py-3.5 text-sm text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 focus:ring-2 focus:ring-accent-500 outline-none transition-shadow">
+            <input type="text" v-model="newProfile.iban" placeholder="IBAN" class="w-full bg-slate-50 dark:bg-slate-700 border-0 rounded-2xl px-5 py-3.5 text-sm text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 focus:ring-2 focus:ring-accent-500 outline-none transition-shadow">
+            
+            <!-- Tag Selection with Colors and Icons -->
+            <div class="px-1">
+              <p class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Štítok & Ikona</p>
+              <div class="flex gap-2 flex-wrap mb-3">
+                <button v-for="tag in allTags" :key="tag.name" @click="selectTag(tag)" type="button"
+                  class="px-3 py-1.5 rounded-xl transition-all duration-200 border-2 text-sm font-bold text-white flex items-center gap-1.5"
+                  :style="{ background: tag.color }"
+                  :class="newProfile.tag === tag.name ? 'border-slate-800 scale-105 shadow-lg' : 'border-transparent hover:scale-105 opacity-80 hover:opacity-100'">
+                  <span class="text-base">{{ tag.emoji }}</span>
+                  <span>{{ tag.label }}</span>
+                </button>
+                <button @click="showCustomTagForm = !showCustomTagForm" type="button"
+                  class="px-3 py-1.5 rounded-xl transition-all duration-200 border-2 border-dashed border-slate-300 text-sm font-bold text-slate-400 hover:border-accent-400 hover:text-accent-600">
+                  + Vlastný
+                </button>
+              </div>
+              
+              <!-- Custom Tag Form -->
+              <div v-if="showCustomTagForm" class="p-3 bg-slate-50 dark:bg-slate-700 rounded-xl space-y-3">
+                <input type="text" v-model="customTag.label" placeholder="Názov štítku" class="w-full bg-white dark:bg-slate-600 border-0 rounded-lg px-3 py-2 text-sm text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 focus:ring-2 focus:ring-accent-500 outline-none">
+                
+                <div class="flex gap-3">
+                  <!-- Emoji selection -->
+                  <div class="flex-1">
+                    <p class="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Ikona</p>
+                    <div class="flex gap-1 flex-wrap">
+                      <button v-for="emoji in availableEmojis.slice(0, 6)" :key="emoji" @click="customTag.emoji = emoji" type="button"
+                        class="w-7 h-7 rounded-lg transition-all duration-200 border-2 text-sm flex items-center justify-center bg-white dark:bg-slate-600 hover:bg-slate-100 dark:hover:bg-slate-500"
+                        :class="customTag.emoji === emoji ? 'border-accent-500 scale-110' : 'border-transparent hover:scale-105'">
+                        {{ emoji }}
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <!-- Color selection -->
+                  <div class="flex-1">
+                    <p class="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Farba</p>
+                    <div class="flex gap-1 flex-wrap">
+                      <button v-for="color in tagColors.slice(0, 6)" :key="color" @click="customTag.color = color" type="button"
+                        class="w-7 h-7 rounded-lg transition-all duration-200 border-2"
+                        :style="{ background: color }"
+                        :class="customTag.color === color ? 'border-slate-800 scale-110' : 'border-transparent hover:scale-105'">
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <button @click="addCustomTag" type="button" class="w-full py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold hover:bg-indigo-700 transition-colors">
+                  Pridať štítok
+                </button>
+              </div>
+            </div>
+          </div>
+          <button @click="saveProfile" class="w-full mt-5 bg-indigo-600 hover:bg-indigo-700 text-white py-3.5 rounded-full font-bold shadow-lg shadow-indigo-200 transition-all active:scale-95">{{ isEditingProfile ? 'Uložiť Zmeny' : 'Uložiť Účet' }}</button>
+      </div>
+    </transition>
+
+    <!-- 2. MAIN CARD AREA -->
+    <div ref="cardArea" class="relative w-full mb-8 z-10 transition-all duration-500" :class="[showHistory || showTemplates || showSettings ? 'min-h-[500px]' : 'aspect-[1.586/1]', showTutorial && tutorialStep === 1 ? 'tutorial-highlight-card relative z-50' : '']">
+        
+        <!-- A. CAROUSEL -->
+        <div 
+            class="absolute inset-0 w-full h-full transition-all duration-500 ease-spring"
+            :class="(isQrVisible || showHistory || showTemplates || showSettings) ? 'opacity-0 scale-90 pointer-events-none' : 'opacity-100 scale-100 z-20'"
+        >
+            <div 
+                ref="carouselRef"
+                class="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide w-full h-full items-center"
+            >
+                <!-- Profile Cards -->
+                <div 
+                    v-for="profile in profiles" 
+                    :key="profile.name"
+                    class="w-full h-full flex-shrink-0 snap-center relative px-0.5" 
+                    :data-profile="profile.name"
+                >
+                    <div class="w-full h-full rounded-3xl text-white p-7 flex flex-col justify-between shadow-xl border border-white/10 overflow-hidden relative" :style="{ background: getTagColor(profile.tag) }">
+                        <div class="absolute -top-10 -right-10 w-48 h-48 bg-white/10 rounded-full blur-3xl pointer-events-none"></div>
+                        
+                        <div class="flex justify-between items-start z-10">
+                            <div class="flex items-start gap-3">
+                                <div>
+                                    <div class="flex items-center gap-2 mb-1">
+                      
+                                        <span v-if="profile.tag" class="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/20 text-white/80 flex items-center gap-1">
+                                          <span v-if="profile.emoji" class="text-[11px]">{{ getTagEmoji(profile.tag) }}</span>
+                                          <span>{{ getTagLabel(profile.tag) }}</span>
+                                        </span>
+                                    </div>
+                                    <h3 class="text-2xl font-bold truncate max-w-[160px] tracking-tight">{{ profile.name }}</h3>
+                                    <p class="text-white/60 text-sm truncate max-w-[160px] mt-0.5">{{ profile.recipientName }}</p>
+                                </div>
+                            </div>
+                            <div class="flex gap-1">
+                                <button @click.stop="toggleDefaultProfile(profile.name)" class="p-2 hover:bg-white/10 rounded-full transition-colors -mt-2" :class="profile.isDefault ? 'text-yellow-300' : 'text-white/60 hover:text-white'">
+                                    <svg class="w-5 h-5" :fill="profile.isDefault ? 'currentColor' : 'none'" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" /></svg>
+                                </button>
+                                <button @click.stop="editProfile(profile)" class="text-white/60 hover:text-white p-2 hover:bg-white/10 rounded-full transition-colors -mt-2">
+                                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                                </button>
+                                <button @click.stop="deleteProfile(profile.name)" class="text-white/60 hover:text-white p-2 hover:bg-white/10 rounded-full transition-colors -mr-2 -mt-2">
+                                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="z-10">
+                            <p class="text-white/60 text-[10px] font-bold tracking-wider uppercase mb-1">IBAN</p>
+                            <div class="bg-black/20 px-3 py-2 rounded-xl backdrop-blur-sm border border-white/10 inline-block max-w-full">
+                                <p class="font-mono text-sm sm:text-base truncate">{{ formatIban(profile.iban) }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Add Button -->
+                <div class="w-full h-full flex-shrink-0 snap-center px-0.5">
+                    <button 
+                        @click="isAddingProfile = true"
+                        class="w-full h-full rounded-3xl border-2 border-dashed border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-accent-400 dark:hover:border-accent-500 text-slate-400 dark:text-slate-500 hover:text-accent-600 dark:hover:text-accent-400 transition flex flex-col items-center justify-center gap-3 group"
+                    >
+                        <div class="w-14 h-14 rounded-full bg-slate-100 dark:bg-slate-700 group-hover:bg-accent-100 dark:group-hover:bg-accent-900 flex items-center justify-center transition-colors">
+                            <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                        </div>
+                        <span class="font-bold text-sm">Pridať Účet</span>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="absolute -bottom-6 left-0 w-full flex justify-center gap-2" v-if="profiles.length > 1">
+                <div v-for="(p, idx) in profiles" :key="idx" class="h-1.5 rounded-full transition-all duration-300" :class="activeProfileName === p.name ? 'bg-accent-600 w-4' : 'bg-slate-300 dark:bg-slate-600 w-1.5'"></div>
+                <div class="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-600"></div>
+            </div>
+        </div>
+
+        <!-- B. QR RESULT -->
+        <div 
+            class="absolute inset-0 w-full h-full bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 p-6 flex items-center justify-between shadow-2xl transition-all duration-500 ease-spring"
+            :class="isQrVisible ? 'opacity-100 scale-100 z-30 translate-y-0' : 'opacity-0 scale-95 pointer-events-none translate-y-4'"
+        >
+            <div class="h-full aspect-square bg-white dark:bg-slate-100 rounded-2xl flex items-center justify-center relative flex-shrink-0">
+                <div ref="qrcodeContainer" class="mix-blend-multiply"></div>
+            </div>
+
+            <div class="flex-1 pl-5 flex flex-col justify-between items-end text-right h-full py-2">
+                <div>
+                    <span class="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Spolu</span>
+                    <p class="text-3xl font-extrabold text-accent-600 tracking-tighter leading-none">
+                        {{ payment.amount ? Number(payment.amount).toFixed(2) : '0.00' }}€
+                    </p>
+                </div>
+
+                <div class="w-full">
+                    <!-- Share Button -->
+                    <button @click="sharePaymeLink" class="w-full py-3 px-3 bg-accent-600 hover:bg-accent-700 text-white rounded-2xl text-sm font-bold shadow-xl shadow-accent-200 dark:shadow-accent-900 transition-all flex items-center justify-center gap-2 active:scale-95">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                        </svg>
+                        <span v-if="!paymeLinkCopied">Zdieľať Link</span>
+                        <span v-else>Skopírované!</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- C. TEMPLATES OVERLAY -->
+        <div 
+            class="absolute inset-0 w-full h-full bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 flex flex-col shadow-2xl transition-all duration-500 ease-spring overflow-hidden"
+            :class="showTemplates ? 'opacity-100 scale-100 z-30 translate-y-0' : 'opacity-0 scale-95 pointer-events-none translate-y-4'"
+        >
+            <!-- Add/Edit Template Form (only when adding or editing) -->
+            <div v-if="isAddingTemplate || isEditingTemplate" class="p-6 bg-gradient-to-br from-emerald-500 to-teal-600 text-white">
+              <h3 class="text-sm font-bold uppercase tracking-wider text-emerald-100 mb-4">
+                {{ isEditingTemplate ? 'Upraviť šablónu' : 'Nová šablóna' }}
+              </h3>
+              <div class="space-y-3">
+                <input type="text" v-model="newTemplate.name" placeholder="Názov šablóny (napr. Mesačný nájom)" class="w-full bg-white/20 border-0 rounded-xl px-4 py-3 text-sm text-white placeholder-white/60 focus:ring-2 focus:ring-white/50 outline-none">
+                <div class="grid grid-cols-2 gap-3">
+                  <input type="number" step="0.01" v-model="newTemplate.amount" placeholder="Suma (€)" class="w-full bg-white/20 border-0 rounded-xl px-4 py-3 text-sm text-white placeholder-white/60 focus:ring-2 focus:ring-white/50 outline-none">
+                  <input type="text" v-model="newTemplate.vs" placeholder="VS (voliteľné)" maxlength="10" class="w-full bg-white/20 border-0 rounded-xl px-4 py-3 text-sm text-white placeholder-white/60 focus:ring-2 focus:ring-white/50 outline-none font-mono">
+                </div>
+                <input type="text" v-model="newTemplate.msg" placeholder="Správa (voliteľné)" class="w-full bg-white/20 border-0 rounded-xl px-4 py-3 text-sm text-white placeholder-white/60 focus:ring-2 focus:ring-white/50 outline-none">
+                <input type="date" v-model="newTemplate.dueDate" placeholder="Dátum splatnosti (voliteľné)" class="w-full bg-white/20 border-0 rounded-xl px-4 py-3 text-sm text-white placeholder-white/60 focus:ring-2 focus:ring-white/50 outline-none">
+                <div class="flex gap-2">
+                  <button @click="saveTemplate" class="flex-1 bg-white text-emerald-600 py-3 rounded-xl font-bold hover:bg-emerald-50 transition-colors active:scale-95">
+                    {{ isEditingTemplate ? 'Uložiť zmeny' : 'Uložiť šablónu' }}
+                  </button>
+                  <button @click="cancelTemplateEdit" class="px-4 bg-white/20 text-white py-3 rounded-xl font-bold hover:bg-white/30 transition-colors">
+                    Zrušiť
+                  </button>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Templates List -->
+            <div class="p-4 flex-1 overflow-hidden flex flex-col">
+              <div class="flex justify-between items-center mb-3">
+                <button @click="showTemplates = false" class="flex items-center gap-1 text-sm font-bold text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+                  <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+                  <span>Späť</span>
+                </button>
+                <h3 class="text-sm font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Šablóny</h3>
+                <button v-if="!isAddingTemplate && !isEditingTemplate" @click="isAddingTemplate = true" class="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 uppercase flex items-center gap-1">
+                  <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                  Pridať
+                </button>
+              </div>
+              
+              <!-- Search Bar -->
+              <div v-if="templates.length > 0 && !isAddingTemplate && !isEditingTemplate" class="mb-3">
+                <div class="relative">
+                  <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                  <input type="text" v-model="templateSearch" placeholder="Hľadať podľa názvu, sumy, VS, správy..." 
+                         class="w-full bg-slate-100 dark:bg-slate-700 border-0 rounded-xl pl-10 pr-8 py-2.5 text-sm text-slate-700 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 focus:ring-2 focus:ring-emerald-500 outline-none">
+                  <button v-if="templateSearch" @click="templateSearch = ''" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                  </button>
+                </div>
+              </div>
+              
+              <div v-if="templates.length === 0 && !isAddingTemplate" class="text-center py-8 text-slate-400 dark:text-slate-500 flex-1 flex flex-col justify-center">
+                <svg class="w-12 h-12 mx-auto mb-2 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" /></svg>
+                <p class="text-sm">Žiadne šablóny</p>
+                <p class="text-xs mt-1">Vytvorte si šablóny pre opakujúce sa platby</p>
+                <button @click="isAddingTemplate = true" class="mt-3 px-4 py-2 bg-emerald-100 dark:bg-emerald-900 text-emerald-600 dark:text-emerald-400 rounded-xl text-sm font-bold hover:bg-emerald-200 dark:hover:bg-emerald-800 transition-colors">
+                  Vytvoriť prvú šablónu
+                </button>
+              </div>
+              
+              <!-- No results message -->
+              <div v-else-if="templates.length > 0 && filteredTemplates.length === 0" class="text-center py-6 text-slate-400 dark:text-slate-500 flex-1 flex flex-col justify-center">
+                <svg class="w-10 h-10 mx-auto mb-2 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <p class="text-sm">Žiadne výsledky pre "{{ templateSearch }}"</p>
+              </div>
+              
+              <div v-else-if="filteredTemplates.length > 0" class="space-y-2 flex-1 overflow-y-auto scrollbar-hide">
+                <div v-for="(template, index) in filteredTemplates" :key="template.name + index" 
+                     class="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-700 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors group">
+                  <button @click="applyTemplate(template)" class="flex-1 text-left min-w-0">
+                    <div class="flex items-center gap-2">
+                      <span class="font-bold text-slate-800 dark:text-slate-200 truncate">{{ template.name }}</span>
+                    </div>
+                    <div class="flex items-center gap-2 mt-1">
+                      <span class="text-sm font-bold text-emerald-600 dark:text-emerald-400">{{ Number(template.amount).toFixed(2) }}€</span>
+                      <span v-if="template.vs" class="text-[10px] bg-slate-200 dark:bg-slate-600 text-slate-500 dark:text-slate-400 px-1.5 py-0.5 rounded font-mono">VS: {{ template.vs }}</span>
+                      <span v-if="template.msg" class="text-[10px] text-slate-400 dark:text-slate-500 truncate">{{ template.msg }}</span>
+                    </div>
+                  </button>
+                  <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                    <button @click="editTemplate(template, templates.indexOf(template))" class="p-1.5 text-slate-400 dark:text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900 rounded-lg transition-colors">
+                      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                    </button>
+                    <button @click="deleteTemplate(templates.indexOf(template))" class="p-1.5 text-slate-400 dark:text-slate-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900 rounded-lg transition-colors">
+                      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+        </div>
+
+        <!-- D. HISTORY OVERLAY -->
+        <div 
+            class="absolute inset-0 w-full h-full bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 flex flex-col shadow-2xl transition-all duration-500 ease-spring overflow-hidden"
+            :class="showHistory ? 'opacity-100 scale-100 z-30 translate-y-0' : 'opacity-0 scale-95 pointer-events-none translate-y-4'"
+        >
+            <!-- Analytics Summary -->
+            <div class="p-4 bg-gradient-to-br from-indigo-600 to-violet-700 text-white flex-shrink-0">
+              <div class="flex justify-between items-center mb-4">
+                <button @click="showHistory = false" class="flex items-center gap-1 text-sm font-bold text-indigo-200 hover:text-white transition-colors">
+                  <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+                  <span>Späť</span>
+                </button>
+                <h3 class="text-sm font-bold uppercase tracking-wider text-indigo-200">Prehľad</h3>
+                <!-- Date Range Selector -->
+                <select v-model="analyticsDateRange" class="bg-white/20 border-0 rounded-lg px-2 py-1 text-xs font-bold text-white outline-none cursor-pointer">
+                  <option value="all" class="text-slate-800">Všetko</option>
+                  <option value="today" class="text-slate-800">Dnes</option>
+                  <option value="week" class="text-slate-800">Tento týždeň</option>
+                  <option value="month" class="text-slate-800">Tento mesiac</option>
+                  <option value="year" class="text-slate-800">Tento rok</option>
+                  <option value="custom" class="text-slate-800">Vlastné...</option>
+                </select>
+              </div>
+              
+              <!-- Custom Date Range -->
+              <div v-if="analyticsDateRange === 'custom'" class="mb-4 flex gap-2">
+                <input type="date" v-model="customDateFrom" class="flex-1 bg-white/20 border-0 rounded-lg px-3 py-2 text-sm text-white outline-none">
+                <input type="date" v-model="customDateTo" class="flex-1 bg-white/20 border-0 rounded-lg px-3 py-2 text-sm text-white outline-none">
+              </div>
+              
+              <div class="grid grid-cols-3 gap-4">
+                <div class="text-center">
+                  <p class="text-2xl font-extrabold">{{ filteredAnalytics.totalCount }}</p>
+                  <p class="text-[10px] uppercase tracking-wider text-indigo-200">Platieb</p>
+                </div>
+                <div class="text-center">
+                  <p class="text-2xl font-extrabold">{{ filteredAnalytics.totalAmount.toFixed(0) }}€</p>
+                  <p class="text-[10px] uppercase tracking-wider text-indigo-200">Celkom</p>
+                </div>
+                <div class="text-center">
+                  <p class="text-2xl font-extrabold">{{ filteredAnalytics.avgAmount.toFixed(0) }}€</p>
+                  <p class="text-[10px] uppercase tracking-wider text-indigo-200">Priemer</p>
+                </div>
+              </div>
+              
+              <!-- Tag/Category Analytics -->
+              <div v-if="filteredAnalytics.tagBreakdown.length > 0" class="mt-4 pt-4 border-t border-white/20">
+                <p class="text-[10px] uppercase tracking-wider text-indigo-200 mb-3">Podľa kategórie</p>
+                <div class="space-y-2">
+                  <div v-for="tagStat in filteredAnalytics.tagBreakdown" :key="tagStat.tag" class="flex items-center gap-2">
+                    <div class="w-3 h-3 rounded-full flex-shrink-0" :style="{ background: tagStat.color }"></div>
+                    <span class="text-xs font-medium flex-1">{{ tagStat.label }}</span>
+                    <span class="text-xs font-bold">{{ tagStat.amount.toFixed(0) }}€</span>
+                    <span class="text-[10px] text-indigo-200">({{ tagStat.count }}x)</span>
+                  </div>
+                </div>
+                <!-- Visual Bar Chart -->
+                <div class="mt-3 flex gap-1 h-4 rounded-full overflow-hidden bg-white/10">
+                  <div v-for="tagStat in filteredAnalytics.tagBreakdown" :key="tagStat.tag + '-bar'" 
+                       class="h-full transition-all duration-500" 
+                       :style="{ width: (tagStat.amount / filteredAnalytics.totalAmount * 100) + '%', background: tagStat.color }">
+                  </div>
+                </div>
+              </div>
+              
+            </div>
+            
+            <!-- History List -->
+            <div class="p-2 flex-1 min-h-0 overflow-hidden flex flex-col">
+              <div class="flex justify-between items-center mb-3">
+                <h3 class="text-sm font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">História</h3>
+                <button v-if="paymentHistory.length > 0" @click="clearHistory" class="text-xs text-red-400 hover:text-red-600 dark:hover:text-red-300 font-bold uppercase">Vymazať</button>
+              </div>
+              
+              <div v-if="paymentHistory.length === 0" class="text-center py-8 text-slate-400 dark:text-slate-500 flex-1 flex flex-col justify-center">
+                <svg class="w-12 h-12 mx-auto mb-2 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                <p class="text-sm">Žiadne platby</p>
+              </div>
+              
+              <div v-else class="space-y-2 flex-1 min-h-0 overflow-y-auto scrollbar-hide">
+                <div v-for="(item, index) in paymentHistory.slice().reverse()" :key="index" 
+                     class="p-3 rounded-xl bg-white dark:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600 border border-slate-200 dark:border-slate-600 shadow-sm transition-colors group"
+                     :style="{ borderLeftWidth: '3px', borderLeftColor: getPaymentStatusStyle(item).borderColor }">
+                  
+                  <!-- Single Row Layout -->
+                  <div class="flex items-center justify-between gap-3">
+                    <!-- Left: Account & Meta -->
+                    <div class="flex-1 min-w-0">
+                      <div class="flex items-center gap-2">
+                        <p class="font-bold text-sm text-slate-800 dark:text-slate-200 truncate">{{ item.accountName }}</p>
+                        <span class="text-[9px] px-1.5 py-0.5 rounded font-bold uppercase flex-shrink-0"
+                              :class="getPaymentStatusStyle(item).badgeClass">
+                          {{ getPaymentStatusStyle(item).label }}
+                        </span>
+                      </div>
+                      <div class="flex items-center gap-2 mt-0.5">
+                        <span class="text-[10px] text-slate-400 dark:text-slate-500">{{ formatDate(item.timestamp) }}</span>
+                        <span class="text-[10px] bg-slate-100 dark:bg-slate-600 text-slate-500 dark:text-slate-400 px-1.5 py-0.5 rounded font-mono">VS: {{ item.vs || '-' }}</span>
+                        <span v-if="item.msg" class="text-[10px] text-slate-400 dark:text-slate-500 truncate max-w-[80px] italic">„{{ item.msg }}"</span>
+                      </div>
+                    </div>
+                    
+                    <!-- Right: Amount + Actions -->
+                    <div class="flex items-center gap-2 flex-shrink-0">
+                      <p class="text-lg font-bold text-indigo-600 dark:text-indigo-400">{{ Number(item.amount).toFixed(2) }}€</p>
+                      <div class="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-all">
+                        <button @click="duplicatePayment(item)" class="p-1.5 text-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-900 rounded-lg transition-colors" title="Duplikovať">
+                          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                        </button>
+                        <button v-if="getPaymentStatusStyle(item).canMarkPaid" @click="markAsPaid(item.id)" class="p-1.5 text-green-500 hover:text-green-700 dark:hover:text-green-300 hover:bg-green-50 dark:hover:bg-green-900 rounded-lg transition-colors" title="Označiť ako zaplatené">
+                          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                        </button>
+                        <button @click="deleteHistoryItem(index)" class="p-1.5 text-slate-400 hover:text-red-500 dark:text-slate-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900 rounded-lg transition-colors" title="Vymazať">
+                          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+        </div>
+
+        <!-- E. SETTINGS OVERLAY -->
+        <div 
+            class="absolute inset-0 w-full h-full bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 flex flex-col shadow-2xl transition-all duration-500 ease-spring overflow-hidden"
+            :class="showSettings ? 'opacity-100 scale-100 z-30 translate-y-0' : 'opacity-0 scale-95 pointer-events-none translate-y-4'"
+        >
+            <!-- Settings Header -->
+            <div class="p-4 bg-gradient-to-br from-accent-600 to-accent-700 text-white flex-shrink-0">
+              <div class="flex justify-between items-center">
+                <button @click="showSettings = false" class="flex items-center gap-1 text-sm font-bold text-accent-200 hover:text-white transition-colors">
+                  <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+                  <span>Späť</span>
+                </button>
+                <h3 class="text-sm font-bold uppercase tracking-wider text-accent-200">Nastavenia</h3>
+                <div class="w-12"></div>
+              </div>
+            </div>
+            
+            <!-- Settings Content -->
+            <div class="p-5 flex-1 overflow-y-auto scrollbar-hide">
+              <!-- Theme Mode -->
+              <div class="mb-6">
+                <p class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-3 px-1">Vzhľad</p>
+                <div class="grid grid-cols-3 gap-2">
+                  <button @click="setThemeMode('light')" class="flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all" :class="themeMode === 'light' ? 'border-accent-500 bg-accent-50 dark:bg-accent-900/30' : 'border-slate-200 dark:border-slate-600 hover:border-slate-300 dark:hover:border-slate-500'">
+                    <div class="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
+                      <svg class="w-5 h-5 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                    </div>
+                    <span class="text-xs font-semibold" :class="themeMode === 'light' ? 'text-accent-600 dark:text-accent-400' : 'text-slate-600 dark:text-slate-400'">Svetlý</span>
+                  </button>
+                  <button @click="setThemeMode('dark')" class="flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all" :class="themeMode === 'dark' ? 'border-accent-500 bg-accent-50 dark:bg-accent-900/30' : 'border-slate-200 dark:border-slate-600 hover:border-slate-300 dark:hover:border-slate-500'">
+                    <div class="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center">
+                      <svg class="w-5 h-5 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
+                    </div>
+                    <span class="text-xs font-semibold" :class="themeMode === 'dark' ? 'text-accent-600 dark:text-accent-400' : 'text-slate-600 dark:text-slate-400'">Tmavý</span>
+                  </button>
+                  <button @click="setThemeMode('system')" class="flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all" :class="themeMode === 'system' ? 'border-accent-500 bg-accent-50 dark:bg-accent-900/30' : 'border-slate-200 dark:border-slate-600 hover:border-slate-300 dark:hover:border-slate-500'">
+                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-amber-100 to-slate-700 flex items-center justify-center">
+                      <svg class="w-5 h-5 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                    </div>
+                    <span class="text-xs font-semibold" :class="themeMode === 'system' ? 'text-accent-600 dark:text-accent-400' : 'text-slate-600 dark:text-slate-400'">Systém</span>
+                  </button>
+                </div>
+              </div>
+              
+              <!-- Accent Color -->
+              <div class="mb-6">
+                <p class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-3 px-1">Farba akcentu</p>
+                <div class="flex flex-wrap gap-3">
+                  <button v-for="color in accentColors" :key="color.name" @click="setAccentColor(color.name)" class="w-12 h-12 rounded-full border-2 transition-all flex items-center justify-center" :class="[color.bg, accentColor === color.name ? 'border-slate-800 dark:border-white ring-2 ring-offset-2 ring-offset-white dark:ring-offset-slate-800' : 'border-transparent hover:scale-110']" :style="accentColor === color.name ? 'ring-color: ' + color.ring : ''">
+                    <svg v-if="accentColor === color.name" class="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" /></svg>
+                  </button>
+                </div>
+              </div>
+              
+              <!-- Tutorial -->
+              <div class="mb-6">
+                <p class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-3 px-1">Pomocník</p>
+                <button @click="restartTutorial" class="w-full flex items-center gap-3 p-4 rounded-xl border-2 border-slate-200 dark:border-slate-600 hover:border-accent-400 dark:hover:border-accent-500 hover:bg-accent-50 dark:hover:bg-accent-900/20 transition-all group">
+                  <div class="w-10 h-10 rounded-full bg-accent-100 dark:bg-accent-900 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <svg class="w-5 h-5 text-accent-600 dark:text-accent-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                    </svg>
+                  </div>
+                  <div class="text-left">
+                    <p class="font-semibold text-slate-700 dark:text-slate-300">Zobraziť tutoriál</p>
+                    <p class="text-xs text-slate-400 dark:text-slate-500">Prejsť si znova úvod do aplikácie</p>
+                  </div>
+                </button>
+              </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. INPUTS (Redesigned: Same Size) -->
+    <div ref="inputsArea" class="space-y-3 px-2 mt-10 transition-all duration-500" :class="[isQrVisible || showHistory || showTemplates || showSettings ? 'opacity-40 blur-[1px] pointer-events-none' : 'opacity-100', showTutorial && tutorialStep === 2 ? 'relative z-50' : '']">
+        
+        <!-- Suma with Inline Calculator (wrapped for dropdown positioning) -->
+        <div class="relative" :class="showTutorial && tutorialStep === 2 ? 'tutorial-highlight-input' : ''">
+          <div class="bg-white dark:bg-slate-800 rounded-[1.25rem] shadow-sm border border-slate-200 dark:border-slate-700 transition-all overflow-hidden" :class="showCalculator ? 'border-accent-500 ring-2 ring-accent-500/20' : 'focus-within:border-accent-500 focus-within:ring-2 focus-within:ring-accent-500/20'">
+            <!-- Main Input Row (also serves as calculator display) -->
+            <div class="h-20 px-5 flex flex-col justify-center">
+              <!-- Expression display when calculator is active -->
+              <div class="flex items-center justify-between">
+                <label class="text-[10px] font-bold uppercase tracking-wider mb-0.5 transition-colors" :class="showCalculator && calcDisplay ? 'text-accent-500 dark:text-accent-400' : 'text-slate-400 dark:text-slate-500'">
+                  <span v-if="showCalculator && calcDisplay" class="font-mono">{{ calcDisplay }}</span>
+                  <span v-else>Suma</span>
+                </label>
+                <span v-if="showCalculator && calcDisplay" class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">=</span>
+              </div>
+              <div class="flex items-center">
+                  <!-- Show calculated result when calculator is active, otherwise show normal input -->
+                  <input v-if="!showCalculator" type="number" step="0.01" v-model="payment.amount" @focus="showAmountSuggestions = true" @blur="hideAmountSuggestions" class="w-full text-xl font-bold text-slate-800 dark:text-slate-200 outline-none bg-transparent placeholder-slate-300 dark:placeholder-slate-600" placeholder="0.00">
+                  <p v-else class="w-full text-xl font-bold font-mono transition-colors" :class="calcResult !== null ? 'text-accent-600 dark:text-accent-400' : 'text-slate-300 dark:text-slate-600'">
+                    {{ calcResult !== null ? calcResult.toFixed(2) : '0.00' }}
+                  </p>
+                    <button @click.prevent="toggleCalculator" type="button" class="ml-2 p-1.5 rounded-lg transition-colors" :class="showCalculator ? 'text-white bg-accent-600 hover:bg-accent-700' : 'text-slate-400 dark:text-slate-500 hover:text-accent-600 dark:hover:text-accent-400 hover:bg-accent-50 dark:hover:bg-accent-900'">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
+                  </button>
+              </div>
+            </div>
+            
+            <!-- Inline Calculator Keypad (Expandable) -->
+            <transition 
+              enter-active-class="transition-all duration-300 ease-out"
+              enter-from-class="max-h-0 opacity-0"
+              enter-to-class="max-h-[320px] opacity-100"
+              leave-active-class="transition-all duration-200 ease-in"
+              leave-from-class="max-h-[320px] opacity-100"
+              leave-to-class="max-h-0 opacity-0"
+            >
+              <div v-if="showCalculator" class="border-t border-slate-200 dark:border-slate-700 overflow-hidden">
+                <div class="p-4 bg-slate-50 dark:bg-slate-800/50">
+                  <!-- Compact Keypad -->
+                  <div class="grid grid-cols-4 gap-1.5">
+                    <!-- Number row 7-9 with divide -->
+                    <button @click="calcInput('7')" class="py-2.5 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 font-bold text-base hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors border border-slate-200 dark:border-slate-600 active:scale-95">7</button>
+                    <button @click="calcInput('8')" class="py-2.5 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 font-bold text-base hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors border border-slate-200 dark:border-slate-600 active:scale-95">8</button>
+                    <button @click="calcInput('9')" class="py-2.5 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 font-bold text-base hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors border border-slate-200 dark:border-slate-600 active:scale-95">9</button>
+                    <button @click="calcInput('÷')" class="py-2.5 rounded-lg bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 font-bold text-base hover:bg-indigo-200 dark:hover:bg-indigo-800 transition-colors active:scale-95">÷</button>
+                    
+                    <!-- Number row 4-6 with multiply -->
+                    <button @click="calcInput('4')" class="py-2.5 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 font-bold text-base hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors border border-slate-200 dark:border-slate-600 active:scale-95">4</button>
+                    <button @click="calcInput('5')" class="py-2.5 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 font-bold text-base hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors border border-slate-200 dark:border-slate-600 active:scale-95">5</button>
+                    <button @click="calcInput('6')" class="py-2.5 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 font-bold text-base hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors border border-slate-200 dark:border-slate-600 active:scale-95">6</button>
+                    <button @click="calcInput('×')" class="py-2.5 rounded-lg bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 font-bold text-base hover:bg-indigo-200 dark:hover:bg-indigo-800 transition-colors active:scale-95">×</button>
+                    
+                    <!-- Number row 1-3 with minus -->
+                    <button @click="calcInput('1')" class="py-2.5 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 font-bold text-base hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors border border-slate-200 dark:border-slate-600 active:scale-95">1</button>
+                    <button @click="calcInput('2')" class="py-2.5 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 font-bold text-base hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors border border-slate-200 dark:border-slate-600 active:scale-95">2</button>
+                    <button @click="calcInput('3')" class="py-2.5 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 font-bold text-base hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors border border-slate-200 dark:border-slate-600 active:scale-95">3</button>
+                    <button @click="calcInput('-')" class="py-2.5 rounded-lg bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 font-bold text-base hover:bg-indigo-200 dark:hover:bg-indigo-800 transition-colors active:scale-95">−</button>
+                    
+                    <!-- Bottom row: 0, decimal, plus -->
+                    <button @click="calcInput('0')" class="col-span-2 py-2.5 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 font-bold text-base hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors border border-slate-200 dark:border-slate-600 active:scale-95">0</button>
+                    <button @click="calcInput('.')" class="py-2.5 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 font-bold text-base hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors border border-slate-200 dark:border-slate-600 active:scale-95">.</button>
+                    <button @click="calcInput('+')" class="py-2.5 rounded-lg bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 font-bold text-base hover:bg-indigo-200 dark:hover:bg-indigo-800 transition-colors active:scale-95">+</button>
+                    
+                    <!-- Apply button spans full width -->
+                    <button @click="calcApply" class="col-span-4 py-3 rounded-lg bg-green-500 dark:bg-green-600 text-white font-bold text-sm hover:bg-green-600 dark:hover:bg-green-500 transition-colors active:scale-95 flex items-center justify-center gap-1">
+                      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" /></svg>
+                      Použiť
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </transition>
+          </div>
+            
+          <!-- Amount Suggestions Dropdown (outside overflow-hidden container) -->
+          <div v-if="showAmountSuggestions && recentAmounts.length > 0 && !showCalculator" class="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-700 rounded-xl shadow-lg border border-slate-200 dark:border-slate-600 z-50 overflow-hidden">
+            <div class="flex items-center gap-2 p-2">
+              <p class="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider whitespace-nowrap">Nedávne:</p>
+              <div class="flex gap-1 overflow-x-auto scrollbar-hide">
+                <button v-for="amt in recentAmounts" :key="amt" @mousedown.prevent="selectAmount(amt)" 
+                        class="px-3 py-1.5 bg-slate-100 dark:bg-slate-600 hover:bg-indigo-100 dark:hover:bg-indigo-800 text-slate-700 dark:text-slate-200 hover:text-indigo-700 dark:hover:text-indigo-300 rounded-lg text-sm font-bold transition-colors whitespace-nowrap flex-shrink-0">
+                  {{ amt.toFixed(2) }}€
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- VS -->
+        <div class="h-20 bg-white dark:bg-slate-800 px-5 rounded-[1.25rem] shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col justify-center relative focus-within:border-accent-500 focus-within:ring-2 focus-within:ring-accent-500/20 transition-all">
+            <label class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-0.5">VS</label>
+            <input type="text" v-model="payment.vs" maxlength="10" placeholder="----" class="w-full text-xl font-bold text-slate-800 dark:text-slate-200 font-mono outline-none bg-transparent placeholder-slate-300 dark:placeholder-slate-600 pr-10">
+            <div class="absolute top-1/2 -translate-y-1/2 right-4 text-slate-300 dark:text-slate-600 pointer-events-none mt-1">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+            </div>
+        </div>
+
+        <!-- Správa -->
+        <div class="h-20 bg-white dark:bg-slate-800 px-5 rounded-[1.25rem] shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col justify-center relative focus-within:border-accent-500 focus-within:ring-2 focus-within:ring-accent-500/20 transition-all">
+            <label class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-0.5">Správa</label>
+            <input type="text" v-model="payment.msg" placeholder="Poznámka..." class="w-full text-lg font-bold text-slate-800 dark:text-slate-200 outline-none bg-transparent placeholder-slate-300 dark:placeholder-slate-600 truncate">
+        </div>
+
+        <!-- Dátum splatnosti -->
+        <div class="h-20 bg-white dark:bg-slate-800 px-5 rounded-[1.25rem] shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col justify-center relative focus-within:border-accent-500 focus-within:ring-2 focus-within:ring-accent-500/20 transition-all">
+            <label class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-0.5">Dátum splatnosti</label>
+            <input type="date" v-model="payment.dueDate" class="w-full text-lg font-bold text-slate-800 dark:text-slate-200 outline-none bg-transparent placeholder-slate-300 dark:placeholder-slate-600 pr-10 [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-0 [&::-webkit-calendar-picker-indicator]:w-5 [&::-webkit-calendar-picker-indicator]:h-5 [&::-webkit-calendar-picker-indicator]:cursor-pointer">
+            <div class="absolute top-1/2 -translate-y-1/2 right-4 text-slate-300 dark:text-slate-600 pointer-events-none mt-1">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. ACTION BUTTONS (Main action + Additional features) -->
+    <div class="mt-4 px-1" :class="showTutorial && (tutorialStep === 3 || tutorialStep === 4) ? 'relative z-50' : ''">
+        <!-- All Buttons on Same Row -->
+        <div class="flex gap-3 items-center h-16">
+            <!-- File Attachment Button -->
+            <div class="flex gap-3" :class="isQrVisible || showHistory || showTemplates || showSettings ? 'opacity-40 blur-[1px] pointer-events-none' : 'opacity-100'">
+                <button 
+                    ref="attachBtn"
+                    @click="attachFile"
+                    class="w-16 h-16 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full shadow-xl border border-slate-200 dark:border-slate-700 transition-all flex items-center justify-center active:scale-95"
+                    :class="showTutorial && tutorialStep === 3 ? 'tutorial-highlight-button' : ''"
+                    title="Priložiť súbor"
+                >
+                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Main Action Button -->
+            <div class="flex-1 relative h-full" :class="showTutorial && tutorialStep === 4 ? 'tutorial-highlight-button' : ''">
+                <transition 
+                  mode="out-in"
+                  enter-active-class="transition duration-200 ease-out" 
+                  enter-from-class="transform scale-90 opacity-0" 
+                  enter-to-class="transform scale-100 opacity-100" 
+                  leave-active-class="transition duration-150 ease-in" 
+                  leave-from-class="transform scale-100 opacity-100" 
+                  leave-to-class="transform scale-90 opacity-0"
+                >
+                    <button 
+                        v-if="!isQrVisible"
+                        key="generate"
+                        @click="generateQRCode" 
+                        :disabled="!activeProfileName || !payment.amount"
+                        class="absolute inset-0 w-full h-full rounded-full font-bold text-lg shadow-xl shadow-accent-200 dark:shadow-accent-900 bg-accent-600 text-white hover:bg-accent-700 disabled:bg-slate-300 dark:disabled:bg-slate-600 disabled:shadow-none disabled:cursor-not-allowed z-20 transition-all"
+                    >
+                        Vyžiadať platbu
+                    </button>
+                    
+                    <button 
+                        v-else
+                        key="close"
+                        @click="closeQr" 
+                        class="absolute inset-0 w-full h-full rounded-full font-bold text-lg shadow-xl shadow-slate-200 dark:shadow-slate-900 bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-slate-800 dark:hover:text-slate-200 border-2 border-slate-200 dark:border-slate-600 z-20"
+                    >
+                        Zatvoriť
+                    </button>
+                </transition>
+            </div>
+        </div>
+    </div>
+
+
+
+  </div>
+
+  <script type="module">
+    const { createApp, ref, computed, onMounted, watch, nextTick } = Vue;
+
+    createApp({
+      setup() {
+        // Elements
+        const carouselRef = ref(null);
+        const qrcodeContainer = ref(null);
+        
+        // App State
+        const isDarkMode = ref(false);
+        const showSettings = ref(false);
+        const themeMode = ref('system'); // 'light', 'dark', 'system'
+        const accentColor = ref('indigo');
+        const accentColors = [
+          { name: 'indigo', bg: 'bg-indigo-500', ring: '#6366f1' },
+          { name: 'rose', bg: 'bg-rose-500', ring: '#f43f5e' },
+          { name: 'emerald', bg: 'bg-emerald-500', ring: '#10b981' },
+          { name: 'amber', bg: 'bg-amber-500', ring: '#f59e0b' },
+          { name: 'sky', bg: 'bg-sky-500', ring: '#0ea5e9' },
+          { name: 'violet', bg: 'bg-violet-500', ring: '#8b5cf6' },
+        ];
+        const isAddingProfile = ref(false);
+        const isEditingProfile = ref(false);
+        const isQrVisible = ref(false);
+        const paymeLinkCopied = ref(false);
+        const activeProfileName = ref('');
+        const profiles = ref([]);
+        const showHistory = ref(false);
+        const paymentHistory = ref([]);
+        const showTemplates = ref(false);
+        const templates = ref([]);
+        const newTemplate = ref({ name: '', amount: '', vs: '', msg: '', dueDate: '' });
+        const templateSearch = ref('');
+        
+        // New state for additional features
+        const isRecording = ref(false);
+        const attachedFile = ref(null);
+        
+        // Tutorial state
+        const showTutorial = ref(false);
+        const tutorialStep = ref(0);
+        const tutorialCompleted = ref(false);
+        
+        // Refs for tutorial targets
+        const settingsBtn = ref(null);
+        const templatesBtn = ref(null);
+        const historyBtn = ref(null);
+        const cardArea = ref(null);
+        const inputsArea = ref(null);
+        const attachBtn = ref(null);
+        
+        // Tutorial steps configuration with target info
+        const tutorialSteps = [
+          {
+            icon: '👋',
+            title: 'Vitajte!',
+            description: 'Táto aplikácia vám pomôže jednoducho generovať QR kódy a linky pre platby. Prejdime si spolu základné funkcie.',
+            color: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+            target: null,
+            position: 'center'
+          },
+          {
+            icon: '💳',
+            title: 'Vaše účty',
+            description: 'Tu sú vaše bankové účty. Potiahnutím doprava/doľava prepínate medzi účtami. Kliknite na "+" pre pridanie nového účtu.',
+            color: 'linear-gradient(135deg, #3b82f6, #06b6d4)',
+            target: 'cardArea',
+            position: 'bottom'
+          },
+          {
+            icon: '💰',
+            title: 'Zadajte sumu',
+            description: 'Sem zadáte sumu platby. Môžete použiť vstavanú kalkulačku. Pridajte variabilný symbol alebo správu pre príjemcu.',
+            color: 'linear-gradient(135deg, #10b981, #14b8a6)',
+            target: 'inputsArea',
+            position: 'top'
+          },
+          {
+            icon: '📎',
+            title: 'Skenovanie účteniek',
+            description: 'Priložte fotku účtenky alebo faktúry a AI automaticky vyplní všetky polia. Ušetrite čas pri zadávaní platieb.',
+            color: 'linear-gradient(135deg, #ec4899, #f43f5e)',
+            target: 'attachBtn',
+            position: 'top'
+          },
+          {
+            icon: '📱',
+            title: 'Vyžiadať platbu',
+            description: 'Stlačte toto tlačidlo a vygeneruje sa QR kód. Ten môžete zdieľať cez odkaz alebo ukázať na obrazovke.',
+            color: 'linear-gradient(135deg, #f97316, #f59e0b)',
+            target: 'generateBtn',
+            position: 'top'
+          },
+          {
+            icon: '📋',
+            title: 'Šablóny platieb',
+            description: 'Tu nájdete uložené šablóny pre opakujúce sa platby. Ušetríte čas pri pravidelných platbách.',
+            color: 'linear-gradient(135deg, #10b981, #059669)',
+            target: 'templatesBtn',
+            position: 'bottom'
+          },
+          {
+            icon: '📊',
+            title: 'História platieb',
+            description: 'Prehľad všetkých vašich platieb. Sledujte stav, označujte ako zaplatené a duplikujte platby.',
+            color: 'linear-gradient(135deg, #8b5cf6, #d946ef)',
+            target: 'historyBtn',
+            position: 'bottom'
+          },
+          {
+            icon: '⚙️',
+            title: 'Nastavenia',
+            description: 'Prispôsobte si aplikáciu - zmeňte tému (svetlá/tmavá) a vyberte si svoju obľúbenú farbu.',
+            color: 'linear-gradient(135deg, #475569, #1e293b)',
+            target: 'settingsBtn',
+            position: 'bottom'
+          },
+          {
+            icon: '🚀',
+            title: 'Všetko je pripravené!',
+            description: 'Teraz už viete všetko potrebné. Začnite vytvorením účtu a vygenerujte prvý QR kód!',
+            color: 'linear-gradient(135deg, #f43f5e, #ec4899)',
+            target: null,
+            position: 'center'
+          }
+        ];
+        
+        // Computed tooltip position based on current step
+        const tooltipPosition = computed(() => {
+          const step = tutorialSteps[tutorialStep.value];
+          
+          // Center position for welcome/finish screens
+          if (step.position === 'center' || !step.target) {
+            return {
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)'
+            };
+          }
+          
+          // Get target element reference
+          let targetEl = null;
+          switch (step.target) {
+            case 'cardArea': targetEl = cardArea.value; break;
+            case 'inputsArea': targetEl = inputsArea.value; break;
+            case 'settingsBtn': targetEl = settingsBtn.value; break;
+            case 'templatesBtn': targetEl = templatesBtn.value; break;
+            case 'historyBtn': targetEl = historyBtn.value; break;
+            case 'attachBtn': targetEl = attachBtn.value; break;
+            case 'generateBtn': targetEl = document.querySelector('[key="generate"]')?.parentElement; break;
+          }
+          
+          if (!targetEl) {
+            return { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' };
+          }
+          
+          const rect = targetEl.getBoundingClientRect();
+          const tooltipWidth = 320;
+          const tooltipHeight = 200;
+          const padding = 16;
+          
+          let top, left;
+          
+          if (step.position === 'bottom') {
+            top = rect.bottom + padding;
+            left = Math.max(padding, Math.min(rect.left + rect.width / 2 - tooltipWidth / 2, window.innerWidth - tooltipWidth - padding));
+          } else if (step.position === 'top') {
+            top = rect.top - tooltipHeight - padding;
+            left = Math.max(padding, Math.min(rect.left + rect.width / 2 - tooltipWidth / 2, window.innerWidth - tooltipWidth - padding));
+          }
+          
+          return {
+            top: top + 'px',
+            left: left + 'px'
+          };
+        });
+        
+        // Theme mode functions
+        const applyTheme = (mode) => {
+          let shouldBeDark = false;
+          if (mode === 'dark') {
+            shouldBeDark = true;
+          } else if (mode === 'system') {
+            shouldBeDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          }
+          isDarkMode.value = shouldBeDark;
+          if (shouldBeDark) {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
+        };
+        
+        const setThemeMode = async (mode) => {
+          themeMode.value = mode;
+          await window.dbStorage.setItem('themeMode', mode);
+          applyTheme(mode);
+        };
+        
+        const setAccentColor = async (color) => {
+          accentColor.value = color;
+          await window.dbStorage.setItem('accentColor', color);
+          // Remove all accent classes
+          document.documentElement.classList.remove('accent-rose', 'accent-emerald', 'accent-amber', 'accent-sky', 'accent-violet');
+          // Add new accent class (indigo is default, no class needed)
+          if (color !== 'indigo') {
+            document.documentElement.classList.add('accent-' + color);
+          }
+        };
+        
+        // Listen for system theme changes
+        const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+        mediaQuery.addEventListener('change', (e) => {
+          if (themeMode.value === 'system') {
+            applyTheme('system');
+          }
+        });
+        
+        // Filtered templates based on search
+        const filteredTemplates = computed(() => {
+          if (!templateSearch.value.trim()) return templates.value;
+          const search = templateSearch.value.toLowerCase().trim();
+          return templates.value.filter(t => {
+            const name = (t.name || '').toLowerCase();
+            const amount = String(t.amount || '');
+            const vs = (t.vs || '').toLowerCase();
+            const msg = (t.msg || '').toLowerCase();
+            return name.includes(search) || 
+                   amount.includes(search) || 
+                   vs.includes(search) || 
+                   msg.includes(search);
+          });
+        });
+
+        // Count of unpaid/pending payments for badge
+        const unpaidPendingCount = computed(() => {
+          return paymentHistory.value.filter(item => {
+            if (item.status === 'paid') return false;
+            return true; // Count both pending and unpaid (past due date)
+          }).length;
+        });
+
+        const isAddingTemplate = ref(false);
+        const isEditingTemplate = ref(false);
+        const editingTemplateIndex = ref(-1);
+        
+        // Analytics date range
+        const analyticsDateRange = ref('month');
+        const customDateFrom = ref('');
+        const customDateTo = ref('');
+        
+        // Custom tags
+        const showCustomTagForm = ref(false);
+        const customTag = ref({ label: '', color: '#6366f1', emoji: '🏷️' });
+        const customTags = ref([]);
+        
+        // Amount suggestions
+        const showAmountSuggestions = ref(false);
+        const recentAmounts = computed(() => {
+          const amounts = paymentHistory.value
+            .map(h => Number(h.amount))
+            .filter(a => a > 0);
+          // Get unique amounts, sorted by frequency then value
+          const frequency = {};
+          amounts.forEach(a => frequency[a] = (frequency[a] || 0) + 1);
+          let uniqueAmounts = [...new Set(amounts)]
+            .sort((a, b) => frequency[b] - frequency[a]);
+          
+          // Filter by current input if user has typed something
+          const currentInput = String(payment.value.amount || '').trim();
+          if (currentInput) {
+            uniqueAmounts = uniqueAmounts.filter(a => {
+              const amountStr = a.toFixed(2);
+              return amountStr.startsWith(currentInput) || String(a).startsWith(currentInput);
+            });
+          }
+          
+          return uniqueAmounts.slice(0, 5);
+        });
+        
+        const selectAmount = (amount) => {
+          payment.value.amount = amount;
+          showAmountSuggestions.value = false;
+        };
+        
+        const hideAmountSuggestions = () => {
+          setTimeout(() => {
+            if (!showCalculator.value) {
+              showAmountSuggestions.value = false;
+            }
+          }, 150);
+        };
+        
+        // Calculator
+        const showCalculator = ref(false);
+        const calcDisplay = ref('');
+        const calcResult = ref(null);
+        
+        const toggleCalculator = () => {
+          showCalculator.value = !showCalculator.value;
+          if (showCalculator.value) {
+            showAmountSuggestions.value = false;
+            calcDisplay.value = payment.value.amount ? String(payment.value.amount) : '';
+            calcResult.value = payment.value.amount ? Number(payment.value.amount) : null;
+          }
+        };
+        
+        const calcInput = (val) => {
+          // Prevent multiple operators in a row
+          const operators = ['+', '-', '×', '÷'];
+          const lastChar = calcDisplay.value.slice(-1);
+          if (operators.includes(val) && operators.includes(lastChar)) {
+            calcDisplay.value = calcDisplay.value.slice(0, -1) + val;
+          } else if (val === '.' && calcDisplay.value.split(/[+\-×÷]/).pop().includes('.')) {
+            // Prevent multiple decimals in same number
+            return;
+          } else {
+            calcDisplay.value += val;
+          }
+          evaluateCalc();
+        };
+        
+        const calcClear = () => {
+          calcDisplay.value = '';
+          calcResult.value = null;
+        };
+        
+        const calcBackspace = () => {
+          calcDisplay.value = calcDisplay.value.slice(0, -1);
+          evaluateCalc();
+        };
+        
+        const evaluateCalc = () => {
+          try {
+            // Replace × and ÷ with * and /
+            let expr = calcDisplay.value.replace(/×/g, '*').replace(/÷/g, '/');
+            // Remove trailing operator
+            expr = expr.replace(/[+\-*/]$/, '');
+            if (expr) {
+              calcResult.value = Function('"use strict"; return (' + expr + ')')();
+              if (!isFinite(calcResult.value)) calcResult.value = null;
+            } else {
+              calcResult.value = null;
+            }
+          } catch (e) {
+            calcResult.value = null;
+          }
+        };
+        
+        const calcApply = () => {
+          if (calcResult.value !== null && isFinite(calcResult.value)) {
+            payment.value.amount = Math.round(calcResult.value * 100) / 100;
+          }
+          showCalculator.value = false;
+        };
+        
+        // Available emojis for accounts
+        const availableEmojis = ['🏠', '🏢', '👨‍💼', '👨‍👩‍👧', '💰', '💳', '🏫', '🏥', '🚗', '✈️', '🌴', '🎮', '🏃', '🎵', '📚', '❤️'];
+        
+        // Tag color palette
+        const tagColors = [
+          'linear-gradient(135deg, #6366f1, #8b5cf6)',
+          'linear-gradient(135deg, #3b82f6, #06b6d4)',
+          'linear-gradient(135deg, #10b981, #14b8a6)',
+          'linear-gradient(135deg, #f97316, #f59e0b)',
+          'linear-gradient(135deg, #f43f5e, #ec4899)',
+          'linear-gradient(135deg, #8b5cf6, #d946ef)',
+          'linear-gradient(135deg, #475569, #1e293b)',
+          'linear-gradient(135deg, #ef4444, #f97316)',
+          'linear-gradient(135deg, #84cc16, #22c55e)',
+          'linear-gradient(135deg, #06b6d4, #0ea5e9)',
+        ];
+        
+        // Analytics computed
+        const analytics = computed(() => {
+          const history = paymentHistory.value.filter(h => h.status === 'paid'); // Only count paid payments
+          const now = new Date();
+          const thisMonth = now.getMonth();
+          const thisYear = now.getFullYear();
+          
+          const totalCount = history.length;
+          const totalAmount = history.reduce((sum, h) => sum + Number(h.amount), 0);
+          
+          const thisMonthItems = history.filter(h => {
+            const d = new Date(h.timestamp);
+            return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
+          });
+          const thisMonthAmount = thisMonthItems.reduce((sum, h) => sum + Number(h.amount), 0);
+          
+          // Top accounts
+          const accountCounts = {};
+          history.forEach(h => {
+            accountCounts[h.accountName] = (accountCounts[h.accountName] || 0) + 1;
+          });
+          const topAccounts = Object.entries(accountCounts)
+            .map(([name, count]) => ({ name, count }))
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 3);
+          
+          return { totalCount, totalAmount, thisMonthAmount, topAccounts };
+        });
+        
+        // Filtered analytics with date range and tag breakdown
+        const filteredAnalytics = computed(() => {
+          const now = new Date();
+          let filtered = paymentHistory.value.filter(h => h.status === 'paid'); // Only count paid payments
+          
+          // Apply date filter
+          if (analyticsDateRange.value === 'today') {
+            const today = now.toDateString();
+            filtered = filtered.filter(h => new Date(h.timestamp).toDateString() === today);
+          } else if (analyticsDateRange.value === 'week') {
+            const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            filtered = filtered.filter(h => new Date(h.timestamp) >= weekAgo);
+          } else if (analyticsDateRange.value === 'month') {
+            const thisMonth = now.getMonth();
+            const thisYear = now.getFullYear();
+            filtered = filtered.filter(h => {
+              const d = new Date(h.timestamp);
+              return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
+            });
+          } else if (analyticsDateRange.value === 'year') {
+            const thisYear = now.getFullYear();
+            filtered = filtered.filter(h => new Date(h.timestamp).getFullYear() === thisYear);
+          } else if (analyticsDateRange.value === 'custom' && customDateFrom.value && customDateTo.value) {
+            const from = new Date(customDateFrom.value);
+            const to = new Date(customDateTo.value);
+            to.setHours(23, 59, 59, 999);
+            filtered = filtered.filter(h => {
+              const d = new Date(h.timestamp);
+              return d >= from && d <= to;
+            });
+          }
+          
+          const totalCount = filtered.length;
+          const totalAmount = filtered.reduce((sum, h) => sum + Number(h.amount), 0);
+          const avgAmount = totalCount > 0 ? totalAmount / totalCount : 0;
+          
+          // Top accounts
+          const accountCounts = {};
+          filtered.forEach(h => {
+            accountCounts[h.accountName] = (accountCounts[h.accountName] || 0) + 1;
+          });
+          const topAccounts = Object.entries(accountCounts)
+            .map(([name, count]) => ({ name, count }))
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 3);
+          
+          // Tag breakdown
+          const tagStats = {};
+          filtered.forEach(h => {
+            const tag = h.tag || 'other';
+            if (!tagStats[tag]) {
+              tagStats[tag] = { tag, amount: 0, count: 0 };
+            }
+            tagStats[tag].amount += Number(h.amount);
+            tagStats[tag].count += 1;
+          });
+          const tagBreakdown = Object.values(tagStats)
+            .map(stat => ({
+              ...stat,
+              label: getTagLabel(stat.tag),
+              color: getTagColor(stat.tag)
+            }))
+            .sort((a, b) => b.amount - a.amount);
+          
+          return { totalCount, totalAmount, avgAmount, topAccounts, tagBreakdown };
+        });
+        
+        // Helper to get today's date in YYYY-MM-DD format
+        const getTodayDate = () => {
+          const today = new Date();
+          return today.toISOString().split('T')[0];
+        };
+        
+        // Data - Inputs with today's date pre-filled for dueDate
+        const payment = ref({ amount: '', vs: '', msg: '', dueDate: getTodayDate() });
+        const newProfile = ref({ name: '', recipientName: '', iban: '', tag: 'personal', emoji: '💳' });
+        
+        // Default tags with associated colors and emojis
+        const defaultTags = [
+            { name: 'personal', label: 'Osobné', color: 'linear-gradient(135deg, #6366f1, #8b5cf6)', emoji: '💳' },
+            { name: 'business', label: 'Podnikanie', color: 'linear-gradient(135deg, #f97316, #f59e0b)', emoji: '💼' },
+            { name: 'savings', label: 'Úspory', color: 'linear-gradient(135deg, #f43f5e, #ec4899)', emoji: '💰' },
+        ];
+        
+        // All tags = default + custom
+        const allTags = computed(() => [...defaultTags, ...customTags.value]);
+        
+        const getTagColor = (tagName) => {
+            const tag = allTags.value.find(t => t.name === tagName);
+            return tag ? tag.color : 'linear-gradient(135deg, #6366f1, #8b5cf6)';
+        };
+        
+        const getTagLabel = (tagName) => {
+            const tag = allTags.value.find(t => t.name === tagName);
+            return tag ? tag.label : tagName;
+        };
+        
+        const getTagEmoji = (tagName) => {
+            const tag = allTags.value.find(t => t.name === tagName);
+            return tag ? tag.emoji : '📋';
+        };
+        
+        const selectTag = (tag) => {
+            newProfile.value.tag = tag.name;
+            newProfile.value.emoji = tag.emoji || '📋';
+        };
+        
+        const addCustomTag = async () => {
+            if (!customTag.value.label) return alert('Zadajte názov štítku');
+            const name = 'custom_' + Date.now();
+            const emoji = customTag.value.emoji || '🏷️';
+            customTags.value.push({ name, label: customTag.value.label, color: customTag.value.color, emoji });
+            await window.dbStorage.setItem('custom_tags', JSON.stringify(customTags.value));
+            newProfile.value.tag = name;
+            newProfile.value.emoji = emoji;
+            customTag.value = { label: '', color: '#6366f1', emoji: '🏷️' };
+            showCustomTagForm.value = false;
+        };
+
+        const getCardColorClass = (tag) => {
+            // Return CSS class based on tag - fallback function for compatibility
+            return 'bg-gradient-to-br from-indigo-600 to-violet-700';
+        };
+
+        // INIT
+        onMounted(async () => {
+            // Initialize IndexedDB
+            await window.dbStorage.init();
+            
+            // Load theme mode preference
+            const storedThemeMode = await window.dbStorage.getItem('themeMode');
+            if (storedThemeMode) {
+              themeMode.value = storedThemeMode;
+            }
+            applyTheme(themeMode.value);
+            
+            // Load accent color preference
+            const storedAccentColor = await window.dbStorage.getItem('accentColor');
+            if (storedAccentColor) {
+              setAccentColor(storedAccentColor);
+            }
+            
+            const stored = await window.dbStorage.getItem('payment_profiles_v2');
+            if (stored) {
+                // Parse and Fix legacy profiles that might miss recipientName
+                profiles.value = JSON.parse(stored).map(p => ({
+                    ...p,
+                    recipientName: p.recipientName || ''
+                }));
+            }
+            
+            // Load payment history
+            const storedHistory = await window.dbStorage.getItem('payment_history');
+            if (storedHistory) paymentHistory.value = JSON.parse(storedHistory);
+            
+            // Load templates
+            const storedTemplates = await window.dbStorage.getItem('payment_templates');
+            if (storedTemplates) templates.value = JSON.parse(storedTemplates);
+            
+            // Load custom tags
+            const storedCustomTags = await window.dbStorage.getItem('custom_tags');
+            if (storedCustomTags) customTags.value = JSON.parse(storedCustomTags);
+            
+            // Check if tutorial has been completed
+            const storedTutorialCompleted = await window.dbStorage.getItem('tutorial_completed');
+            if (storedTutorialCompleted) {
+              tutorialCompleted.value = true;
+            } else {
+              // Show tutorial for first-time users
+              showTutorial.value = true;
+            }
+            
+            // Set active profile to default if exists, otherwise first profile
+            if (profiles.value.length > 0) {
+                const defaultProfile = profiles.value.find(p => p.isDefault);
+                activeProfileName.value = defaultProfile ? defaultProfile.name : profiles.value[0].name;
+                
+                // Scroll to active profile
+                nextTick(() => {
+                    const activeIndex = profiles.value.findIndex(p => p.name === activeProfileName.value);
+                    if (activeIndex >= 0 && carouselRef.value) {
+                        const el = carouselRef.value.children[activeIndex];
+                        if (el) el.scrollIntoView({ behavior: 'auto', inline: 'center' });
+                    }
+                });
+            }
+            
+            // Auto-generate VS on initial load
+            generateVariableSymbol();
+            
+            setupCarouselObserver();
+        });
+
+        const closeQr = () => {
+            isQrVisible.value = false;
+        };
+
+        // --- CAROUSEL & QR ---
+        const setupCarouselObserver = () => {
+             if (!carouselRef.value) return;
+             const observer = new IntersectionObserver((entries) => {
+                 entries.forEach(entry => {
+                     if (entry.isIntersecting) {
+                         const name = entry.target.getAttribute('data-profile');
+                         activeProfileName.value = name || '';
+                     }
+                 });
+             }, { root: carouselRef.value, threshold: 0.6 });
+             Array.from(carouselRef.value.children).forEach(child => observer.observe(child));
+        };
+        
+        watch(() => profiles.value.length, () => nextTick(setupCarouselObserver));
+
+        const generateVariableSymbol = () => payment.value.vs = String(Date.now()).slice(-10);
+
+        const formatIban = (iban) => {
+            const clean = iban.replace(/\s/g, '');
+            return clean.replace(/(.{4})/g, '$1 ').trim();
+        };
+
+        const saveProfile = async () => {
+            const { name, recipientName, iban, tag, emoji } = newProfile.value;
+            if(!name || !iban) return alert("Vyplňte názov účtu a IBAN");
+            
+            // Fallback for recipientName if left empty
+            const safeRecipientName = recipientName || '';
+
+            if (isEditingProfile.value) {
+                // Update existing profile
+                const index = profiles.value.findIndex(p => p.name === name);
+                if (index !== -1) {
+                    profiles.value[index] = { ...profiles.value[index], recipientName: safeRecipientName, iban, tag, emoji };
+                }
+            } else {
+                // Add new profile
+                profiles.value.push({ ...newProfile.value, recipientName: safeRecipientName });
+            }
+            
+            await window.dbStorage.setItem('payment_profiles_v2', JSON.stringify(profiles.value));
+            isAddingProfile.value = false;
+            isEditingProfile.value = false;
+            newProfile.value = { name: '', recipientName: '', iban: '', tag: 'personal', emoji: '💰' };
+            
+            if (!isEditingProfile.value) {
+                nextTick(() => {
+                    const el = carouselRef.value.children[profiles.value.length - 1]; 
+                    if(el) el.scrollIntoView({ behavior: 'smooth', inline: 'center' });
+                });
+            }
+        };
+
+        const editProfile = (profile) => {
+            newProfile.value = { 
+                name: profile.name, 
+                recipientName: profile.recipientName || '', 
+                iban: profile.iban, 
+                tag: profile.tag || 'personal', 
+                emoji: profile.emoji || '💰' 
+            };
+            isEditingProfile.value = true;
+            isAddingProfile.value = false;
+        };
+
+        const cancelProfileForm = () => {
+            isAddingProfile.value = false;
+            isEditingProfile.value = false;
+            newProfile.value = { name: '', recipientName: '', iban: '', tag: 'personal', emoji: '💰' };
+        };
+
+        const deleteProfile = async (name) => {
+            if(!confirm("Zmazať účet?")) return;
+            profiles.value = profiles.value.filter(p => p.name !== name);
+            await window.dbStorage.setItem('payment_profiles_v2', JSON.stringify(profiles.value));
+            activeProfileName.value = profiles.value.length > 0 ? profiles.value[0].name : '';
+        };
+
+        const toggleDefaultProfile = async (name) => {
+            profiles.value = profiles.value.map(p => ({
+                ...p,
+                isDefault: p.name === name
+            }));
+            await window.dbStorage.setItem('payment_profiles_v2', JSON.stringify(profiles.value));
+        };
+
+        const getActiveProfileData = () => profiles.value.find(p => p.name === activeProfileName.value);
+
+        const generateQRCode = async () => {
+          if(!activeProfileName.value) return alert("Vyberte alebo vytvorte účet");
+          if(!payment.value.amount) return alert("Zadajte sumu");
+          
+          const profile = getActiveProfileData();
+          
+          // Safety check
+          if (!profile) return;
+          
+          // 1. Prepare Beneficiary Name
+          // safely handle undefined/null legacy data and limit length
+          const safeBeneficiaryName = (profile.recipientName || '').trim().substring(0, 70);
+          
+          // Log to history
+          if (!isQrVisible.value) {
+            const historyItem = {
+              id: Date.now(), 
+              timestamp: new Date().toISOString(),
+              accountName: profile.name,
+              recipientName: safeBeneficiaryName,
+              iban: profile.iban,
+              amount: payment.value.amount,
+              vs: payment.value.vs,
+              msg: payment.value.msg,
+              dueDate: payment.value.dueDate,
+              tag: profile.tag || 'other',
+              status: 'pending' 
+            };
+            paymentHistory.value.push(historyItem);
+            await window.dbStorage.setItem('payment_history', JSON.stringify(paymentHistory.value));
+          }
+          
+          isQrVisible.value = true;
+
+          await nextTick();
+          if (!qrcodeContainer.value) return;
+          
+          qrcodeContainer.value.innerHTML = '';
+          
+          try {
+            // 2. Construct Payment Data
+            // We use spread syntax to conditionally add properties. 
+            // Sending empty strings or undefined to the encoder can break validation.
+            const paymentData = {
+              type: 1, 
+              amount: Number(payment.value.amount), 
+              currencyCode: "EUR",
+              bankAccounts: [{ 
+                iban: profile.iban.trim()
+              }],
+              ...(payment.value.vs && { variableSymbol: payment.value.vs.trim() }),
+              ...(payment.value.msg && { paymentNote: payment.value.msg.trim() }),
+              ...(safeBeneficiaryName && { beneficiary: { name: safeBeneficiaryName } }),
+              ...(payment.value.dueDate && { paymentDueDate: payment.value.dueDate })
+            };
+
+            const qrData = window.bysquare.encode({ payments: [paymentData] });
+            
+            new QRCode(qrcodeContainer.value, { 
+                text: qrData, 
+                width: 140, 
+                height: 140, 
+                colorDark: "#1e293b", 
+                colorLight: "#ffffff", 
+                correctLevel: QRCode.CorrectLevel.L 
+            });
+          } catch (e) { 
+              console.error(e); 
+              alert("Chyba pri generovaní QR kódu");
+          }
+        };
+
+        const formatDate = (isoString) => {
+          const d = new Date(isoString);
+          const now = new Date();
+          const isToday = d.toDateString() === now.toDateString();
+          const yesterday = new Date(now);
+          yesterday.setDate(yesterday.getDate() - 1);
+          const isYesterday = d.toDateString() === yesterday.toDateString();
+          
+          const time = d.toLocaleTimeString('sk-SK', { hour: '2-digit', minute: '2-digit' });
+          
+          if (isToday) return `Dnes, ${time}`;
+          if (isYesterday) return `Včera, ${time}`;
+          return d.toLocaleDateString('sk-SK', { day: 'numeric', month: 'short' }) + `, ${time}`;
+        };
+
+        const clearHistory = async () => {
+          if (!confirm('Vymazať celú históriu platieb?')) return;
+          paymentHistory.value = [];
+          await window.dbStorage.removeItem('payment_history');
+        };
+
+        const deleteHistoryItem = async (reversedIndex) => {
+          const actualIndex = paymentHistory.value.length - 1 - reversedIndex;
+          paymentHistory.value.splice(actualIndex, 1);
+          await window.dbStorage.setItem('payment_history', JSON.stringify(paymentHistory.value));
+        };
+
+        const markAsPaid = async (paymentId) => {
+          const payment = paymentHistory.value.find(h => h.id === paymentId);
+          if (payment) {
+            payment.status = 'paid';
+            await window.dbStorage.setItem('payment_history', JSON.stringify(paymentHistory.value));
+          }
+        };
+
+        const getPaymentStatusStyle = (item) => {
+          // If already paid
+          if (item.status === 'paid') {
+            return {
+              borderColor: '#22c55e',
+              badgeClass: 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300',
+              label: 'Zaplatené',
+              canMarkPaid: false
+            };
+          }
+          
+          // Check if past due date
+          const now = new Date();
+          now.setHours(0, 0, 0, 0); // Reset to start of day for comparison
+          
+          if (item.dueDate) {
+            const dueDate = new Date(item.dueDate);
+            dueDate.setHours(0, 0, 0, 0);
+            
+            if (now > dueDate) {
+              // Unpaid (past due date)
+              return {
+                borderColor: '#ef4444',
+                badgeClass: 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300',
+                label: 'Nezaplatené',
+                canMarkPaid: true
+              };
+            }
+          }
+          
+          // Still pending (before due date or no due date set)
+          return {
+            borderColor: '#f59e0b',
+            badgeClass: 'bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-300',
+            label: 'Čakajúce',
+            canMarkPaid: true
+          };
+        };
+
+        const duplicatePayment = (item) => {
+          // Find the profile that matches this payment
+          const profile = profiles.value.find(p => p.name === item.accountName);
+          if (profile) {
+            activeProfileName.value = profile.name;
+            // Scroll to the profile card
+            nextTick(() => {
+              const activeIndex = profiles.value.findIndex(p => p.name === activeProfileName.value);
+              if (activeIndex >= 0 && carouselRef.value) {
+                const el = carouselRef.value.children[activeIndex];
+                if (el) el.scrollIntoView({ behavior: 'smooth', inline: 'center' });
+              }
+            });
+          }
+          // Copy payment details
+          payment.value.amount = item.amount;
+          payment.value.vs = item.vs || '';
+          payment.value.msg = item.msg || '';
+          payment.value.dueDate = item.dueDate || '';
+          // Generate new VS
+          generateVariableSymbol();
+          // Close history panel
+          showHistory.value = false;
+        };
+
+        const getPaymeUrl = () => {
+          const profile = getActiveProfileData();
+          if (!profile) return '';
+          
+          // Construct params in the expected order: V, IBAN, AM, CC, DT, PI, MSG, CN
+          const params = new URLSearchParams({ 
+            V: '1', 
+            IBAN: profile.iban.replace(/\s/g, ''), 
+            AM: Number(payment.value.amount).toFixed(2), 
+            CC: 'EUR' 
+          });
+
+          // Add Due Date (Format: YYYYMMDD)
+          if (payment.value.dueDate) {
+            const date = payment.value.dueDate.replace(/-/g, '');
+            params.append('DT', date);
+          }
+
+          // Add Variable Symbol (Payment Identification)
+          if (payment.value.vs) {
+              params.append('PI', '/VS' + payment.value.vs.trim());
+          }
+          
+          // Add Message
+          if (payment.value.msg) {
+              params.append('MSG', payment.value.msg.trim());
+          }
+          
+          // Add Client Name (Beneficiary)
+          if (profile.recipientName) {
+              params.append('CN', profile.recipientName.trim());
+          }
+
+          return `https://payme.sk?${params.toString()}`;
+        };
+
+        const sharePaymeLink = async () => {
+          const url = getPaymeUrl();
+          const profile = getActiveProfileData();
+          const shareData = {
+            title: 'Žiadosť o platbu',
+            text: `Platba ${Number(payment.value.amount).toFixed(2)}€ pre ${profile?.recipientName || 'príjemcu'}`,
+            url: url
+          };
+          
+          if (navigator.share) {
+            try {
+              await navigator.share(shareData);
+            } catch (e) {
+              if (e.name !== 'AbortError') {
+                // Fallback to copy if share fails
+                await navigator.clipboard.writeText(url);
+                paymeLinkCopied.value = true;
+                setTimeout(() => paymeLinkCopied.value = false, 2000);
+              }
+            }
+          } else {
+            // Fallback for browsers without Web Share API
+            await navigator.clipboard.writeText(url);
+            paymeLinkCopied.value = true;
+            setTimeout(() => paymeLinkCopied.value = false, 2000);
+          }
+        };
+
+        // Template functions
+        const saveTemplate = async () => {
+          if (!newTemplate.value.name || !newTemplate.value.amount) {
+            return alert('Vyplňte názov a sumu');
+          }
+          
+          if (isEditingTemplate.value) {
+            templates.value[editingTemplateIndex.value] = { ...newTemplate.value };
+          } else {
+            templates.value.push({ ...newTemplate.value });
+          }
+          
+          await window.dbStorage.setItem('payment_templates', JSON.stringify(templates.value));
+          newTemplate.value = { name: '', amount: '', vs: '', msg: '', dueDate: '' };
+          isAddingTemplate.value = false;
+          isEditingTemplate.value = false;
+          editingTemplateIndex.value = -1;
+        };
+
+        const applyTemplate = (template) => {
+          payment.value.amount = template.amount;
+          if (template.vs) payment.value.vs = template.vs;
+          if (template.msg) payment.value.msg = template.msg;
+          if (template.dueDate) payment.value.dueDate = template.dueDate;
+          showTemplates.value = false;
+        };
+
+        const editTemplate = (template, index) => {
+          newTemplate.value = { ...template };
+          isAddingTemplate.value = false;
+          isEditingTemplate.value = true;
+          editingTemplateIndex.value = index;
+        };
+
+        const cancelTemplateEdit = () => {
+          newTemplate.value = { name: '', amount: '', vs: '', msg: '', dueDate: '' };
+          isAddingTemplate.value = false;
+          isEditingTemplate.value = false;
+          editingTemplateIndex.value = -1;
+        };
+
+        const deleteTemplate = async (index) => {
+          if (!confirm('Vymazať túto šablónu?')) return;
+          templates.value.splice(index, 1);
+          await window.dbStorage.setItem('payment_templates', JSON.stringify(templates.value));
+        };
+
+        const copyPaymeLink = async () => {
+            const url = getPaymeUrl(); // Re-use the fixed function
+            if (!url) return;
+            try { 
+                await navigator.clipboard.writeText(url); 
+                paymeLinkCopied.value = true; 
+                setTimeout(() => paymeLinkCopied.value = false, 2000); 
+            } catch(e) { 
+                alert(url); 
+            }
+        };
+
+        // File attachment functionality
+        const attachFile = () => {
+          try {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.pdf,.jpg,.jpeg,.png,.doc,.docx,.txt';
+            input.onchange = (event) => {
+              try {
+                const file = event.target.files?.[0];
+                if (file) {
+                  // Check file size (max 10MB)
+                  if (file.size > 10 * 1024 * 1024) {
+                    alert('Súbor je príliš veľký. Maximálna veľkosť je 10MB.');
+                    return;
+                  }
+                  
+                  attachedFile.value = file;
+                  // You can process the file here - for now just show an alert
+                  alert(`Súbor "${file.name}" bol priložený. Veľkosť: ${(file.size / 1024).toFixed(1)} KB`);
+                }
+              } catch (error) {
+                console.error('Error processing file:', error);
+                alert('Chyba pri spracovaní súboru. Skúste to znova.');
+              }
+            };
+            input.onerror = (error) => {
+              console.error('File input error:', error);
+              alert('Chyba pri výbere súboru. Skúste to znova.');
+            };
+            input.click();
+          } catch (error) {
+            console.error('Error creating file input:', error);
+            alert('Chyba pri otváraní výberu súboru. Skúste to znova.');
+          }
+        };
+
+
+
+        // Tutorial functions
+        const nextTutorialStep = async () => {
+          if (tutorialStep.value < tutorialSteps.length - 1) {
+            tutorialStep.value++;
+          } else {
+            // Tutorial completed
+            showTutorial.value = false;
+            tutorialCompleted.value = true;
+            await window.dbStorage.setItem('tutorial_completed', 'true');
+          }
+        };
+
+        const prevTutorialStep = () => {
+          if (tutorialStep.value > 0) {
+            tutorialStep.value--;
+          }
+        };
+
+        const skipTutorial = async () => {
+          showTutorial.value = false;
+          tutorialCompleted.value = true;
+          await window.dbStorage.setItem('tutorial_completed', 'true');
+        };
+
+        const restartTutorial = () => {
+          tutorialStep.value = 0;
+          showTutorial.value = true;
+          showSettings.value = false;
+        };
+
+        watch(payment, () => {
+            if(isQrVisible.value) {
+                if(window.t) clearTimeout(window.t);
+                window.t = setTimeout(generateQRCode, 300);
+            }
+        }, { deep: true });
+
+        watch(activeProfileName, () => {
+            // Auto-generate new VS when switching accounts
+            generateVariableSymbol();
+        });
+
+        return {
+          carouselRef, qrcodeContainer, settingsBtn, templatesBtn, historyBtn, cardArea, inputsArea, attachBtn,
+          isDarkMode, showSettings, themeMode, accentColor, accentColors, isAddingProfile, isEditingProfile, isQrVisible, paymeLinkCopied, showHistory, showTemplates, showCustomTagForm, showAmountSuggestions, isRecording, attachedFile,
+          payment, newProfile, profiles, activeProfileName, allTags, paymentHistory, analytics, filteredAnalytics, templates, filteredTemplates, templateSearch, newTemplate, isAddingTemplate, isEditingTemplate, unpaidPendingCount,
+          customTag, customTags, availableEmojis, tagColors, analyticsDateRange, customDateFrom, customDateTo, recentAmounts,
+          showCalculator, calcDisplay, calcResult, toggleCalculator, calcInput, calcClear, calcBackspace, calcApply,
+          showTutorial, tutorialStep, tutorialSteps, tutorialCompleted, tooltipPosition, nextTutorialStep, prevTutorialStep, skipTutorial, restartTutorial,
+          setThemeMode, setAccentColor, saveProfile, deleteProfile, toggleDefaultProfile, editProfile, cancelProfileForm, formatIban, getCardColorClass, getTagLabel, getTagEmoji, getTagColor, selectTag, addCustomTag, generateVariableSymbol, generateQRCode, copyPaymeLink, sharePaymeLink,
+          closeQr, formatDate, clearHistory, deleteHistoryItem, markAsPaid, getPaymentStatusStyle, duplicatePayment, selectAmount, hideAmountSuggestions, saveTemplate, applyTemplate, editTemplate, cancelTemplateEdit, deleteTemplate, attachFile,
+        };
+      }
+    }).mount('#app');
+  </script>
+</body>
+</html>
