@@ -37,12 +37,6 @@
   <!-- QRCode.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   
-  <!-- bysquare library -->
-  <script type="module">
-    import { encode } from "https://esm.sh/bysquare@latest";
-    window.bysquare = { encode };
-  </script>
-
   <script>
     // IndexedDB wrapper for application data
     const DB_NAME = 'PaymeQRDatabase';
@@ -266,7 +260,7 @@
 </head>
 <body class="bg-slate-50 dark:bg-slate-900 min-h-screen text-slate-800 dark:text-slate-200 flex items-center justify-center p-4 transition-colors duration-300">
 
-  <div id="app" class="w-full max-w-md mx-auto pb-10">
+  <div id="app" class="w-full max-w-md mx-auto pb-4">
     
     <!-- TUTORIAL TOOLTIP OVERLAY -->
     <div v-if="showTutorial" class="fixed inset-0 z-40 pointer-events-none"></div>
@@ -329,7 +323,7 @@
     </transition>
     
     <!-- Header -->
-    <header class="flex justify-between items-center mb-6 px-2" :class="{ 'relative z-50': showTutorial && tutorialStep === 7 }">
+    <header class="flex justify-between items-center mb-4 px-2" :class="{ 'relative z-50': showTutorial && tutorialStep === 7 }">
       <div class="flex items-center gap-2">
         <button ref="settingsBtn" @click="showSettings = !showSettings; showHistory = false; showTemplates = false; isQrVisible = false" class="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" :class="[showSettings ? 'bg-accent-100 dark:bg-accent-900 text-accent-600 dark:text-accent-400' : 'text-slate-400 dark:text-slate-500', showTutorial && tutorialStep === 7 ? 'tutorial-highlight-button' : '']">
           <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
@@ -417,7 +411,7 @@
     </transition>
 
     <!-- 2. MAIN CARD AREA -->
-    <div ref="cardArea" class="relative w-full mb-8 z-10 transition-all duration-500" :class="[showHistory || showTemplates || showSettings ? 'min-h-[500px]' : 'aspect-[1.586/1]', showTutorial && tutorialStep === 1 ? 'tutorial-highlight-card relative z-50' : '']">
+    <div ref="cardArea" class="relative w-full mb-4 z-10 transition-all duration-500" :class="[showHistory || showTemplates || showSettings ? 'min-h-[500px]' : 'aspect-[1.586/1]', showTutorial && tutorialStep === 1 ? 'tutorial-highlight-card relative z-50' : '']">
         
         <!-- A. CAROUSEL -->
         <div 
@@ -435,7 +429,7 @@
                     class="w-full h-full flex-shrink-0 snap-center relative px-0.5" 
                     :data-profile="profile.name"
                 >
-                    <div class="w-full h-full rounded-3xl text-white p-7 flex flex-col justify-between shadow-xl border border-white/10 overflow-hidden relative" :style="{ background: getTagColor(profile.tag) }">
+                    <div class="w-full h-full rounded-3xl text-white p-6 sm:p-7 flex flex-col justify-between shadow-xl border border-white/10 overflow-hidden relative" :style="{ background: getTagColor(profile.tag) }">
                         <div class="absolute -top-10 -right-10 w-48 h-48 bg-white/10 rounded-full blur-3xl pointer-events-none"></div>
                         
                         <div class="flex justify-between items-start z-10">
@@ -448,8 +442,8 @@
                                           <span>{{ getTagLabel(profile.tag) }}</span>
                                         </span>
                                     </div>
-                                    <h3 class="text-2xl font-bold truncate max-w-[160px] tracking-tight">{{ profile.name }}</h3>
-                                    <p class="text-white/60 text-sm truncate max-w-[160px] mt-0.5">{{ profile.recipientName }}</p>
+                                    <h3 class="text-xl sm:text-2xl font-bold truncate max-w-[160px] tracking-tight">{{ profile.name }}</h3>
+                                    <p class="text-white/60 text-xs sm:text-sm truncate max-w-[160px] mt-0.5">{{ profile.recipientName }}</p>
                                 </div>
                             </div>
                             <div class="flex gap-1">
@@ -468,7 +462,7 @@
                         <div class="z-10">
                             <p class="text-white/60 text-[10px] font-bold tracking-wider uppercase mb-1">IBAN</p>
                             <div class="bg-black/20 px-3 py-2 rounded-xl backdrop-blur-sm border border-white/10 inline-block max-w-full">
-                                <p class="font-mono text-sm sm:text-base truncate">{{ formatIban(profile.iban) }}</p>
+                                <p class="font-mono text-xs sm:text-base truncate">{{ formatIban(profile.iban) }}</p>
                             </div>
                         </div>
                     </div>
@@ -820,14 +814,14 @@
         </div>
     </div>
 
-    <!-- 3. INPUTS (Redesigned: Same Size) -->
-    <div ref="inputsArea" class="space-y-3 px-2 mt-10 transition-all duration-500" :class="[isQrVisible || showHistory || showTemplates || showSettings ? 'opacity-40 blur-[1px] pointer-events-none' : 'opacity-100', showTutorial && tutorialStep === 2 ? 'relative z-50' : '']">
+    <!-- 3. INPUTS (Redesigned: Compact) -->
+    <div ref="inputsArea" class="space-y-3 px-2 mt-2 transition-all duration-500" :class="[isQrVisible || showHistory || showTemplates || showSettings ? 'opacity-40 blur-[1px] pointer-events-none' : 'opacity-100', showTutorial && tutorialStep === 2 ? 'relative z-50' : '']">
         
         <!-- Suma with Inline Calculator (wrapped for dropdown positioning) -->
         <div class="relative" :class="showTutorial && tutorialStep === 2 ? 'tutorial-highlight-input' : ''">
           <div class="bg-white dark:bg-slate-800 rounded-[1.25rem] shadow-sm border border-slate-200 dark:border-slate-700 transition-all overflow-hidden" :class="showCalculator ? 'border-accent-500 ring-2 ring-accent-500/20' : 'focus-within:border-accent-500 focus-within:ring-2 focus-within:ring-accent-500/20'">
             <!-- Main Input Row (also serves as calculator display) -->
-            <div class="h-20 px-5 flex flex-col justify-center">
+            <div class="h-16 px-5 flex flex-col justify-center">
               <!-- Expression display when calculator is active -->
               <div class="flex items-center justify-between">
                 <label class="text-[10px] font-bold uppercase tracking-wider mb-0.5 transition-colors" :class="showCalculator && calcDisplay ? 'text-accent-500 dark:text-accent-400' : 'text-slate-400 dark:text-slate-500'">
@@ -909,41 +903,41 @@
           </div>
         </div>
 
-        <!-- VS -->
-        <div class="h-20 bg-white dark:bg-slate-800 px-5 rounded-[1.25rem] shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col justify-center relative focus-within:border-accent-500 focus-within:ring-2 focus-within:ring-accent-500/20 transition-all">
-            <label class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-0.5">VS</label>
-            <input type="text" v-model="payment.vs" maxlength="10" placeholder="----" class="w-full text-xl font-bold text-slate-800 dark:text-slate-200 font-mono outline-none bg-transparent placeholder-slate-300 dark:placeholder-slate-600 pr-10">
-            <div class="absolute top-1/2 -translate-y-1/2 right-4 text-slate-300 dark:text-slate-600 pointer-events-none mt-1">
-                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-            </div>
+        <!-- Grid for VS and Date -->
+        <div class="grid grid-cols-2 gap-3">
+          <!-- VS -->
+          <div class="h-14 bg-white dark:bg-slate-800 px-5 rounded-[1.25rem] shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col justify-center relative focus-within:border-accent-500 focus-within:ring-2 focus-within:ring-accent-500/20 transition-all">
+              <label class="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-0.5">VS</label>
+              <input type="text" v-model="payment.vs" maxlength="10" placeholder="----" class="w-full text-lg font-bold text-slate-800 dark:text-slate-200 font-mono outline-none bg-transparent placeholder-slate-300 dark:placeholder-slate-600 pr-4">
+          </div>
+
+          <!-- Dátum splatnosti -->
+          <div class="h-14 bg-white dark:bg-slate-800 px-5 rounded-[1.25rem] shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col justify-center relative focus-within:border-accent-500 focus-within:ring-2 focus-within:ring-accent-500/20 transition-all">
+              <label class="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-0.5">Dátum</label>
+              <input type="date" v-model="payment.dueDate" class="w-full text-base font-bold text-slate-800 dark:text-slate-200 outline-none bg-transparent placeholder-slate-300 dark:placeholder-slate-600 [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer">
+              <div class="absolute top-1/2 -translate-y-1/2 right-4 text-slate-300 dark:text-slate-600 pointer-events-none mt-1">
+                  <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+              </div>
+          </div>
         </div>
 
         <!-- Správa -->
-        <div class="h-20 bg-white dark:bg-slate-800 px-5 rounded-[1.25rem] shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col justify-center relative focus-within:border-accent-500 focus-within:ring-2 focus-within:ring-accent-500/20 transition-all">
-            <label class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-0.5">Správa</label>
-            <input type="text" v-model="payment.msg" placeholder="Poznámka..." class="w-full text-lg font-bold text-slate-800 dark:text-slate-200 outline-none bg-transparent placeholder-slate-300 dark:placeholder-slate-600 truncate">
-        </div>
-
-        <!-- Dátum splatnosti -->
-        <div class="h-20 bg-white dark:bg-slate-800 px-5 rounded-[1.25rem] shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col justify-center relative focus-within:border-accent-500 focus-within:ring-2 focus-within:ring-accent-500/20 transition-all">
-            <label class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-0.5">Dátum splatnosti</label>
-            <input type="date" v-model="payment.dueDate" class="w-full text-lg font-bold text-slate-800 dark:text-slate-200 outline-none bg-transparent placeholder-slate-300 dark:placeholder-slate-600 pr-10 [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-0 [&::-webkit-calendar-picker-indicator]:w-5 [&::-webkit-calendar-picker-indicator]:h-5 [&::-webkit-calendar-picker-indicator]:cursor-pointer">
-            <div class="absolute top-1/2 -translate-y-1/2 right-4 text-slate-300 dark:text-slate-600 pointer-events-none mt-1">
-                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-            </div>
+        <div class="h-14 bg-white dark:bg-slate-800 px-5 rounded-[1.25rem] shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col justify-center relative focus-within:border-accent-500 focus-within:ring-2 focus-within:ring-accent-500/20 transition-all">
+            <label class="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-0.5">Správa</label>
+            <input type="text" v-model="payment.msg" placeholder="Poznámka..." class="w-full text-base font-bold text-slate-800 dark:text-slate-200 outline-none bg-transparent placeholder-slate-300 dark:placeholder-slate-600 truncate">
         </div>
     </div>
 
     <!-- 4. ACTION BUTTONS (Main action + Additional features) -->
-    <div class="mt-4 px-1" :class="showTutorial && (tutorialStep === 3 || tutorialStep === 4) ? 'relative z-50' : ''">
+    <div class="mt-6 px-1" :class="showTutorial && (tutorialStep === 3 || tutorialStep === 4) ? 'relative z-50' : ''">
         <!-- All Buttons on Same Row -->
-        <div class="flex gap-3 items-center h-16">
+        <div class="flex gap-3 items-center h-14">
             <!-- File Attachment Button -->
             <div class="flex gap-3" :class="isQrVisible || showHistory || showTemplates || showSettings ? 'opacity-40 blur-[1px] pointer-events-none' : 'opacity-100'">
                 <button 
                     ref="attachBtn"
                     @click="attachFile"
-                    class="w-16 h-16 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full shadow-xl border border-slate-200 dark:border-slate-700 transition-all flex items-center justify-center active:scale-95"
+                    class="w-14 h-14 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full shadow-xl border border-slate-200 dark:border-slate-700 transition-all flex items-center justify-center active:scale-95"
                     :class="showTutorial && tutorialStep === 3 ? 'tutorial-highlight-button' : ''"
                     title="Priložiť súbor"
                 >
@@ -1720,23 +1714,9 @@
           qrcodeContainer.value.innerHTML = '';
           
           try {
-            // 2. Construct Payment Data
-            // We use spread syntax to conditionally add properties. 
-            // Sending empty strings or undefined to the encoder can break validation.
-            const paymentData = {
-              type: 1, 
-              amount: Number(payment.value.amount), 
-              currencyCode: "EUR",
-              bankAccounts: [{ 
-                iban: profile.iban.trim()
-              }],
-              ...(payment.value.vs && { variableSymbol: payment.value.vs.trim() }),
-              ...(payment.value.msg && { paymentNote: payment.value.msg.trim() }),
-              ...(safeBeneficiaryName && { beneficiary: { name: safeBeneficiaryName } }),
-              ...(payment.value.dueDate && { paymentDueDate: payment.value.dueDate })
-            };
-
-            const qrData = window.bysquare.encode({ payments: [paymentData] });
+            // 2. Generate Payme Link for QR Code
+            const qrData = getPaymeUrl();
+            if (!qrData) throw new Error("Could not generate URL");
             
             new QRCode(qrcodeContainer.value, { 
                 text: qrData, 
