@@ -1,0 +1,2089 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modern RNN with Dynamic Autodiff Engine (2026)</title>
+    <style>
+        @layer base, components, utilities;
+        
+        @layer base {
+            * { box-sizing: border-box; margin: 0; padding: 0; }
+            :root {
+                --primary: oklch(75% 0.18 195);
+                --primary-dim: oklch(55% 0.15 195);
+                --accent: oklch(70% 0.2 25);
+                --bg-dark: oklch(15% 0.02 260);
+                --bg-panel: oklch(20% 0.02 260);
+                --text: oklch(90% 0.01 260);
+                --text-dim: oklch(60% 0.01 260);
+                --success: oklch(70% 0.2 145);
+                --error: oklch(65% 0.25 25);
+                --warning: oklch(75% 0.18 85);
+                --info: oklch(70% 0.15 250);
+            }
+            body {
+                font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+                background: var(--bg-dark);
+                color: var(--text);
+                min-height: 100dvh;
+                padding: clamp(1rem, 3vw, 2rem);
+            }
+        }
+        
+        @layer components {
+            .container { 
+                max-width: 1400px; 
+                margin: 0 auto;
+                container-type: inline-size;
+            }
+            
+            h1 { 
+                text-align: center; 
+                margin-block-end: 1.5rem; 
+                color: var(--primary);
+                font-size: clamp(1.5rem, 4vw, 2.5rem);
+            }
+            
+            h2 { 
+                color: var(--accent); 
+                margin-block: 1.25rem 0.75rem;
+                font-size: 1.1rem;
+            }
+            
+            .panel {
+                background: var(--bg-panel);
+                border-radius: 12px;
+                padding: clamp(1rem, 2vw, 1.5rem);
+                margin-block-end: 1.25rem;
+                border: 1px solid oklch(30% 0.02 260);
+                
+                &:has(.chart-container) {
+                    container-type: inline-size;
+                }
+            }
+            
+            .controls { 
+                display: flex; 
+                gap: 1rem; 
+                flex-wrap: wrap; 
+                align-items: end;
+                
+                & > div {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 0.25rem;
+                }
+            }
+            
+            button {
+                background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dim) 100%);
+                color: var(--bg-dark);
+                border: none;
+                padding: 0.75rem 1.5rem;
+                border-radius: 8px;
+                cursor: pointer;
+                font-weight: 600;
+                transition: translate 0.15s, box-shadow 0.15s;
+                
+                &:hover:not(:disabled) { 
+                    translate: 0 -2px; 
+                    box-shadow: 0 6px 20px oklch(75% 0.18 195 / 0.3); 
+                }
+                &:disabled { 
+                    opacity: 0.5; 
+                    cursor: not-allowed; 
+                }
+            }
+            
+            input, select {
+                background: oklch(25% 0.02 260);
+                border: 1px solid oklch(35% 0.02 260);
+                color: var(--text);
+                padding: 0.625rem;
+                border-radius: 6px;
+                width: 110px;
+                font-size: 0.9rem;
+                
+                &:focus {
+                    outline: 2px solid var(--primary);
+                    outline-offset: 2px;
+                }
+            }
+            
+            label { 
+                font-size: 0.8rem; 
+                color: var(--text-dim);
+                font-weight: 500;
+            }
+            
+            .output {
+                background: oklch(12% 0.01 260);
+                border-radius: 8px;
+                padding: 1rem;
+                font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+                font-size: 0.8rem;
+                max-height: 350px;
+                overflow-y: auto;
+                white-space: pre-wrap;
+                line-height: 1.6;
+                scrollbar-width: thin;
+            }
+            
+            .chart-container {
+                background: oklch(12% 0.01 260);
+                border-radius: 8px;
+                padding: 1rem;
+                height: 280px;
+                position: relative;
+            }
+            
+            canvas { 
+                width: 100%; 
+                height: 100%; 
+                display: block;
+            }
+            
+            .stats { 
+                display: grid; 
+                grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); 
+                gap: 1rem; 
+                margin-block-start: 1rem; 
+            }
+            
+            .stat-box {
+                background: oklch(25% 0.04 195 / 0.3);
+                border: 1px solid oklch(40% 0.08 195 / 0.4);
+                border-radius: 10px;
+                padding: 1rem;
+                text-align: center;
+            }
+            
+            .stat-value { 
+                font-size: 1.5rem; 
+                font-weight: 700; 
+                color: var(--primary);
+                font-variant-numeric: tabular-nums;
+            }
+            
+            .stat-label { 
+                font-size: 0.75rem; 
+                color: var(--text-dim); 
+                margin-block-start: 0.25rem; 
+            }
+            
+            .success { color: var(--success); }
+            .error { color: var(--error); }
+            .info { color: var(--info); }
+            .warning { color: var(--warning); }
+            
+            .arch-badge {
+                display: inline-flex;
+                align-items: center;
+                gap: 0.5rem;
+                background: oklch(30% 0.05 195 / 0.3);
+                border: 1px solid oklch(50% 0.1 195 / 0.3);
+                border-radius: 6px;
+                padding: 0.375rem 0.75rem;
+                font-size: 0.75rem;
+                font-weight: 500;
+                color: var(--primary);
+            }
+            
+            .arch-features {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 0.5rem;
+                margin-block: 0.75rem;
+            }
+        }
+        
+        @container (max-width: 600px) {
+            .controls { flex-direction: column; align-items: stretch; }
+            .controls > div { width: 100%; }
+            input, select { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>?? Modern RNN with Dynamic Autodiff (2026)</h1>
+        
+        <div class="panel">
+            <h2>??? Architecture</h2>
+            <div class="arch-features">
+                <span class="arch-badge">?? RMSNorm</span>
+                <span class="arch-badge">?? Residual Connections</span>
+                <span class="arch-badge">?? GRU-RWKV Cell</span>
+                <span class="arch-badge">?? MoE (SwiGLU)</span>
+                <span class="arch-badge">?? Pre-Norm</span>
+                <span class="arch-badge">?? AdamW</span>
+            </div>
+        </div>
+        
+        <div class="panel">
+            <h2>?? Configuration</h2>
+            <div class="controls">
+                <div>
+                    <label>Hidden Size</label>
+                    <input type="number" id="hiddenSize" value="32" min="8" max="512" step="8">
+                </div>
+                <div>
+                    <label>Num Layers</label>
+                    <input type="number" id="numLayers" value="1" min="1" max="8">
+                </div>
+                <div>
+                    <label>Sequence Length</label>
+                    <input type="number" id="seqLength" value="25" min="5" max="100">
+                </div>
+                <div>
+                    <label>Learning Rate</label>
+                    <input type="number" id="learningRate" value="0.001" step="0.0001" min="0.0001" max="0.1">
+                </div>
+                <div>
+                    <label>Weight Decay</label>
+                    <input type="number" id="weightDecay" value="0.01" step="0.001" min="0" max="0.1">
+                </div>
+                <div>
+                    <label>Epochs</label>
+                    <input type="number" id="epochs" value="500" min="10" max="5000">
+                </div>
+                <div>
+                    <label>Embed Size</label>
+                    <input type="number" id="embedSize" value="16" min="4" max="128" step="4">
+                </div>
+                <div style="display:flex;align-items:center;gap:0.5rem;padding-top:1.25rem">
+                    <input type="checkbox" id="fastMode">
+                    <label for="fastMode" style="cursor:pointer">Fast Mode</label>
+                </div>
+                <div style="display:flex;align-items:center;gap:0.5rem;padding-top:1.25rem">
+                    <input type="checkbox" id="useRWKV" checked>
+                    <label for="useRWKV" style="cursor:pointer">RWKV KV</label>
+                </div>
+                <div>
+                    <label>Num Experts</label>
+                    <input type="number" id="numExperts" value="4" min="2" max="16">
+                </div>
+                <div>
+                    <label>Top-K Helpers</label>
+                    <input type="number" id="topK" value="1" min="0" max="8">
+                </div>
+                <div>
+                    <label>Batch Size</label>
+                    <input type="number" id="batchSize" value="4" min="1" max="32">
+                </div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2> Training Text</h2>
+            <textarea id="trainingText" rows="4" style="width:100%;background:#1a1a2e;border:1px solid #333;border-radius:8px;padding:12px;color:#e0e0e0;font-family:inherit;font-size:14px;resize:vertical;" placeholder="Enter text to train on...">hello world this is a modern rnn with rmsnorm residual connections gru gates and swiglu mlp learning to predict characters in vanilla javascript</textarea>
+        </div>
+
+        <div class="panel">
+            <h2>??? Training</h2>
+            <div class="controls">
+                <button id="trainBtn" onclick="startTraining()">Start Training</button>
+                <button id="stopBtn" onclick="stopTraining()" disabled>Stop</button>
+                <button onclick="generateSample()">Generate Sample</button>
+                <button onclick="visualizeGraph()">Visualize Architecture</button>
+            </div>
+            <div class="stats">
+                <div class="stat-box">
+                    <div class="stat-value" id="epochStat">0</div>
+                    <div class="stat-label">Epoch</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" id="lossStat">-</div>
+                    <div class="stat-label">Loss</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" id="gradNormStat">-</div>
+                    <div class="stat-label">Grad Norm</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" id="paramsStat">-</div>
+                    <div class="stat-label">Parameters</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2>?? Loss Curve</h2>
+            <div class="chart-container">
+                <canvas id="lossChart"></canvas>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2>?? Training Log</h2>
+            <div class="output" id="log"></div>
+        </div>
+
+        <div class="panel">
+            <h2>?? Architecture Details</h2>
+            <div class="output" id="graphOutput"></div>
+        </div>
+    </div>
+
+    <script>
+// ============================================================================
+// MODERN DYNAMIC GRAPH AUTODIFF ENGINE (2026)
+// ============================================================================
+
+/**
+ * Value - Core autodiff building block with modern optimizations
+ * Supports dynamic graph construction (PyTorch-style)
+ */
+class Value {
+    static #idCounter = 0;
+    
+    #backward;
+    #prev;
+    #op;
+    
+    constructor(data, children = [], op = '') {
+        this.id = Value.#idCounter++;
+        this.data = data;
+        this.grad = 0.0;
+        this.#backward = () => {};
+        this.#prev = new Set(children);
+        this.#op = op;
+        
+        // For Adam optimizer
+        this.m = 0;  // First moment
+        this.v = 0;  // Second moment
+    }
+    
+    get prev() { return this.#prev; }
+    get op() { return this.#op; }
+    
+    add(other) {
+        other = other instanceof Value ? other : new Value(other);
+        const out = new Value(this.data + other.data, [this, other], '+');
+        out.#backward = () => {
+            this.grad += out.grad;
+            other.grad += out.grad;
+        };
+        return out;
+    }
+    
+    mul(other) {
+        other = other instanceof Value ? other : new Value(other);
+        const out = new Value(this.data * other.data, [this, other], '*');
+        out.#backward = () => {
+            this.grad += other.data * out.grad;
+            other.grad += this.data * out.grad;
+        };
+        return out;
+    }
+    
+    sub(other) {
+        return this.add((other instanceof Value ? other : new Value(other)).neg());
+    }
+    
+    div(other) {
+        return this.mul((other instanceof Value ? other : new Value(other)).pow(-1));
+    }
+    
+    neg() {
+        return this.mul(-1);
+    }
+    
+    pow(n) {
+        const out = new Value(this.data ** n, [this], `**${n}`);
+        out.#backward = () => {
+            this.grad += n * (this.data ** (n - 1)) * out.grad;
+        };
+        return out;
+    }
+    
+    exp() {
+        const out = new Value(Math.exp(this.data), [this], 'exp');
+        out.#backward = () => {
+            this.grad += out.data * out.grad;
+        };
+        return out;
+    }
+    
+    log() {
+        const eps = 1e-8;
+        const out = new Value(Math.log(this.data + eps), [this], 'log');
+        out.#backward = () => {
+            this.grad += (1 / (this.data + eps)) * out.grad;
+        };
+        return out;
+    }
+    
+    tanh() {
+        const t = Math.tanh(this.data);
+        const out = new Value(t, [this], 'tanh');
+        out.#backward = () => {
+            this.grad += (1 - t * t) * out.grad;
+        };
+        return out;
+    }
+    
+    sigmoid() {
+        const s = 1 / (1 + Math.exp(-this.data));
+        const out = new Value(s, [this], '?');
+        out.#backward = () => {
+            this.grad += s * (1 - s) * out.grad;
+        };
+        return out;
+    }
+    
+    // SiLU/Swish activation: x * sigmoid(x)
+    silu() {
+        const s = 1 / (1 + Math.exp(-this.data));
+        const out = new Value(this.data * s, [this], 'silu');
+        out.#backward = () => {
+            // d/dx[x * ?(x)] = ?(x) + x * ?(x) * (1 - ?(x)) = ?(x) * (1 + x * (1 - ?(x)))
+            this.grad += (s * (1 + this.data * (1 - s))) * out.grad;
+        };
+        return out;
+    }
+    
+    // Square (for RMSNorm)
+    square() {
+        const out = new Value(this.data * this.data, [this], '2');
+        out.#backward = () => {
+            this.grad += 2 * this.data * out.grad;
+        };
+        return out;
+    }
+    
+    // Square root
+    sqrt() {
+        const out = new Value(Math.sqrt(this.data + 1e-8), [this], '?');
+        out.#backward = () => {
+            this.grad += (0.5 / out.data) * out.grad;
+        };
+        return out;
+    }
+    
+    // Clamp for numerical stability (gradient passes through if within bounds)
+    clamp(minVal, maxVal) {
+        const clamped = Math.max(minVal, Math.min(maxVal, this.data));
+        const out = new Value(clamped, [this], 'clamp');
+        out.#backward = () => {
+            // Gradient passes through if value was within bounds (straight-through estimator)
+            if (this.data >= minVal && this.data <= maxVal) {
+                this.grad += out.grad;
+            }
+            // Otherwise gradient is zero (clipped region)
+        };
+        return out;
+    }
+    
+    backward() {
+        const topo = [];
+        const visited = new Set();
+        
+        const buildTopo = (v) => {
+            if (!visited.has(v.id)) {
+                visited.add(v.id);
+                for (const child of v.#prev) {
+                    buildTopo(child);
+                }
+                topo.push(v);
+            }
+        };
+        
+        buildTopo(this);
+        this.grad = 1.0;
+        
+        for (let i = topo.length - 1; i >= 0; i--) {
+            topo[i].#backward();
+        }
+    }
+}
+
+// ============================================================================
+// TENSOR CLASS - Matrix operations with autodiff
+// ============================================================================
+
+class Tensor {
+    #data;
+    #shape;
+    
+    constructor(data) {
+        if (typeof data[0] === 'number') {
+            this.#data = data.map(v => [v instanceof Value ? v : new Value(v)]);
+        } else {
+            this.#data = data.map(row => 
+                row.map(v => v instanceof Value ? v : new Value(v))
+            );
+        }
+        this.#shape = [this.#data.length, this.#data[0].length];
+    }
+    
+    get data() { return this.#data; }
+    get shape() { return this.#shape; }
+    
+    static zeros(rows, cols) {
+        return new Tensor(
+            Array.from({ length: rows }, () => 
+                Array.from({ length: cols }, () => new Value(0))
+            )
+        );
+    }
+    
+    static ones(rows, cols) {
+        return new Tensor(
+            Array.from({ length: rows }, () => 
+                Array.from({ length: cols }, () => new Value(1))
+            )
+        );
+    }
+    
+    static randn(rows, cols, scale = 0.02) {
+        return new Tensor(
+            Array.from({ length: rows }, () => 
+                Array.from({ length: cols }, () => {
+                    // Box-Muller transform
+                    const u1 = Math.random() || 1e-10;
+                    const u2 = Math.random();
+                    return new Value(Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2) * scale);
+                })
+            )
+        );
+    }
+    
+    static fromArray(arr) {
+        if (typeof arr[0] === 'number') {
+            return new Tensor(arr.map(v => [new Value(v)]));
+        }
+        return new Tensor(arr.map(row => row.map(v => new Value(v))));
+    }
+    
+    // Matrix multiplication
+    matmul(other) {
+        const [m, k1] = this.#shape;
+        const [k2, n] = other.shape;
+        
+        if (k1 !== k2) throw new Error(`Shape mismatch: [${m},${k1}] @ [${k2},${n}]`);
+        
+        const result = Array.from({ length: m }, (_, i) =>
+            Array.from({ length: n }, (_, j) => {
+                let sum = new Value(0);
+                for (let k = 0; k < k1; k++) {
+                    sum = sum.add(this.#data[i][k].mul(other.data[k][j]));
+                }
+                return sum;
+            })
+        );
+        return new Tensor(result);
+    }
+    
+    // Element-wise addition with broadcasting
+    add(other) {
+        if (other instanceof Tensor) {
+            // Check for row broadcasting: [1, n] + [m, n] -> [m, n]
+            if (this.#shape[0] === 1 && other.shape[0] > 1) {
+                const result = other.data.map((row, i) => 
+                    row.map((v, j) => this.#data[0][j].add(v))
+                );
+                return new Tensor(result);
+            }
+            if (other.shape[0] === 1 && this.#shape[0] > 1) {
+                const result = this.#data.map((row, i) => 
+                    row.map((v, j) => v.add(other.data[0][j]))
+                );
+                return new Tensor(result);
+            }
+            const result = this.#data.map((row, i) => 
+                row.map((v, j) => v.add(other.data[i][j]))
+            );
+            return new Tensor(result);
+        }
+        const result = this.#data.map(row => row.map(v => v.add(other)));
+        return new Tensor(result);
+    }
+    
+    // Element-wise multiplication
+    mul(other) {
+        if (other instanceof Tensor) {
+            // Broadcasting support
+            if (this.#shape[0] === 1 && other.shape[0] > 1) {
+                const result = other.data.map((row, i) => 
+                    row.map((v, j) => this.#data[0][j].mul(v))
+                );
+                return new Tensor(result);
+            }
+            if (other.shape[0] === 1 && this.#shape[0] > 1) {
+                const result = this.#data.map((row, i) => 
+                    row.map((v, j) => v.mul(other.data[0][j]))
+                );
+                return new Tensor(result);
+            }
+            const result = this.#data.map((row, i) => 
+                row.map((v, j) => v.mul(other.data[i][j]))
+            );
+            return new Tensor(result);
+        }
+        const result = this.#data.map(row => row.map(v => v.mul(other)));
+        return new Tensor(result);
+    }
+    
+    sub(other) {
+        if (other instanceof Tensor) {
+            const result = this.#data.map((row, i) => 
+                row.map((v, j) => v.sub(other.data[i][j]))
+            );
+            return new Tensor(result);
+        }
+        return this.add(-other);
+    }
+    
+    // Apply function element-wise
+    apply(fn) {
+        const result = this.#data.map(row => row.map(v => fn(v)));
+        return new Tensor(result);
+    }
+    
+    tanh() { return this.apply(v => v.tanh()); }
+    sigmoid() { return this.apply(v => v.sigmoid()); }
+    silu() { return this.apply(v => v.silu()); }
+    square() { return this.apply(v => v.square()); }
+    sqrt() { return this.apply(v => v.sqrt()); }
+    
+    // Negation
+    neg() { return this.mul(-1); }
+    
+    // One minus tensor (for gates)
+    oneMinus() {
+        const result = this.#data.map(row => 
+            row.map(v => new Value(1).sub(v))
+        );
+        return new Tensor(result);
+    }
+    
+    // Mean along axis (for normalization)
+    mean(axis = -1) {
+        if (axis === -1 || axis === 1) {
+            // Mean along last axis (columns)
+            const result = this.#data.map(row => {
+                let sum = new Value(0);
+                for (const v of row) sum = sum.add(v);
+                return [sum.div(row.length)];
+            });
+            return new Tensor(result);
+        }
+        throw new Error('Only axis=-1 or axis=1 supported');
+    }
+    
+    // Sum along axis
+    sum(axis = -1) {
+        if (axis === -1 || axis === 1) {
+            const result = this.#data.map(row => {
+                let sum = new Value(0);
+                for (const v of row) sum = sum.add(v);
+                return [sum];
+            });
+            return new Tensor(result);
+        }
+        throw new Error('Only axis=-1 or axis=1 supported');
+    }
+    
+    // Expand/broadcast to shape
+    expand(rows, cols) {
+        if (this.#shape[1] === 1 && cols > 1) {
+            // Expand columns
+            const result = this.#data.map(row => 
+                Array.from({ length: cols }, () => row[0])
+            );
+            return new Tensor(result);
+        }
+        return this;
+    }
+    
+    parameters() {
+        return this.#data.flat();
+    }
+    
+    toArray() {
+        return this.#data.map(row => row.map(v => v.data));
+    }
+    
+    T() {
+        const [rows, cols] = this.#shape;
+        const result = Array.from({ length: cols }, (_, j) =>
+            Array.from({ length: rows }, (_, i) => this.#data[i][j])
+        );
+        return new Tensor(result);
+    }
+    
+    clone() {
+        const result = this.#data.map(row => 
+            row.map(v => new Value(v.data))
+        );
+        return new Tensor(result);
+    }
+}
+
+// ============================================================================
+// RMSNorm - Root Mean Square Layer Normalization
+// Simpler and faster than LayerNorm, used in LLaMA, Mistral, etc.
+// ============================================================================
+
+// ============================================================================
+// Embedding Layer - Learned character representations
+// ============================================================================
+
+class Embedding {
+    #weight;
+    #vocabSize;
+    #embedDim;
+    
+    constructor(vocabSize, embedDim) {
+        this.#vocabSize = vocabSize;
+        this.#embedDim = embedDim;
+        // Initialize embeddings with small random values
+        this.#weight = Tensor.randn(vocabSize, embedDim, Math.sqrt(1 / embedDim));
+    }
+    
+    get vocabSize() { return this.#vocabSize; }
+    get embedDim() { return this.#embedDim; }
+    
+    forward(idx) {
+        // idx is a single integer index
+        // Return the embedding vector as a [1, embedDim] Tensor
+        const row = this.#weight.data[idx];
+        return new Tensor([row]);
+    }
+    
+    parameters() {
+        return this.#weight.parameters();
+    }
+}
+
+// ============================================================================
+// RMSNorm - Root Mean Square Layer Normalization
+// ============================================================================
+
+class RMSNorm {
+    #weight;
+    #eps;
+    #dim;
+    
+    constructor(dim, eps = 1e-6) {
+        this.#dim = dim;
+        this.#eps = eps;
+        // Learnable scale parameter (gamma), initialized to 1
+        this.#weight = Tensor.ones(1, dim);
+    }
+    
+    forward(x) {
+        // RMSNorm: x * weight / sqrt(mean(x^2) + eps)
+        const xSquared = x.square();
+        const meanSquared = xSquared.mean();  // [batch, 1]
+        const rms = meanSquared.add(this.#eps).sqrt();  // [batch, 1]
+        const rmsExpanded = rms.expand(x.shape[0], x.shape[1]);
+        
+        // Normalize
+        const normalized = x.mul(rmsExpanded.apply(v => v.pow(-1)));
+        
+        // Scale
+        return normalized.mul(this.#weight);
+    }
+    
+    parameters() {
+        return this.#weight.parameters();
+    }
+}
+
+// ============================================================================
+// SwiGLU Expert - Single expert MLP with SiLU gating
+// ============================================================================
+
+class SwiGLUExpert {
+    #wGate;
+    #wUp;
+    #wDown;
+    
+    constructor(dim, hiddenDim = null) {
+        hiddenDim = hiddenDim || dim * 2;
+        const scale = Math.sqrt(2 / (dim + hiddenDim));
+        
+        this.#wGate = Tensor.randn(dim, hiddenDim, scale);
+        this.#wUp = Tensor.randn(dim, hiddenDim, scale);
+        this.#wDown = Tensor.randn(hiddenDim, dim, scale);
+    }
+    
+    forward(x) {
+        // SwiGLU: down(silu(gate(x)) * up(x))
+        const gate = x.matmul(this.#wGate).silu();
+        const up = x.matmul(this.#wUp);
+        const gated = gate.mul(up);
+        return gated.matmul(this.#wDown);
+    }
+    
+    parameters() {
+        return [
+            ...this.#wGate.parameters(),
+            ...this.#wUp.parameters(),
+            ...this.#wDown.parameters()
+        ];
+    }
+}
+
+// ============================================================================
+// Mixture of Experts (MoE) - Always-on expert + top-k helper experts
+// ============================================================================
+
+class MoE {
+    #experts;       // Array of SwiGLUExpert
+    #router;        // Router weights to select experts
+    #norm;          // Pre-norm
+    #numExperts;
+    #topK;          // Number of helper experts (in addition to always-on)
+    #dim;
+    
+    constructor(dim, numExperts = 4, topK = 1, hiddenDim = null) {
+        this.#dim = dim;
+        this.#numExperts = numExperts;
+        this.#topK = Math.min(topK, numExperts - 1);  // Can't have more helpers than available
+        
+        // Create experts (expert 0 is always-on)
+        this.#experts = [];
+        for (let i = 0; i < numExperts; i++) {
+            this.#experts.push(new SwiGLUExpert(dim, hiddenDim));
+        }
+        
+        // Router: projects input to expert scores (only for helper experts 1..n-1)
+        // Expert 0 always fires, so router only selects from remaining experts
+        if (numExperts > 1) {
+            const routerScale = Math.sqrt(2 / (dim + numExperts - 1));
+            this.#router = Tensor.randn(dim, numExperts - 1, routerScale);
+        }
+        
+        this.#norm = new RMSNorm(dim);
+    }
+    
+    get numExperts() { return this.#numExperts; }
+    get topK() { return this.#topK; }
+    
+    forward(x) {
+        // Pre-norm
+        const normed = this.#norm.forward(x);
+        
+        // Always-on expert (expert 0) always contributes
+        let output = this.#experts[0].forward(normed);
+        
+        // If we have helper experts and topK > 0, route to them
+        if (this.#numExperts > 1 && this.#topK > 0) {
+            // Compute router scores for helper experts (1..n-1)
+            const routerLogits = normed.matmul(this.#router);  // [1, numExperts-1]
+            
+            // Softmax over helper experts
+            let maxVal = -Infinity;
+            for (let j = 0; j < this.#numExperts - 1; j++) {
+                maxVal = Math.max(maxVal, routerLogits.data[0][j].data);
+            }
+            
+            const expScores = [];
+            let sumExp = new Value(0);
+            for (let j = 0; j < this.#numExperts - 1; j++) {
+                const exp = routerLogits.data[0][j].sub(maxVal).exp();
+                expScores.push(exp);
+                sumExp = sumExp.add(exp);
+            }
+            
+            // Get probabilities and find top-k
+            const probs = expScores.map(e => e.div(sumExp.add(1e-8)));
+            
+            // Find top-k helper experts by score (greedy selection)
+            const helperIndices = [];
+            const helperWeights = [];
+            const probData = probs.map(p => ({ p, data: p.data }));
+            
+            for (let k = 0; k < this.#topK; k++) {
+                let bestIdx = -1;
+                let bestScore = -Infinity;
+                for (let j = 0; j < this.#numExperts - 1; j++) {
+                    if (!helperIndices.includes(j) && probData[j].data > bestScore) {
+                        bestScore = probData[j].data;
+                        bestIdx = j;
+                    }
+                }
+                if (bestIdx >= 0) {
+                    helperIndices.push(bestIdx);
+                    helperWeights.push(probs[bestIdx]);
+                }
+            }
+            
+            // Normalize helper weights so they sum to 1 (load balancing)
+            if (helperWeights.length > 0) {
+                let weightSum = new Value(0);
+                for (const w of helperWeights) {
+                    weightSum = weightSum.add(w);
+                }
+                
+                // Compute weighted sum of selected helper experts
+                for (let k = 0; k < helperIndices.length; k++) {
+                    const expertIdx = helperIndices[k] + 1;  // +1 because expert 0 is always-on
+                    const weight = helperWeights[k].div(weightSum.add(1e-8));
+                    
+                    const expertOut = this.#experts[expertIdx].forward(normed);
+                    
+                    // Weight the expert output
+                    const weightedOut = expertOut.apply(v => v.mul(weight));
+                    output = output.add(weightedOut);
+                }
+            }
+        }
+        
+        return output;
+    }
+    
+    parameters() {
+        const params = [...this.#norm.parameters()];
+        for (const expert of this.#experts) {
+            params.push(...expert.parameters());
+        }
+        if (this.#router) {
+            params.push(...this.#router.parameters());
+        }
+        return params;
+    }
+}
+
+// ============================================================================
+// SwiGLU MLP - Fallback single expert (for fast mode comparison)
+// ============================================================================
+
+class SwiGLUMLP {
+    #wGate;
+    #wUp;
+    #wDown;
+    #norm;
+    
+    constructor(dim, hiddenDim = null) {
+        // Reduced 2x expansion for faster computation (was 4x * 2/3)
+        hiddenDim = hiddenDim || dim * 2;
+        
+        const scale = Math.sqrt(2 / (dim + hiddenDim));
+        
+        this.#wGate = Tensor.randn(dim, hiddenDim, scale);  // Gate projection
+        this.#wUp = Tensor.randn(dim, hiddenDim, scale);     // Up projection
+        this.#wDown = Tensor.randn(hiddenDim, dim, scale);   // Down projection
+        this.#norm = new RMSNorm(dim);
+    }
+    
+    forward(x) {
+        // Pre-norm
+        const normed = this.#norm.forward(x);
+        
+        // SwiGLU: down(silu(gate(x)) * up(x))
+        const gate = normed.matmul(this.#wGate).silu();
+        const up = normed.matmul(this.#wUp);
+        const gated = gate.mul(up);
+        return gated.matmul(this.#wDown);
+    }
+    
+    parameters() {
+        return [
+            ...this.#wGate.parameters(),
+            ...this.#wUp.parameters(),
+            ...this.#wDown.parameters(),
+            ...this.#norm.parameters()
+        ];
+    }
+}
+
+// ============================================================================
+// Modern GRU Cell with Integrated RWKV KV-Accumulation
+// Combines GRU gating with RWKV-style linear attention in one unified cell
+// ============================================================================
+
+class ModernGRUCell {
+    #inputSize;
+    #hiddenSize;
+    #useRWKV;
+    
+    // GRU gates
+    #Wz;  // Update gate
+    #Uz;
+    #bz;
+    
+    #Wr;  // Reset gate (doubles as receptance when RWKV enabled)
+    #Ur;
+    #br;
+    
+    #Wh;  // Candidate hidden
+    #Uh;
+    #bh;
+    
+    // RWKV-specific: Key/Value projections and time parameters
+    #Wk;          // Key projection
+    #Wv;          // Value projection
+    #Wo;          // Output projection for RWKV
+    #timeDecay;   // Learnable time decay (w in RWKV)
+    #timeFirst;   // Bonus for current token (u in RWKV)
+    
+    // Token shift: learnable mixing weights between current and previous token
+    #mixK;        // Mix ratio for Key
+    #mixV;        // Mix ratio for Value
+    #mixR;        // Mix ratio for Receptance/Reset gate
+    
+    // Pre-norm for input
+    #inputNorm;
+    #hiddenNorm;
+    
+    constructor(inputSize, hiddenSize, useRWKV = false) {
+        this.#inputSize = inputSize;
+        this.#hiddenSize = hiddenSize;
+        this.#useRWKV = useRWKV;
+        
+        const scaleIn = Math.sqrt(2 / (inputSize + hiddenSize));
+        const scaleHid = Math.sqrt(2 / (hiddenSize * 2));
+        
+        // Update gate (z) - controls blend of old/new state
+        this.#Wz = Tensor.randn(inputSize, hiddenSize, scaleIn);
+        this.#Uz = Tensor.randn(hiddenSize, hiddenSize, scaleHid);
+        this.#bz = Tensor.zeros(1, hiddenSize);
+        
+        // Reset gate (r) - also serves as receptance gate for RWKV
+        this.#Wr = Tensor.randn(inputSize, hiddenSize, scaleIn);
+        this.#Ur = Tensor.randn(hiddenSize, hiddenSize, scaleHid);
+        this.#br = Tensor.zeros(1, hiddenSize);
+        
+        // Candidate hidden state
+        this.#Wh = Tensor.randn(inputSize, hiddenSize, scaleIn);
+        this.#Uh = Tensor.randn(hiddenSize, hiddenSize, scaleHid);
+        this.#bh = Tensor.zeros(1, hiddenSize);
+        
+        // RWKV KV-accumulation components (only if enabled)
+        if (useRWKV) {
+            this.#Wk = Tensor.randn(hiddenSize, hiddenSize, scaleHid);
+            this.#Wv = Tensor.randn(hiddenSize, hiddenSize, scaleHid);
+            this.#Wo = Tensor.randn(hiddenSize, hiddenSize, scaleHid);
+            
+            // Time decay: controls how fast past info decays
+            this.#timeDecay = [];
+            for (let i = 0; i < hiddenSize; i++) {
+                this.#timeDecay.push(new Value(-0.5 - Math.random() * 0.5));
+            }
+            
+            // Time first: bonus weight for current token
+            this.#timeFirst = [];
+            for (let i = 0; i < hiddenSize; i++) {
+                this.#timeFirst.push(new Value(0.3 + Math.random() * 0.2));
+            }
+            
+            // Token shift: learnable mix ratios (initialized near 0.5)
+            // x_shifted = (1-mix) * x_prev + mix * x_current
+            this.#mixK = [];
+            this.#mixV = [];
+            this.#mixR = [];
+            for (let i = 0; i < hiddenSize; i++) {
+                this.#mixK.push(new Value(0.5 + (Math.random() - 0.5) * 0.1));
+                this.#mixV.push(new Value(0.5 + (Math.random() - 0.5) * 0.1));
+                this.#mixR.push(new Value(0.5 + (Math.random() - 0.5) * 0.1));
+            }
+        }
+        
+        // Pre-normalization
+        this.#inputNorm = new RMSNorm(inputSize);
+        this.#hiddenNorm = new RMSNorm(hiddenSize);
+    }
+    
+    get hiddenSize() { return this.#hiddenSize; }
+    get useRWKV() { return this.#useRWKV; }
+    
+    // Initialize KV state for RWKV (includes previous token for token shift)
+    initKVState() {
+        if (!this.#useRWKV) return null;
+        return {
+            numState: Tensor.zeros(1, this.#hiddenSize),
+            denState: Tensor.zeros(1, this.#hiddenSize),
+            xPrev: Tensor.zeros(1, this.#hiddenSize)  // Previous token for token shift
+        };
+    }
+    
+    forward(x, hPrev, kvState = null) {
+        // Pre-norm the inputs
+        const xNorm = this.#inputNorm.forward(x);
+        const hNorm = this.#hiddenNorm.forward(hPrev);
+        
+        // Update gate: z = ?(Wzx + Uzh + bz)
+        const z = xNorm.matmul(this.#Wz)
+            .add(hNorm.matmul(this.#Uz))
+            .add(this.#bz)
+            .sigmoid();
+        
+        // Reset gate: r = ?(Wrx + Urh + br)
+        // This also serves as the receptance gate for RWKV
+        const r = xNorm.matmul(this.#Wr)
+            .add(hNorm.matmul(this.#Ur))
+            .add(this.#br)
+            .sigmoid();
+        
+        // Candidate hidden: h~ = tanh(Whx + Uh(r?h) + bh)
+        const resetHidden = r.mul(hNorm);
+        let hCandidate = xNorm.matmul(this.#Wh)
+            .add(resetHidden.matmul(this.#Uh))
+            .add(this.#bh)
+            .tanh();
+        
+        // RWKV KV-accumulation: enhance candidate with linear attention
+        let newKVState = kvState;
+        if (this.#useRWKV) {
+            if (!kvState) kvState = this.initKVState();
+            
+            // Token shift: mix current with previous token
+            // x_shifted = (1-mix) * x_prev + mix * x_current
+            const xPrev = kvState.xPrev;
+            const shiftedForK = [];
+            const shiftedForV = [];
+            const shiftedForR = [];
+            
+            for (let i = 0; i < this.#hiddenSize; i++) {
+                const curr = hCandidate.data[0][i];
+                const prev = xPrev.data[0][i];
+                
+                // K shift: (1-mixK) * prev + mixK * curr
+                const mixK = this.#mixK[i];
+                const oneMinusMixK = new Value(1).sub(mixK);
+                shiftedForK.push(oneMinusMixK.mul(prev).add(mixK.mul(curr)));
+                
+                // V shift: (1-mixV) * prev + mixV * curr
+                const mixV = this.#mixV[i];
+                const oneMinusMixV = new Value(1).sub(mixV);
+                shiftedForV.push(oneMinusMixV.mul(prev).add(mixV.mul(curr)));
+                
+                // R shift: (1-mixR) * prev + mixR * curr
+                const mixR = this.#mixR[i];
+                const oneMinusMixR = new Value(1).sub(mixR);
+                shiftedForR.push(oneMinusMixR.mul(prev).add(mixR.mul(curr)));
+            }
+            
+            const xShiftedK = new Tensor([shiftedForK]);
+            const xShiftedV = new Tensor([shiftedForV]);
+            const xShiftedR = new Tensor([shiftedForR]);
+            
+            // Compute K, V from shifted representations
+            const k = xShiftedK.matmul(this.#Wk);
+            const v = xShiftedV.matmul(this.#Wv);
+            
+            // WKV computation with time decay
+            const wkvData = [];
+            const newNumData = [];
+            const newDenData = [];
+            
+            for (let i = 0; i < this.#hiddenSize; i++) {
+                const ki = k.data[0][i];
+                const vi = v.data[0][i];
+                const w = this.#timeDecay[i];
+                const u = this.#timeFirst[i];
+                
+                // Clamp key values for numerical stability (prevent exp overflow)
+                const kiClamped = ki.clamp(-10, 10);
+                
+                const expK = kiClamped.exp();
+                const expUK = u.add(kiClamped).exp();
+                const decayFactor = w.exp().neg().exp();
+                
+                const prevNum = kvState.numState.data[0][i];
+                const prevDen = kvState.denState.data[0][i];
+                
+                // WKV: weighted combination of current and past
+                const wkvNum = expUK.mul(vi).add(prevNum);
+                const wkvDen = expUK.add(prevDen).add(1e-6);
+                wkvData.push(wkvNum.div(wkvDen));
+                
+                // Update state with decay
+                newNumData.push(decayFactor.mul(prevNum).add(expK.mul(vi)));
+                newDenData.push(decayFactor.mul(prevDen).add(expK));
+            }
+            
+            const wkv = new Tensor([wkvData]);
+            newKVState = {
+                numState: new Tensor([newNumData]),
+                denState: new Tensor([newDenData]),
+                xPrev: hCandidate.clone()  // Store current for next token's shift
+            };
+            
+            // Gate WKV with shifted receptance and project
+            const rShifted = xShiftedR.sigmoid();  // Apply shifted receptance
+            const rwkvOut = rShifted.mul(wkv).matmul(this.#Wo);
+            
+            // Blend RWKV output into candidate
+            hCandidate = hCandidate.add(rwkvOut);
+        }
+        
+        // GRU update: h_new = (1-z)?h + z?h~
+        const oneMinusZ = z.oneMinus();
+        const hNew = oneMinusZ.mul(hPrev).add(z.mul(hCandidate));
+        
+        return { h: hNew, kvState: newKVState };
+    }
+    
+    parameters() {
+        const params = [
+            ...this.#Wz.parameters(), ...this.#Uz.parameters(), ...this.#bz.parameters(),
+            ...this.#Wr.parameters(), ...this.#Ur.parameters(), ...this.#br.parameters(),
+            ...this.#Wh.parameters(), ...this.#Uh.parameters(), ...this.#bh.parameters(),
+            ...this.#inputNorm.parameters(), ...this.#hiddenNorm.parameters()
+        ];
+        
+        if (this.#useRWKV) {
+            params.push(
+                ...this.#Wk.parameters(),
+                ...this.#Wv.parameters(),
+                ...this.#Wo.parameters(),
+                ...this.#timeDecay,
+                ...this.#timeFirst,
+                ...this.#mixK,
+                ...this.#mixV,
+                ...this.#mixR
+            );
+        }
+        
+        return params;
+    }
+}
+
+// ============================================================================
+// Modern RNN Layer with Residual Connection
+// ============================================================================
+
+class ModernRNNLayer {
+    #cell;
+    #moe;         // MoE or null if fast mode
+    #hasResidual;
+    #projIn;      // For residual when input != hidden size
+    #numExperts;
+    #topK;
+    
+    constructor(inputSize, hiddenSize, useMLP = true, useRWKV = false, numExperts = 4, topK = 1) {
+        // GRU cell now has built-in RWKV KV-accumulation
+        this.#cell = new ModernGRUCell(inputSize, hiddenSize, useRWKV);
+        // MoE is optional - disable for fast mode
+        this.#moe = useMLP ? new MoE(hiddenSize, numExperts, topK) : null;
+        this.#numExperts = numExperts;
+        this.#topK = topK;
+        this.#hasResidual = inputSize === hiddenSize;
+        
+        // Projection for residual when dimensions don't match
+        if (!this.#hasResidual) {
+            this.#projIn = Tensor.randn(inputSize, hiddenSize, Math.sqrt(2 / (inputSize + hiddenSize)));
+        }
+    }
+    
+    get hiddenSize() { return this.#cell.hiddenSize; }
+    get hasRWKV() { return this.#cell.useRWKV; }
+    get hasMoE() { return this.#moe !== null; }
+    get numExperts() { return this.#numExperts; }
+    get topK() { return this.#topK; }
+    
+    initKVState() {
+        return this.#cell.initKVState();
+    }
+    
+    forward(x, hPrev, kvState = null) {
+        // Project input for residual if dimensions don't match
+        const xResidual = this.#projIn ? x.matmul(this.#projIn) : x;
+        
+        // GRU cell with integrated RWKV
+        const { h, kvState: newKVState } = this.#cell.forward(x, hPrev, kvState);
+        
+        // Residual connection around GRU-RWKV cell
+        let out = this.#hasResidual || this.#projIn ? h.add(xResidual) : h;
+        
+        // Optional MoE with residual connection (like modern transformers)
+        if (this.#moe) {
+            const moeOut = this.#moe.forward(out);
+            out = out.add(moeOut);  // Residual around MoE
+        }
+        
+        return { h: out, kvState: newKVState };
+    }
+    
+    parameters() {
+        const params = [...this.#cell.parameters()];
+        if (this.#moe) params.push(...this.#moe.parameters());
+        if (this.#projIn) params.push(...this.#projIn.parameters());
+        return params;
+    }
+}
+
+// ============================================================================
+// Modern Stacked RNN Model
+// ============================================================================
+
+class ModernRNN {
+    #embedding;
+    #layers;
+    #outputProj;
+    #outputNorm;
+    #vocabSize;
+    #embedSize;
+    #hiddenSize;
+    #numLayers;
+    #fastMode;
+    #useRWKV;
+    #numExperts;
+    #topK;
+    
+    constructor(vocabSize, embedSize, hiddenSize, numLayers = 2, fastMode = false, useRWKV = false, numExperts = 4, topK = 1) {
+        this.#vocabSize = vocabSize;
+        this.#embedSize = embedSize;
+        this.#hiddenSize = hiddenSize;
+        this.#numLayers = numLayers;
+        this.#fastMode = fastMode;
+        this.#useRWKV = useRWKV;
+        this.#numExperts = numExperts;
+        this.#topK = topK;
+        
+        // Learned embedding layer
+        this.#embedding = new Embedding(vocabSize, embedSize);
+        
+        // Stacked RNN layers - disable MoE in fast mode, optionally add RWKV
+        // First layer takes embedSize as input, rest take hiddenSize
+        this.#layers = [];
+        for (let i = 0; i < numLayers; i++) {
+            const layerInputSize = i === 0 ? embedSize : hiddenSize;
+            const useMoE = !fastMode;  // Disable MoE in fast mode
+            this.#layers.push(new ModernRNNLayer(layerInputSize, hiddenSize, useMoE, useRWKV, numExperts, topK));
+        }
+        
+        // Output projection with pre-norm (projects to vocab for next char prediction)
+        this.#outputNorm = new RMSNorm(hiddenSize);
+        this.#outputProj = Tensor.randn(hiddenSize, vocabSize, Math.sqrt(2 / (hiddenSize + vocabSize)));
+    }
+    
+    get hiddenSize() { return this.#hiddenSize; }
+    get numLayers() { return this.#numLayers; }
+    get vocabSize() { return this.#vocabSize; }
+    get embedSize() { return this.#embedSize; }
+    get useRWKV() { return this.#useRWKV; }
+    get numExperts() { return this.#numExperts; }
+    get topK() { return this.#topK; }
+    get hasMoE() { return !this.#fastMode; }
+    
+    // Calculate total parameters in the model
+    get totalParams() {
+        return this.parameters().length;
+    }
+    
+    // Calculate active parameters per forward pass
+    // For MoE: only 1 always-on + topK helper experts are active (not all N experts)
+    get activeParams() {
+        let count = 0;
+        
+        // Embedding (only one row accessed per token, but we count all for simplicity)
+        count += this.#embedding.parameters().length;
+        
+        // Per layer: GRU cell params + (if MoE: 1 always-on + topK helpers instead of all experts)
+        for (const layer of this.#layers) {
+            // GRU cell parameters (always active)
+            const cellParams = layer.parameters().length;
+            
+            if (layer.hasMoE) {
+                // MoE: calculate params for active experts only
+                // Each SwiGLU expert has: 3 * hiddenDim * dim params
+                // Router has: dim * (numExperts-1) params
+                // Norm has: dim params
+                const dim = this.#hiddenSize;
+                const hiddenDim = dim * 2;
+                const expertParams = 3 * hiddenDim * dim;  // wGate + wUp + wDown
+                const activeExperts = 1 + this.#topK;  // always-on + top-k helpers
+                const routerParams = dim * (this.#numExperts - 1);
+                const normParams = dim;
+                
+                // Total layer params minus MoE, plus active MoE portion
+                const moeActiveParams = normParams + routerParams + (activeExperts * expertParams);
+                const totalMoeParams = normParams + routerParams + (this.#numExperts * expertParams);
+                
+                // Layer params = cell params + MoE params
+                // Active = cell params + active MoE params
+                count += (cellParams - totalMoeParams) + moeActiveParams;
+            } else {
+                count += cellParams;
+            }
+        }
+        
+        // Output norm and projection (always active)
+        count += this.#outputNorm.parameters().length;
+        count += this.#outputProj.parameters().length;
+        
+        return count;
+    }
+    
+    // xs is now an array of token indices (integers)
+    forward(xs, hInit = null) {
+        const hiddens = [];
+        const outputs = [];
+        
+        // Initialize hidden states for each layer
+        let hs = hInit?.hs || Array.from(
+            { length: this.#numLayers }, 
+            () => Tensor.zeros(1, this.#hiddenSize)
+        );
+        
+        // Initialize KV states for each layer (built into GRU cell now)
+        let kvStates = hInit?.kvStates || this.#layers.map(l => l.initKVState());
+        
+        for (const idx of xs) {
+            // Look up embedding for this token index
+            let h = this.#embedding.forward(idx);
+            
+            // Forward through each layer with residual connections between layers
+            const newHs = [];
+            const newKVStates = [];
+            for (let i = 0; i < this.#numLayers; i++) {
+                const layerInput = h;  // Input to current layer
+                const hPrev = hs[i];
+                const result = this.#layers[i].forward(layerInput, hPrev, kvStates[i]);
+                h = result.h;
+                newKVStates.push(result.kvState);
+                
+                // Inter-layer skip connection: add input to output (if not first layer)
+                // This creates a dense connection pattern for better gradient flow
+                if (i > 0 && this.#numLayers > 1) {
+                    h = h.add(layerInput.mul(0.5));  // Weighted skip from layer input
+                }
+                
+                newHs.push(h);
+            }
+            hs = newHs;
+            kvStates = newKVStates;
+            hiddens.push(hs[hs.length - 1]);
+            
+            // Output projection with pre-norm
+            const normedH = this.#outputNorm.forward(h);
+            const y = normedH.matmul(this.#outputProj);
+            outputs.push(y);
+        }
+        
+        return { hiddens, outputs, finalHidden: { hs, kvStates } };
+    }
+    
+    crossEntropyLoss(outputs, targets) {
+        let loss = new Value(0);
+        
+        for (let t = 0; t < outputs.length; t++) {
+            const logits = outputs[t];
+            const target = targets[t];
+            
+            // Numerically stable softmax cross-entropy
+            let maxVal = -Infinity;
+            for (let j = 0; j < logits.shape[1]; j++) {
+                maxVal = Math.max(maxVal, logits.data[0][j].data);
+            }
+            
+            let sumExp = new Value(0);
+            for (let j = 0; j < logits.shape[1]; j++) {
+                sumExp = sumExp.add(logits.data[0][j].sub(maxVal).exp());
+            }
+            const logSumExp = sumExp.log().add(maxVal);
+            
+            loss = loss.add(logSumExp.sub(logits.data[0][target]));
+        }
+        
+        return loss.div(outputs.length);
+    }
+    
+    mseLoss(outputs, targets) {
+        let loss = new Value(0);
+        for (let t = 0; t < outputs.length; t++) {
+            const diff = outputs[t].data[0][0].sub(targets[t]);
+            loss = loss.add(diff.square());
+        }
+        return loss.div(outputs.length);
+    }
+    
+    parameters() {
+        const params = [...this.#embedding.parameters()];
+        for (const layer of this.#layers) {
+            params.push(...layer.parameters());
+        }
+        params.push(...this.#outputNorm.parameters());
+        params.push(...this.#outputProj.parameters());
+        return params;
+    }
+    
+    zeroGrad() {
+        for (const p of this.parameters()) {
+            p.grad = 0;
+        }
+    }
+    
+    clipGrad(maxNorm = 1.0) {
+        const params = this.parameters();
+        let totalNorm = 0;
+        for (const p of params) {
+            totalNorm += p.grad ** 2;
+        }
+        totalNorm = Math.sqrt(totalNorm);
+        
+        if (totalNorm > maxNorm) {
+            const scale = maxNorm / totalNorm;
+            for (const p of params) {
+                p.grad *= scale;
+            }
+        }
+        return totalNorm;
+    }
+}
+
+// ============================================================================
+// AdamW Optimizer - Modern optimizer with weight decay
+// ============================================================================
+
+class AdamW {
+    #params;
+    #lr;
+    #beta1;
+    #beta2;
+    #eps;
+    #weightDecay;
+    #t;
+    
+    constructor(params, lr = 0.001, beta1 = 0.9, beta2 = 0.999, eps = 1e-8, weightDecay = 0.01) {
+        this.#params = params;
+        this.#lr = lr;
+        this.#beta1 = beta1;
+        this.#beta2 = beta2;
+        this.#eps = eps;
+        this.#weightDecay = weightDecay;
+        this.#t = 0;
+    }
+    
+    step() {
+        this.#t++;
+        
+        for (const p of this.#params) {
+            if (p.grad === 0) continue;
+            
+            // Update biased first moment estimate
+            p.m = this.#beta1 * p.m + (1 - this.#beta1) * p.grad;
+            
+            // Update biased second raw moment estimate
+            p.v = this.#beta2 * p.v + (1 - this.#beta2) * (p.grad ** 2);
+            
+            // Compute bias-corrected estimates
+            const mHat = p.m / (1 - this.#beta1 ** this.#t);
+            const vHat = p.v / (1 - this.#beta2 ** this.#t);
+            
+            // Weight decay (decoupled)
+            p.data -= this.#lr * this.#weightDecay * p.data;
+            
+            // Adam update
+            p.data -= this.#lr * mHat / (Math.sqrt(vHat) + this.#eps);
+        }
+    }
+    
+    set lr(value) { this.#lr = value; }
+    get lr() { return this.#lr; }
+}
+
+// ============================================================================
+// TRAINING UTILITIES
+// ============================================================================
+
+let rnn = null;
+let optimizer = null;
+let trainingData = null;
+let isTraining = false;
+let lossHistory = [];
+let abortController = null;
+
+function log(message, type = '') {
+    const logDiv = document.getElementById('log');
+    const timestamp = new Date().toLocaleTimeString();
+    logDiv.innerHTML += `<span class="${type}">[${timestamp}] ${message}</span>\n`;
+    logDiv.scrollTop = logDiv.scrollHeight;
+}
+
+function clearLog() {
+    document.getElementById('log').innerHTML = '';
+}
+
+function updateStats(epoch, loss, gradNorm, params) {
+    document.getElementById('epochStat').textContent = epoch;
+    document.getElementById('lossStat').textContent = typeof loss === 'number' ? loss.toFixed(4) : loss;
+    document.getElementById('gradNormStat').textContent = typeof gradNorm === 'number' ? gradNorm.toFixed(4) : gradNorm;
+    document.getElementById('paramsStat').textContent = params;
+}
+
+function drawLossChart() {
+    const canvas = document.getElementById('lossChart');
+    const ctx = canvas.getContext('2d');
+    const rect = canvas.parentElement.getBoundingClientRect();
+    canvas.width = (rect.width - 32) * devicePixelRatio;
+    canvas.height = (rect.height - 32) * devicePixelRatio;
+    canvas.style.width = `${rect.width - 32}px`;
+    canvas.style.height = `${rect.height - 32}px`;
+    ctx.scale(devicePixelRatio, devicePixelRatio);
+    
+    const w = rect.width - 32;
+    const h = rect.height - 32;
+    
+    ctx.clearRect(0, 0, w, h);
+    
+    if (lossHistory.length < 2) return;
+    
+    const padding = 50;
+    const chartW = w - padding * 2;
+    const chartH = h - padding * 2;
+    
+    const minLoss = Math.min(...lossHistory);
+    const maxLoss = Math.max(...lossHistory);
+    const range = maxLoss - minLoss || 1;
+    
+    // Axes
+    ctx.strokeStyle = '#444';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(padding, padding);
+    ctx.lineTo(padding, h - padding);
+    ctx.lineTo(w - padding, h - padding);
+    ctx.stroke();
+    
+    // Labels
+    ctx.fillStyle = '#888';
+    ctx.font = '11px system-ui';
+    ctx.fillText('Loss', padding - 35, padding + 15);
+    ctx.fillText('Epoch', w - padding - 25, h - padding + 25);
+    ctx.fillText(maxLoss.toFixed(3), padding - 40, padding + 5);
+    ctx.fillText(minLoss.toFixed(3), padding - 40, h - padding + 5);
+    
+    // Loss curve with gradient
+    const gradient = ctx.createLinearGradient(0, padding, 0, h - padding);
+    gradient.addColorStop(0, 'oklch(75% 0.18 195 / 0.4)');
+    gradient.addColorStop(1, 'oklch(75% 0.18 195 / 0)');
+    
+    ctx.beginPath();
+    ctx.moveTo(padding, h - padding);
+    
+    for (let i = 0; i < lossHistory.length; i++) {
+        const x = padding + (i / (lossHistory.length - 1)) * chartW;
+        const y = h - padding - ((lossHistory[i] - minLoss) / range) * chartH;
+        ctx.lineTo(x, y);
+    }
+    
+    ctx.lineTo(padding + chartW, h - padding);
+    ctx.closePath();
+    ctx.fillStyle = gradient;
+    ctx.fill();
+    
+    // Line
+    ctx.strokeStyle = 'oklch(75% 0.18 195)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (let i = 0; i < lossHistory.length; i++) {
+        const x = padding + (i / (lossHistory.length - 1)) * chartW;
+        const y = h - padding - ((lossHistory[i] - minLoss) / range) * chartH;
+        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+}
+
+// ============================================================================
+// DATA GENERATORS
+// ============================================================================
+
+function prepareCharData() {
+    const textInput = document.getElementById('trainingText').value;
+    const text = textInput.length > 1 ? textInput : "hello world";
+    const chars = [...new Set(text)].sort();
+    const charToIdx = Object.fromEntries(chars.map((c, i) => [c, i]));
+    const idxToChar = Object.fromEntries(chars.map((c, i) => [i, c]));
+    
+    const vocabSize = chars.length;
+    const inputs = [];   // Now stores indices, not one-hot
+    const targets = [];
+    
+    for (let i = 0; i < text.length - 1; i++) {
+        inputs.push(charToIdx[text[i]]);  // Just the index
+        targets.push(charToIdx[text[i + 1]]);
+    }
+    
+    return { inputs, targets, vocabSize, charToIdx, idxToChar, text };
+}
+
+// ============================================================================
+// TRAINING LOOP
+// ============================================================================
+
+async function startTraining() {
+    if (isTraining) return;
+    
+    isTraining = true;
+    abortController = new AbortController();
+    document.getElementById('trainBtn').disabled = true;
+    document.getElementById('stopBtn').disabled = false;
+    
+    clearLog();
+    lossHistory = [];
+    
+    const hiddenSize = parseInt(document.getElementById('hiddenSize').value);
+    const numLayers = parseInt(document.getElementById('numLayers').value);
+    const seqLength = parseInt(document.getElementById('seqLength').value);
+    const learningRate = parseFloat(document.getElementById('learningRate').value);
+    const weightDecay = parseFloat(document.getElementById('weightDecay').value);
+    const epochs = parseInt(document.getElementById('epochs').value);
+    const embedSize = parseInt(document.getElementById('embedSize').value);
+    const fastMode = document.getElementById('fastMode').checked;
+    const useRWKV = document.getElementById('useRWKV').checked;
+    const numExperts = parseInt(document.getElementById('numExperts').value);
+    const topK = parseInt(document.getElementById('topK').value);
+    
+    // Prepare character data
+    trainingData = prepareCharData();
+    
+    log('??? Building Modern RNN Architecture...', 'info');
+    log(`   ${numLayers} layers  ${hiddenSize} hidden units`, 'info');
+    log(`   Embedding: ${trainingData.vocabSize} vocab  ${embedSize} dims`, 'info');
+    log(`   Pre-norm with RMSNorm`, 'info');
+    log(`   ${useRWKV ? '?? Unified GRU-RWKV Cell (GRU gates + Token Shift + KV-accumulation)' : 'GRU gating with residual connections'}`, 'info');
+    log(`   ${fastMode ? '? Fast Mode (no MoE)' : `?? MoE: ${numExperts} experts (1 always-on + top-${topK} helpers)`}`, 'info');
+    log(`   AdamW optimizer (lr=${learningRate}, wd=${weightDecay})`, 'info');
+    
+    const batchSize = parseInt(document.getElementById('batchSize').value);
+    log(`   Batch size: ${batchSize} (gradient accumulation)`, 'info');
+    
+    rnn = new ModernRNN(trainingData.vocabSize, embedSize, hiddenSize, numLayers, fastMode, useRWKV, numExperts, topK);
+    optimizer = new AdamW(rnn.parameters(), learningRate, 0.9, 0.999, 1e-8, weightDecay);
+    
+    const totalParams = rnn.totalParams;
+    const activeParams = rnn.activeParams;
+    const activePercent = ((activeParams / totalParams) * 100).toFixed(1);
+    log(`? Model created:`, 'success');
+    log(`  ?? Total parameters: ${totalParams.toLocaleString()}`, 'success');
+    log(`  ? Active per forward: ${activeParams.toLocaleString()} (${activePercent}%)`, 'success');
+    log(''.repeat(50));
+    
+    updateStats(0, '-', '-', `${activeParams.toLocaleString()} / ${totalParams.toLocaleString()}`);
+    
+    // Prepare all sequences for batching
+    const allSequences = [];
+    for (let i = 0; i < trainingData.inputs.length - seqLength; i += seqLength) {
+        const xs = [];
+        const ts = [];
+        for (let j = 0; j < seqLength && i + j < trainingData.inputs.length; j++) {
+            xs.push(trainingData.inputs[i + j]);
+            ts.push(trainingData.targets[i + j]);
+        }
+        if (xs.length > 0) {
+            allSequences.push({ xs, ts });
+        }
+    }
+    
+    // Training loop with batch gradient accumulation
+    for (let epoch = 0; epoch < epochs && isTraining; epoch++) {
+        let epochLoss = 0;
+        let numBatches = 0;
+        let totalGradNorm = 0;
+        
+        // Shuffle sequences each epoch for better training
+        const shuffled = [...allSequences].sort(() => Math.random() - 0.5);
+        
+        // Process in batches
+        for (let b = 0; b < shuffled.length; b += batchSize) {
+            const batch = shuffled.slice(b, Math.min(b + batchSize, shuffled.length));
+            const actualBatchSize = batch.length;
+            
+            rnn.zeroGrad();
+            let batchLoss = 0;
+            
+            // Forward and backward for each sequence in the batch (gradient accumulation)
+            for (const { xs, ts } of batch) {
+                const { outputs } = rnn.forward(xs);
+                const loss = rnn.crossEntropyLoss(outputs, ts);
+                
+                // Scale loss by 1/batchSize for proper gradient averaging
+                const scaledLoss = loss.div(actualBatchSize);
+                scaledLoss.backward();
+                
+                batchLoss += loss.data;
+            }
+            
+            // Clip gradients and update weights once per batch
+            const gradNorm = rnn.clipGrad(1.0);
+            totalGradNorm += gradNorm;
+            optimizer.step();
+            
+            epochLoss += batchLoss / actualBatchSize;
+            numBatches++;
+            
+            // Yield to UI after each batch
+            if (numBatches % 2 === 0) await new Promise(r => setTimeout(r, 0));
+        }
+        
+        const avgLoss = epochLoss / Math.max(numBatches, 1);
+        const avgGradNorm = totalGradNorm / Math.max(numBatches, 1);
+        lossHistory.push(avgLoss);
+        
+        updateStats(epoch + 1, avgLoss, avgGradNorm, `${activeParams.toLocaleString()} / ${totalParams.toLocaleString()}`);
+        drawLossChart();
+        
+        if ((epoch + 1) % 25 === 0 || epoch === 0) {
+            const lossClass = avgLoss < 1 ? 'success' : (avgLoss < 2 ? 'warning' : '');
+            log(`Epoch ${(epoch + 1).toString().padStart(4)} - Loss: ${avgLoss.toFixed(6)} - ?: ${avgGradNorm.toFixed(4)}`, lossClass);
+        }
+        
+        // Yield to UI at end of each epoch
+        await new Promise(resolve => setTimeout(resolve, 0));
+    }
+    
+    log(''.repeat(50));
+    log(`Training ${isTraining ? 'completed' : 'stopped'}!`, isTraining ? 'success' : 'warning');
+    
+    isTraining = false;
+    document.getElementById('trainBtn').disabled = false;
+    document.getElementById('stopBtn').disabled = true;
+}
+
+function stopTraining() {
+    isTraining = false;
+    if (abortController) abortController.abort();
+    log('? Stopping training...', 'warning');
+}
+
+// ============================================================================
+// GENERATION
+// ============================================================================
+
+function generateSample() {
+    if (!rnn || !trainingData) {
+        log('? Please train the model first!', 'error');
+        return;
+    }
+    
+    let seed = trainingData.text[0];
+    let generated = seed;
+    const genLength = 80;
+    
+    let hs = null;
+    
+    for (let i = 0; i < genLength; i++) {
+        const charIdx = trainingData.charToIdx[seed] ?? 0;
+        
+        // Forward with just the index (embedding lookup happens inside)
+        const result = rnn.forward([charIdx], hs);
+        hs = result.finalHidden;
+        
+        const logits = result.outputs[0].toArray()[0];
+        
+        // Temperature sampling
+        const temp = 0.8;
+        const scaled = logits.map(l => l / temp);
+        const maxL = Math.max(...scaled);
+        const exps = scaled.map(l => Math.exp(l - maxL));
+        const sum = exps.reduce((a, b) => a + b);
+        const probs = exps.map(e => e / sum);
+        
+        // Sample from distribution
+        let r = Math.random();
+        let idx = 0;
+        for (let j = 0; j < probs.length; j++) {
+            r -= probs[j];
+            if (r <= 0) { idx = j; break; }
+        }
+        
+        seed = trainingData.idxToChar[idx] ?? ' ';
+        generated += seed;
+    }
+    
+    log(`?? Generated: "${generated}"`, 'success');
+}
+
+// ============================================================================
+// ARCHITECTURE VISUALIZATION
+// ============================================================================
+
+function visualizeGraph() {
+    if (!rnn) {
+        log('? Please train the model first!', 'error');
+        return;
+    }
+    
+    const graphOutput = document.getElementById('graphOutput');
+    const numLayers = rnn.numLayers;
+    const hiddenSize = rnn.hiddenSize;
+    const vocabSize = rnn.vocabSize;
+    const embedSize = rnn.embedSize;
+    const hasRWKV = rnn.useRWKV;
+    const hasMoE = rnn.hasMoE;
+    const numExperts = rnn.numExperts;
+    const topK = rnn.topK;
+    
+    let viz = `
+-============================================================================
+                    MODERN RNN ARCHITECTURE (2026)                          
+============================================================================
+                                                                            
+  Input: token_idx   
+                -                                                           
+                                                                           
+  -   
+  -  Embedding Lookup: e = W_embed[idx]  (${vocabSize} vocab  ${embedSize} dims)              -   
+  L-   
+                -                                                           
+`;
+
+    for (let i = 0; i < numLayers; i++) {
+        viz += `                                                                           
+  -===================================================================     
+    LAYER ${i + 1}                                                               
+  ===================================================================     
+    -       
+    -  RMSNorm(x)    Pre-normalization                           -       
+    L-       
+                            -                                             
+    -       
+    -  ${hasRWKV ? 'Unified GRU-RWKV Cell:' : 'GRU Cell:'}                                         -       
+    -    z = ?(W_zx + U_zh + b_z)      Update gate            -       
+    -    r = ?(W_rx + U_rh + b_r)      Reset/Receptance gate  -       
+    -    h~ = tanh(W_hx + U_h(r?h) + b_h)   Candidate         -       `;
+        if (hasRWKV) {
+            viz += `
+    -     Token Shift + RWKV KV-Accumulation     -       
+    -    x_k = lerp(x_prev, h~, mix_k)    Shifted for Key       -       
+    -    x_v = lerp(x_prev, h~, mix_v)    Shifted for Value     -       
+    -    x_r = lerp(x_prev, h~, mix_r)    Shifted for Recept.   -       
+    -    k = x_k @ W_k, v = x_v @ W_v    K/V from shifted       -       
+    -    wkv = (exp(u+k)v + state) / (exp(u+k) + den)           -       
+    -    state_new = exp(-w)state + exp(k)v   Time decay      -       
+    -    h~ = h~ + ?(x_r) ? wkv @ W_o      Enhanced candidate    -       
+    -            -       `;
+        }
+        viz += `
+    -    h_new = (1-z)?h + z?h~           GRU update            -       
+    L-       
+`;
+        viz += `                            -                                             
+    -       
+`;
+        if (hasMoE) {
+            viz += `    -  Mixture of Experts (MoE):  ${numExperts} experts              -       
+    -    -  -       
+    -    -  Router: scores = softmax(h @ W_router)    -  -       
+    -    -  Select top-${topK} helper experts by score        -  -       
+    -    L-  -       
+    -                                                           -       
+    -    -   -       -  -       
+    -    - Expert 0  -   - Expert 1  -  ...  - Expert N  -  -       
+    -    - (always)  -   - (helper)  -       - (helper)  -  -       
+    -    -  SwiGLU   -   -  SwiGLU   -       -  SwiGLU   -  -       
+    -    LT-   LT-       LT-  -       
+    -         -           -  w1             -  w?        -       
+    -         L++-        -       
+    -                           -                                -       
+    -    out = expert0 + ?(w?  helper?)    Weighted sum      -       
+`;
+        } else {
+            viz += `    -  (MoE disabled in Fast Mode)                              -       
+`;
+        }
+        viz += `    L-       
+                            -                                             
+  L===================================================================-     
+`;
+    }
+
+    viz += `                -                                                           
+                                                                           
+  -   
+  -  RMSNorm(h)  Output Projection: y = h @ W_out                      -   
+  L-   
+                -                                                           
+                                                                           
+           Output: y[t]                                                     
+                                                                            
+============================================================================
+                         MODERN FEATURES                                    
+============================================================================
+                                                                            
+  ? Learned Embeddings: W_embed[vocab_size, embed_dim]                      
+    - Dense vector representations instead of sparse one-hot                
+    - Captures semantic similarity between characters                       
+    - Much more parameter-efficient than one-hot + projection               
+                                                                            
+  ? RMSNorm: x / ?(mean(x2) + ?)  ?                                       
+    - Simpler than LayerNorm (no mean subtraction)                          
+    - Faster computation, used in LLaMA, Mistral                            
+                                                                            
+  ? Unified GRU-RWKV Cell: Combines gating with linear attention            
+    - Update gate (z): How much to update hidden state                      
+    - Reset gate (r): Also serves as receptance for RWKV                    
+    - Built-in residual via (1-z)?h term                                    
+    - KV-accumulation enhances candidate before GRU update                  
+    - O(1) memory per token with learnable time decay (w)                   
+                                                                            
+  ? Token Shift: Mix current token with previous for local context          
+    - x_shifted = (1-mix)  x_prev + mix  x_current                        
+    - Separate learnable mix weights for Key, Value, Receptance             
+    - Captures local bigram patterns without extra compute                  
+    - Essential RWKV technique for better sequence modeling                 
+                                                                            
+  ? SwiGLU: SiLU(xW_g) ? (xW_u)                                            
+    - Gated Linear Unit with SiLU activation                                
+    - Better than ReLU/GELU, used in GPT-4, LLaMA                           
+                                                                            
+  ? Mixture of Experts (MoE): Sparse expert routing                         
+    - 1 always-on expert provides stable baseline                           
+    - Top-k helper experts selected by learned router                       
+    - Increases model capacity without proportional compute                 
+    - Each expert is a SwiGLU MLP                                           
+                                                                            
+  ? Pre-Norm Architecture: Norm before each sub-layer                       
+    - More stable training than post-norm                                   
+    - Better gradient flow                                                  
+                                                                            
+  ? AdamW Optimizer: Decoupled weight decay                                 
+    - m = 1m + (1-1)g, v = 2v + (1-2)g2                                
+    - ? = ? - lr(m^/?v^ + ??)                                               
+                                                                            
+============================================================================
+                       PARAMETER COUNT                                      
+============================================================================
+`;
+
+    const totalParams = rnn.totalParams;
+    const activeParams = rnn.activeParams;
+    const activePercent = ((activeParams / totalParams) * 100).toFixed(1);
+    viz += `  Total Parameters:  ${totalParams.toLocaleString().padEnd(49)}
+  Active Parameters: ${activeParams.toLocaleString().padEnd(49)}
+  Active Ratio:      ${(activePercent + '%').padEnd(49)}
+                                                                            
+  Vocab Size:  ${vocabSize.toString().padEnd(55)}
+  Embed Size:  ${embedSize.toString().padEnd(55)}
+  Hidden Size: ${hiddenSize.toString().padEnd(55)}
+  Num Layers:  ${rnn.numLayers.toString().padEnd(55)}
+                                                                            
+L============================================================================-
+`;
+
+    graphOutput.textContent = viz;
+}
+
+// ============================================================================
+// INITIALIZATION
+// ============================================================================
+
+window.addEventListener('DOMContentLoaded', () => {
+    log('?? Modern RNN with Dynamic Autodiff Engine (2026)', 'success');
+    log('', '');
+    log('Architecture Features:', 'info');
+    log('   Learned Embeddings - Dense character representations', 'info');
+    log('   RMSNorm - Root Mean Square Normalization', 'info');
+    log('   Unified GRU-RWKV Cell - Gating + Token Shift + KV-accumulation', 'info');
+    log('   MoE (SwiGLU) - Always-on expert + top-k helpers', 'info');
+    log('   Residual Connections - Better gradient flow', 'info');
+    log('   Pre-Norm - Norm before each sublayer', 'info');
+    log('   AdamW - Optimizer with weight decay', 'info');
+    log('', '');
+    log('Click "Start Training" to begin character prediction!', 'info');
+    
+    drawLossChart();
+});
+
+window.addEventListener('resize', drawLossChart);
+    </script>
+</body>
+</html>
