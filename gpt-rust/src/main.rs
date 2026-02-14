@@ -51,6 +51,7 @@ struct Config {
     temperature: f32,
     num_samples: usize,
     gen_length: usize,
+    prompt: String,
     // Data
     training_file: String,
     // Tokenizer
@@ -85,6 +86,7 @@ impl Config {
             temperature: 0.5,
             num_samples: 20,
             gen_length: 0, // 0 = use block_size
+            prompt: String::new(),
             training_file: "input.txt".to_string(),
             tokenizer_path: "./tokenizer.json".to_string(),
             target_vocab_size: 512,
@@ -124,6 +126,7 @@ impl Config {
                     "temperature" | "temp" => c.temperature = val.parse().unwrap_or(c.temperature),
                     "numsamples" => c.num_samples = val.parse().unwrap_or(c.num_samples),
                     "genlength" => c.gen_length = val.parse().unwrap_or(c.gen_length),
+                    "prompt" => c.prompt = val.to_string(),
                     "trainingfile" => c.training_file = val.to_string(),
                     "tokenizerpath" | "tokenizer_path" | "tokenizer" => c.tokenizer_path = val.to_string(),
                     "targetvocabsize" | "target_vocab_size" | "vocabsize" | "vocab_size" => c.target_vocab_size = val.parse().unwrap_or(c.target_vocab_size),
@@ -250,6 +253,21 @@ enum TensorOp {
         v: TID, // [seq, head_dim]
         seq_len: usize,
         head_dim: usize,
+    },
+    /// Fused Mixture-of-Experts SwiGLU block (Rayon-parallel over experts).
+    /// x: [seq_len, n_embd], fc1/gate/fc2 per expert (weight TIDs).
+    /// selections[t] = vec of (expert_idx_into_fc_vecs, weight).
+    /// Output: [seq_len, n_embd] — weighted sum of selected expert outputs per token.
+    MoEExperts {
+        x: TID,
+        fc1: Vec<TID>,    // one per sparse expert
+        gate: Vec<TID>,
+        fc2: Vec<TID>,
+        seq_len: usize,
+        n_embd: usize,
+        inner_dim: usize,
+        /// Per-token selections: Vec<(expert_index, weight)>
+        selections: Vec<Vec<(usize, f32)>>,
     },
 }
 
@@ -796,6 +814,108 @@ impl Graph {
         TID(id)
     }
 
+    /// Fused MoE sparse experts with Rayon parallelism.
+    /// x: [seq_len, n_embd]. fc1/gate/fc2: weight TIDs per expert.
+    /// selections[t] = vec of (expert_index, weight).
+    /// Returns [seq_len, n_embd]: per-token weighted sum of selected expert SwiGLU outputs.
+    fn moe_experts(
+        &mut self,
+        x: TID,
+        fc1: &[TID], gate: &[TID], fc2: &[TID],
+        selections: &[Vec<(usize, f32)>],
+    ) -> TID {
+        let seq_len = self.nodes[x.0].rows;
+        let n_embd = self.nodes[x.0].cols;
+        let inner_dim = self.nodes[fc1[0].0].cols; // 4*n_embd
+        let n_experts = fc1.len();
+
+        // Group tokens by expert for batched parallel execution
+        let mut expert_token_lists: Vec<Vec<(usize, f32)>> = vec![vec![]; n_experts];
+        for (t, sel) in selections.iter().enumerate() {
+            for &(ei, w) in sel {
+                expert_token_lists[ei].push((t, w));
+            }
+        }
+
+        // Pre-extract weight data for parallel read-only access
+        let x_data = self.nodes[x.0].data.clone();
+        let expert_w: Vec<(Vec<f32>, Vec<f32>, Vec<f32>)> = (0..n_experts)
+            .map(|e| (
+                self.nodes[fc1[e].0].data.clone(),
+                self.nodes[gate[e].0].data.clone(),
+                self.nodes[fc2[e].0].data.clone(),
+            )).collect();
+
+        // Rayon-parallel over experts: each expert computes SwiGLU for its tokens
+        let expert_results: Vec<Vec<(usize, f32, Vec<f32>)>> = expert_token_lists
+            .par_iter()
+            .enumerate()
+            .map(|(ei, token_list)| {
+                let (ref fc1_w, ref gate_w, ref fc2_w) = expert_w[ei];
+                token_list.iter().map(|&(t, weight)| {
+                    let x_t = &x_data[t * n_embd..(t + 1) * n_embd];
+                    // h1 = x_t @ fc1  [1, inner_dim]
+                    let mut h1 = vec![0.0f32; inner_dim];
+                    unsafe {
+                        matrixmultiply::sgemm(
+                            1, n_embd, inner_dim, 1.0,
+                            x_t.as_ptr(), n_embd as isize, 1,
+                            fc1_w.as_ptr(), inner_dim as isize, 1,
+                            0.0, h1.as_mut_ptr(), inner_dim as isize, 1,
+                        );
+                    }
+                    // gate_out = x_t @ gate  [1, inner_dim]
+                    let mut gate_out = vec![0.0f32; inner_dim];
+                    unsafe {
+                        matrixmultiply::sgemm(
+                            1, n_embd, inner_dim, 1.0,
+                            x_t.as_ptr(), n_embd as isize, 1,
+                            gate_w.as_ptr(), inner_dim as isize, 1,
+                            0.0, gate_out.as_mut_ptr(), inner_dim as isize, 1,
+                        );
+                    }
+                    // SiLU(h1) * gate_out -> gated  [1, inner_dim]
+                    let mut gated = vec![0.0f32; inner_dim];
+                    for j in 0..inner_dim {
+                        let sig = 1.0 / (1.0 + (-h1[j]).exp());
+                        gated[j] = (h1[j] * sig) * gate_out[j];
+                    }
+                    // out = gated @ fc2  [1, n_embd], scaled by weight
+                    let mut out = vec![0.0f32; n_embd];
+                    unsafe {
+                        matrixmultiply::sgemm(
+                            1, inner_dim, n_embd, weight,
+                            gated.as_ptr(), inner_dim as isize, 1,
+                            fc2_w.as_ptr(), n_embd as isize, 1,
+                            0.0, out.as_mut_ptr(), n_embd as isize, 1,
+                        );
+                    }
+                    (t, weight, out)
+                }).collect()
+            }).collect();
+
+        // Accumulate per-token outputs
+        let mut out = vec![0.0f32; seq_len * n_embd];
+        for expert_batch in &expert_results {
+            for (t, _w, expert_out) in expert_batch {
+                let off = t * n_embd;
+                for d in 0..n_embd { out[off + d] += expert_out[d]; }
+            }
+        }
+
+        let id = self.nodes.len();
+        self.nodes.push(TensorNode {
+            data: out, grad: vec![0.0; seq_len * n_embd], rows: seq_len, cols: n_embd,
+            op: TensorOp::MoEExperts {
+                x, fc1: fc1.to_vec(), gate: gate.to_vec(), fc2: fc2.to_vec(),
+                seq_len, n_embd, inner_dim,
+                selections: selections.to_vec(),
+            },
+            is_param: false,
+        });
+        TID(id)
+    }
+
     // ------------------------------------------------------------------
     // Backward — vectorized gradient propagation
     // ------------------------------------------------------------------
@@ -1066,6 +1186,167 @@ impl Graph {
                             // Inverse rotation: transpose of [c -s; s c] is [c s; -s c]
                             self.nodes[a.0].grad[row + 2 * ii]     += g0 * c + g1 * s;
                             self.nodes[a.0].grad[row + 2 * ii + 1] += -g0 * s + g1 * c;
+                        }
+                    }
+                }
+
+                TensorOp::MoEExperts { x, ref fc1, ref gate, ref fc2, seq_len, n_embd, inner_dim, ref selections } => {
+                    let og = self.nodes[i].grad.clone();
+                    let x_d = self.nodes[x.0].data.clone();
+
+                    // Group tokens by expert (same grouping as forward)
+                    let n_experts = fc1.len();
+                    let mut expert_token_lists: Vec<Vec<(usize, f32)>> = vec![vec![]; n_experts];
+                    for (t, sel) in selections.iter().enumerate() {
+                        for &(ei, w) in sel { expert_token_lists[ei].push((t, w)); }
+                    }
+
+                    // Pre-extract weight data for parallel access
+                    let fc1_ids = fc1.clone();
+                    let gate_ids = gate.clone();
+                    let fc2_ids = fc2.clone();
+                    let expert_w: Vec<(Vec<f32>, Vec<f32>, Vec<f32>)> = (0..n_experts)
+                        .map(|e| (
+                            self.nodes[fc1_ids[e].0].data.clone(),
+                            self.nodes[gate_ids[e].0].data.clone(),
+                            self.nodes[fc2_ids[e].0].data.clone(),
+                        )).collect();
+
+                    // Parallel backward over experts
+                    let expert_grads: Vec<(Vec<(usize, Vec<f32>)>, Vec<f32>, Vec<f32>, Vec<f32>)> =
+                        expert_token_lists.par_iter().enumerate().map(|(ei, token_list)| {
+                            let (ref fc1_w, ref gate_w, ref fc2_w) = expert_w[ei];
+                            let mut d_fc1 = vec![0.0f32; n_embd * inner_dim];
+                            let mut d_gate = vec![0.0f32; n_embd * inner_dim];
+                            let mut d_fc2 = vec![0.0f32; inner_dim * n_embd];
+                            let mut dx_entries: Vec<(usize, Vec<f32>)> = Vec::with_capacity(token_list.len());
+
+                            for &(t, weight) in token_list {
+                                let x_t = &x_d[t * n_embd..(t + 1) * n_embd];
+                                let og_t = &og[t * n_embd..(t + 1) * n_embd];
+
+                                // Recompute forward intermediates for this token
+                                let mut h1 = vec![0.0f32; inner_dim];
+                                unsafe {
+                                    matrixmultiply::sgemm(
+                                        1, n_embd, inner_dim, 1.0,
+                                        x_t.as_ptr(), n_embd as isize, 1,
+                                        fc1_w.as_ptr(), inner_dim as isize, 1,
+                                        0.0, h1.as_mut_ptr(), inner_dim as isize, 1,
+                                    );
+                                }
+                                let mut gate_out = vec![0.0f32; inner_dim];
+                                unsafe {
+                                    matrixmultiply::sgemm(
+                                        1, n_embd, inner_dim, 1.0,
+                                        x_t.as_ptr(), n_embd as isize, 1,
+                                        gate_w.as_ptr(), inner_dim as isize, 1,
+                                        0.0, gate_out.as_mut_ptr(), inner_dim as isize, 1,
+                                    );
+                                }
+                                // silu(h1) and gated = silu(h1) * gate_out
+                                let mut silu_h1 = vec![0.0f32; inner_dim];
+                                let mut gated = vec![0.0f32; inner_dim];
+                                for j in 0..inner_dim {
+                                    let sig = 1.0 / (1.0 + (-h1[j]).exp());
+                                    silu_h1[j] = h1[j] * sig;
+                                    gated[j] = silu_h1[j] * gate_out[j];
+                                }
+
+                                // --- Backward through: out = weight * gated @ fc2 ---
+                                // d_gated = weight * og_t @ fc2^T  [1, inner_dim]
+                                let mut d_gated = vec![0.0f32; inner_dim];
+                                unsafe {
+                                    matrixmultiply::sgemm(
+                                        1, n_embd, inner_dim, weight,
+                                        og_t.as_ptr(), n_embd as isize, 1,
+                                        fc2_w.as_ptr(), 1, n_embd as isize, // fc2 transposed
+                                        0.0, d_gated.as_mut_ptr(), inner_dim as isize, 1,
+                                    );
+                                }
+                                // d_fc2 += weight * gated^T @ og_t  [inner_dim, n_embd]
+                                unsafe {
+                                    matrixmultiply::sgemm(
+                                        inner_dim, 1, n_embd, weight,
+                                        gated.as_ptr(), 1, inner_dim as isize, // gated transposed
+                                        og_t.as_ptr(), n_embd as isize, 1,
+                                        1.0, d_fc2.as_mut_ptr(), n_embd as isize, 1,
+                                    );
+                                }
+
+                                // --- Backward through: gated = silu(h1) * gate_out ---
+                                // d_silu_h1 = d_gated * gate_out
+                                // d_gate_out = d_gated * silu_h1
+                                let mut d_silu_h1 = vec![0.0f32; inner_dim];
+                                let mut d_gate_out = vec![0.0f32; inner_dim];
+                                for j in 0..inner_dim {
+                                    d_silu_h1[j] = d_gated[j] * gate_out[j];
+                                    d_gate_out[j] = d_gated[j] * silu_h1[j];
+                                }
+
+                                // --- Backward through SiLU: d_h1 = d_silu_h1 * σ(h1)(1 + h1(1-σ(h1))) ---
+                                let mut d_h1 = vec![0.0f32; inner_dim];
+                                for j in 0..inner_dim {
+                                    let sig = 1.0 / (1.0 + (-h1[j]).exp());
+                                    d_h1[j] = d_silu_h1[j] * sig * (1.0 + h1[j] * (1.0 - sig));
+                                }
+
+                                // --- Backward through: h1 = x_t @ fc1 ---
+                                // d_x from fc1 path: d_h1 @ fc1^T  [1, n_embd]
+                                let mut d_x_t = vec![0.0f32; n_embd];
+                                unsafe {
+                                    matrixmultiply::sgemm(
+                                        1, inner_dim, n_embd, 1.0,
+                                        d_h1.as_ptr(), inner_dim as isize, 1,
+                                        fc1_w.as_ptr(), 1, inner_dim as isize, // fc1 transposed
+                                        0.0, d_x_t.as_mut_ptr(), n_embd as isize, 1,
+                                    );
+                                }
+                                // d_fc1 += x_t^T @ d_h1  [n_embd, inner_dim]
+                                unsafe {
+                                    matrixmultiply::sgemm(
+                                        n_embd, 1, inner_dim, 1.0,
+                                        x_t.as_ptr(), 1, n_embd as isize,
+                                        d_h1.as_ptr(), inner_dim as isize, 1,
+                                        1.0, d_fc1.as_mut_ptr(), inner_dim as isize, 1,
+                                    );
+                                }
+
+                                // --- Backward through: gate_out = x_t @ gate ---
+                                // d_x from gate path: d_gate_out @ gate^T  [1, n_embd]
+                                unsafe {
+                                    matrixmultiply::sgemm(
+                                        1, inner_dim, n_embd, 1.0,
+                                        d_gate_out.as_ptr(), inner_dim as isize, 1,
+                                        gate_w.as_ptr(), 1, inner_dim as isize,
+                                        1.0, d_x_t.as_mut_ptr(), n_embd as isize, 1, // accumulate
+                                    );
+                                }
+                                // d_gate += x_t^T @ d_gate_out  [n_embd, inner_dim]
+                                unsafe {
+                                    matrixmultiply::sgemm(
+                                        n_embd, 1, inner_dim, 1.0,
+                                        x_t.as_ptr(), 1, n_embd as isize,
+                                        d_gate_out.as_ptr(), inner_dim as isize, 1,
+                                        1.0, d_gate.as_mut_ptr(), inner_dim as isize, 1,
+                                    );
+                                }
+
+                                dx_entries.push((t, d_x_t));
+                            }
+                            (dx_entries, d_fc1, d_gate, d_fc2)
+                        }).collect();
+
+                    // Accumulate gradients from all experts
+                    for (ei, (dx_entries, d_fc1, d_gate, d_fc2)) in expert_grads.into_iter().enumerate() {
+                        vec_add_inplace(&mut self.nodes[fc1[ei].0].grad, &d_fc1);
+                        vec_add_inplace(&mut self.nodes[gate[ei].0].grad, &d_gate);
+                        vec_add_inplace(&mut self.nodes[fc2[ei].0].grad, &d_fc2);
+                        for (t, d_x_t) in dx_entries {
+                            let off = t * n_embd;
+                            for d in 0..n_embd {
+                                self.nodes[x.0].grad[off + d] += d_x_t[d];
+                            }
                         }
                     }
                 }
@@ -1385,8 +1666,8 @@ impl GPT {
         // Stack into [seq_len, n_embd] — gradient flows back to wte via StackRows op
         let x_stacked = self.stack_rows_op(g, &embed_rows); // [seq_len, n_embd]
 
-        // Initial RMSNorm
-        let mut x = rmsnorm(x_stacked, g); // [seq_len, n_embd]
+        // No RMSNorm here — each layer applies its own pre-norm before attention/MoE
+        let mut x = x_stacked;
 
         for li in 0..self.n_layer {
             // ============ Multi-Head Attention ============
@@ -1400,90 +1681,12 @@ impl GPT {
             let v_all = g.matmul(x, self.attn_wv[li]); // [seq_len, kv_dim]
 
             let hd = self.head_dim;
-            let ne = self.n_embd;
-            let kv_dim = self.kv_dim;
             let group_size = self.group_size;
 
             // Precompute RoPE cos/sin slice for this sequence length
             let half = hd / 2;
-            let rope_cos: Vec<f32> = self.rope_cos[..seq_len * half].to_vec();
-            let rope_sin: Vec<f32> = self.rope_sin[..seq_len * half].to_vec();
 
-            // ---- Parallel GQA via Rayon ----
-            // Each of n_head query heads runs in parallel.
-            // Query head h uses KV head (h / group_size).
-            let q_data = g.data(q_all).to_vec();
-            let k_data = g.data(k_all).to_vec();
-            let v_data = g.data(v_all).to_vec();
-
-            let head_indices: Vec<usize> = (0..self.n_head).collect();
-            let _head_outputs: Vec<Vec<f32>> = head_indices.par_iter().map(|&h| {
-                let q_start = h * hd;              // Q columns for this head
-                let kv_h = h / group_size;          // which KV head to use
-                let kv_start = kv_h * hd;           // KV columns for the shared head
-
-                // Extract Q [seq_len, head_dim] from q_data [seq_len, n_embd]
-                let mut q_h = vec![0.0f32; seq_len * hd];
-                for t in 0..seq_len {
-                    for d in 0..hd { q_h[t * hd + d] = q_data[t * ne + q_start + d]; }
-                }
-                // Extract K,V [seq_len, head_dim] from k/v_data [seq_len, kv_dim]
-                let mut k_h = vec![0.0f32; seq_len * hd];
-                let mut v_h = vec![0.0f32; seq_len * hd];
-                for t in 0..seq_len {
-                    for d in 0..hd {
-                        k_h[t * hd + d] = k_data[t * kv_dim + kv_start + d];
-                        v_h[t * hd + d] = v_data[t * kv_dim + kv_start + d];
-                    }
-                }
-
-                // Apply RoPE to Q and K (pure computation)
-                for t in 0..seq_len {
-                    let row = t * hd;
-                    let cs_off = t * half;
-                    for ii in 0..half {
-                        let c = rope_cos[cs_off + ii];
-                        let s = rope_sin[cs_off + ii];
-                        let q0 = q_h[row + 2 * ii];
-                        let q1 = q_h[row + 2 * ii + 1];
-                        q_h[row + 2 * ii]     = q0 * c - q1 * s;
-                        q_h[row + 2 * ii + 1] = q0 * s + q1 * c;
-                        let k0 = k_h[row + 2 * ii];
-                        let k1 = k_h[row + 2 * ii + 1];
-                        k_h[row + 2 * ii]     = k0 * c - k1 * s;
-                        k_h[row + 2 * ii + 1] = k0 * s + k1 * c;
-                    }
-                }
-
-                // Causal attention (pure computation for speed)
-                let scale = 1.0 / (hd as f32).sqrt();
-                let mut out = vec![0.0f32; seq_len * hd];
-                for t in 0..seq_len {
-                    let q_off = t * hd;
-                    let num_keys = t + 1;
-                    let mut scores = vec![0.0f32; num_keys];
-                    for s in 0..num_keys {
-                        let k_off = s * hd;
-                        let mut dot = 0.0f32;
-                        for di in 0..hd { dot += q_h[q_off + di] * k_h[k_off + di]; }
-                        scores[s] = dot * scale;
-                    }
-                    let max_s = scores.iter().cloned().fold(f32::NEG_INFINITY, f32::max);
-                    let mut exps_s = vec![0.0f32; num_keys];
-                    let mut sum_e = 0.0f32;
-                    for s in 0..num_keys { exps_s[s] = (scores[s] - max_s).exp(); sum_e += exps_s[s]; }
-                    let inv_sum = 1.0 / (sum_e + 1e-8);
-                    let out_off = t * hd;
-                    for s in 0..num_keys {
-                        let w = exps_s[s] * inv_sum;
-                        let v_off = s * hd;
-                        for di in 0..hd { out[out_off + di] += w * v_h[v_off + di]; }
-                    }
-                }
-                out
-            }).collect();
-
-            // Replay through graph for backprop (GQA: multiple Q heads share same K/V slice)
+            // GQA via graph ops (supports backprop)
             // Pre-extract each KV head's slice once, then reuse for all Q heads in the group
             let mut kv_head_slices: Vec<(TID, TID)> = Vec::with_capacity(self.n_kv_head);
             for kv_h in 0..self.n_kv_head {
@@ -1564,37 +1767,23 @@ impl GPT {
                 token_expert_selections.push(selected);
             }
 
-            // --- Build per-token expert outputs in the graph ---
-            // For each token position:
-            //   1. slice x_t = [1, n_embd]
-            //   2. run each selected sparse expert on x_t (SwiGLU)
-            //   3. weight by router prob, sum into sparse contribution
-            //   4. add shared expert result for this token
-            let mut moe_row_tids: Vec<TID> = Vec::with_capacity(seq_len);
-            for t in 0..seq_len {
-                let x_t = g.row_slice(x, t); // [1, n_embd]
-                // Start with shared expert's output for this token
-                let shared_t = g.row_slice(shared_out, t); // [1, n_embd]
-                let mut combined = shared_t;
+            // --- Fused MoE sparse experts (Rayon-parallel over experts) ---
+            // Remap selections: sparse_idx -> expert_id offset into fc1/gate/fc2 slices
+            let sparse_fc1:  Vec<TID> = (1..self.n_experts).map(|e| self.moe_fc1[li][e]).collect();
+            let sparse_gate: Vec<TID> = (1..self.n_experts).map(|e| self.moe_gate[li][e]).collect();
+            let sparse_fc2:  Vec<TID> = (1..self.n_experts).map(|e| self.moe_fc2[li][e]).collect();
+            // token_expert_selections already uses sparse_idx 0..n_sparse
+            let sparse_out = g.moe_experts(
+                x, &sparse_fc1, &sparse_gate, &sparse_fc2, &token_expert_selections,
+            ); // [seq_len, n_embd]
 
-                for &(sparse_idx, weight) in &token_expert_selections[t] {
-                    let expert_id = sparse_idx + 1; // sparse_idx 0..n_sparse maps to expert 1..n_experts
-                    // SwiGLU for this expert on x_t
-                    let e_h1 = g.matmul(x_t, self.moe_fc1[li][expert_id]);
-                    let e_act = g.silu(e_h1);
-                    let e_gate = g.matmul(x_t, self.moe_gate[li][expert_id]);
-                    let e_gated = g.mul(e_act, e_gate);
-                    let e_out = g.matmul(e_gated, self.moe_fc2[li][expert_id]); // [1, n_embd]
-                    // Scale by router weight
-                    let e_scaled = g.scale(e_out, weight);
-                    combined = g.add(combined, e_scaled);
-                }
-                moe_row_tids.push(combined);
-            }
-            // Stack token rows back: [seq_len, n_embd]
-            let moe_out = g.stack_rows(&moe_row_tids);
-            x = g.add(moe_out, x_residual2);
+            // Combine: shared expert (always-on) + sparse experts + residual
+            let moe_combined = g.add(shared_out, sparse_out);
+            x = g.add(moe_combined, x_residual2);
         }
+
+        // Final RMSNorm before output projection (standard pre-norm transformer)
+        x = rmsnorm(x, g);
 
         // Output logits: one per position
         // x is [seq_len, n_embd], lm_head is [n_embd, vocab_size]
@@ -2135,9 +2324,23 @@ fn run_train(config: &Config) {
 fn generate_samples(gpt: &GPT, data: &TrainingData, config: &Config, g: &mut Graph, rng: &mut impl Rng) {
     let temperature = config.temperature;
     let gen_length = if config.gen_length > 0 { config.gen_length } else { gpt.block_size };
+    let has_prompt = !config.prompt.is_empty();
+
+    // If a prompt is given, encode it once; all samples will start from it
+    let prompt_tokens: Vec<usize> = if has_prompt {
+        let mut toks = vec![data.bos];
+        toks.extend(data.tokenizer.encode(&config.prompt));
+        toks
+    } else {
+        vec![]
+    };
 
     for sample_idx in 0..config.num_samples {
-        let mut tokens = vec![data.bos]; // Start with BOS
+        let mut tokens = if has_prompt {
+            prompt_tokens.clone()
+        } else {
+            vec![data.bos] // Start with BOS only
+        };
 
         for _pos in 0..gen_length {
             g.reset();
@@ -2175,7 +2378,13 @@ fn generate_samples(gpt: &GPT, data: &TrainingData, config: &Config, g: &mut Gra
 
         // Decode generated tokens (skip the leading BOS)
         let generated = data.tokenizer.decode(&tokens[1..]);
-        println!("sample {:2}: {}", sample_idx + 1, generated);
+        if has_prompt {
+            // Show prompt in brackets, then the continuation
+            let continuation = data.tokenizer.decode(&tokens[prompt_tokens.len()..]);
+            println!("sample {:2}: [{}]{}", sample_idx + 1, config.prompt, continuation);
+        } else {
+            println!("sample {:2}: {}", sample_idx + 1, generated);
+        }
     }
 }
 
@@ -2216,8 +2425,14 @@ fn run_inference(config: &Config) {
     let mut ps = ParamSet::new(gpt.param_ids(), &g);
     gpt.load_checkpoint(&config.load_checkpoint, &mut g, &mut ps);
 
-    println!("Temperature: {}\n", config.temperature);
-    println!("--- inference (hallucinated names) ---");
+    println!("Temperature: {}", config.temperature);
+    if !config.prompt.is_empty() {
+        println!("Prompt: \"{}\"\n", config.prompt);
+        println!("--- inference (prompt continuation) ---");
+    } else {
+        println!();
+        println!("--- inference (unconditional generation) ---");
+    }
     generate_samples(&gpt, &data, config, &mut g, &mut rng);
 }
 
@@ -2251,7 +2466,8 @@ fn main() {
             println!("  gpt-rust train --loadCheckpoint=./gpt_checkpoint.bin --numSteps=2000  (resume)\n");
             println!("Inference Examples:");
             println!("  gpt-rust inference --loadCheckpoint=./gpt_checkpoint.bin --tokenizerPath=./tokenizer.json");
-            println!("  gpt-rust inference --loadCheckpoint=./gpt_checkpoint.bin --tokenizerPath=./tokenizer.json --temperature=0.8 --numSamples=30\n");
+            println!("  gpt-rust inference --loadCheckpoint=./gpt_checkpoint.bin --prompt=\"Hello world\"");
+            println!("  gpt-rust inference --loadCheckpoint=./gpt_checkpoint.bin --temperature=0.8 --numSamples=30\n");
             println!("All Options:");
             println!("  Model:      --n_embd=16 --n_head=4 --n_kv_head=2 --n_layer=1 --blockSize=16");
             println!("  MoE:        --n_experts=4 --top_k=2  (expert 0 = always-on shared)");
@@ -2259,7 +2475,7 @@ fn main() {
             println!("  Training:   --numSteps=1000 --lr=0.01 --beta1=0.85 --beta2=0.99 --wd=0.0");
             println!("  Data:       --trainingFile=input.txt");
             println!("  Checkpoint: --savePath=./gpt_checkpoint.bin --saveEvery=100 --loadCheckpoint=./model.bin");
-            println!("  Inference:  --temperature=0.5 --numSamples=20 --genLength=16");
+            println!("  Inference:  --temperature=0.5 --numSamples=20 --genLength=16 --prompt=\"text\"");
             println!("  Output:     --logEvery=1");
 
             // If no command but training file exists, default to train-tokenizer + train
