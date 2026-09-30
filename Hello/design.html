@@ -1203,6 +1203,55 @@ html.amber-mobile-nav-open { overflow: hidden; }
   .amber-details > div { grid-template-columns: minmax(110px, 38%) minmax(0,1fr); gap: 12px; }
 }
 
+/* AI chat input: auto-growing prompt composer with slash commands and a one-line action status. */
+.amber-chat-stage { position: relative; min-height: 360px; display: flex; flex-direction: column; justify-content: flex-end; gap: 10px; padding: 12px; border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--surface-alt); }
+.amber-chat-status { align-self: center; max-width: 100%; display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--surface); box-shadow: var(--shadow-sm); color: var(--text-muted); font-size: 12.5px; }
+.amber-chat-status[hidden] { display: none; }
+.amber-chat-status > span:last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.amber-chat-status.is-ok .li { color: var(--success); }
+.amber-chat-status.is-warn .li { color: var(--warning); }
+.amber-chat-status.is-run { color: var(--text); }
+.amber-chat-composer { position: relative; padding: 8px 8px 8px 14px; border: 1px solid var(--border); border-radius: var(--r-xl); background: var(--surface); box-shadow: var(--shadow-md); transition: border-color var(--dur-fast), box-shadow var(--dur-fast); }
+.amber-chat-composer:focus-within { border-color: var(--border-focus); box-shadow: 0 0 0 3px var(--accent-glow), var(--shadow-md); }
+.amber-chat-context { display: flex; flex-wrap: wrap; gap: 6px; padding: 2px 0 4px; list-style: none; }
+.amber-chat-context:empty { display: none; }
+.amber-chat-context .amber-chip { min-height: 26px; font-size: 11px; }
+.amber-chat-prompt { display: block; width: 100%; max-height: 160px; padding: 6px 0; border: 0; outline: none; resize: none; background: transparent; color: var(--text); font: 16px/1.5 var(--font-sans); }
+.amber-chat-prompt:focus-visible { box-shadow: none; }
+.amber-chat-prompt::placeholder { color: var(--text-faint); }
+.amber-chat-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.amber-chat-tools { min-width: 0; display: flex; align-items: center; gap: 4px; }
+.amber-chat-tool { min-width: max(30px, var(--tap-target)); min-height: max(30px, var(--tap-target)); display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 0 10px; border: 1px solid var(--border); border-radius: var(--r-pill); background: transparent; color: var(--text-muted); font-family: var(--font-sans); font-size: 12px; font-weight: 600; white-space: nowrap; cursor: pointer; }
+.amber-chat-tool:hover { background: var(--surface-alt); color: var(--text); }
+.amber-chat-slash { font-family: var(--font-mono); font-weight: 700; color: var(--accent); }
+.amber-chat-tool-label, .amber-chat-hint { display: none; }
+.amber-chat-hint { color: var(--text-faint); font-size: 11px; white-space: nowrap; }
+.amber-chat-send-wrap { display: flex; align-items: center; gap: 10px; }
+.amber-chat-send { width: max(34px, var(--tap-target)); height: max(34px, var(--tap-target)); flex: 0 0 auto; display: grid; place-items: center; border: 0; border-radius: 50%; background: var(--accent); color: var(--accent-contrast); cursor: pointer; transition: background var(--dur-fast), transform var(--dur-fast); }
+.amber-chat-send:hover { background: var(--accent-hover); }
+.amber-chat-send:active { transform: scale(0.94); }
+.amber-chat-send:disabled { background: var(--surface-active); color: var(--text-faint); cursor: default; transform: none; }
+.amber-chat-send.is-stop { background: var(--text); color: var(--bg); }
+.amber-chat-send.is-stop svg { fill: currentColor; }
+.amber-chat-menu { position: absolute; left: 0; right: 0; bottom: calc(100% + 8px); z-index: var(--z-dropdown); max-height: min(52vh, 250px); overflow-y: auto; overscroll-behavior: contain; padding: 6px; border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--surface); box-shadow: var(--shadow-lg); }
+.amber-chat-menu[hidden] { display: none; }
+.amber-chat-group { padding: 8px 10px 4px; color: var(--text-faint); font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+.amber-chat-item { min-height: max(40px, var(--tap-target)); display: flex; align-items: center; gap: 10px; padding: 6px 10px; border-radius: var(--r-sm); cursor: pointer; }
+.amber-chat-item.is-active { background: var(--accent-tint); }
+.amber-chat-item-icon { width: 28px; height: 28px; flex: 0 0 28px; display: grid; place-items: center; border-radius: var(--r-sm); background: var(--surface-alt); color: var(--accent); }
+.amber-chat-item.is-active .amber-chat-item-icon { background: var(--surface); }
+.amber-chat-item-copy { min-width: 0; flex: 1 1 auto; display: flex; flex-direction: column; }
+.amber-chat-item-copy strong { overflow: hidden; color: var(--text); font-family: var(--font-mono); font-size: 12.5px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.amber-chat-item-copy em { color: var(--text-faint); font-style: normal; font-weight: 500; }
+.amber-chat-item-copy mark { background: transparent; color: var(--accent); }
+.amber-chat-item-copy small { overflow: hidden; color: var(--text-muted); font-size: 11.5px; text-overflow: ellipsis; white-space: nowrap; }
+.amber-chat-empty { padding: 14px 10px; color: var(--text-muted); font-size: 12.5px; text-align: center; }
+@media (min-width: 641px) {
+  .amber-chat-stage { min-height: 380px; padding: 20px; }
+  .amber-chat-prompt { font-size: 14px; }
+  .amber-chat-tool-label, .amber-chat-hint { display: inline; }
+}
+
 </style>
 </head>
 <body>
@@ -1271,6 +1320,7 @@ html.amber-mobile-nav-open { overflow: hidden; }
       <a href="#workflow-components" onclick="closeAmberMobileNav(false)"><span class="amber-nav-index">10</span><span class="amber-nav-copy">Workflow components<small>Search, activity &amp; forms</small></span></a>
       <a href="#analytics-charts" onclick="closeAmberMobileNav(false)"><span class="amber-nav-index">11</span><span class="amber-nav-copy">Analytics<small>Charts &amp; trends</small></span></a>
       <a href="#content-components" onclick="closeAmberMobileNav(false)"><span class="amber-nav-index">12</span><span class="amber-nav-copy">Alerts &amp; content<small>Alerts, input groups &amp; details</small></span></a>
+      <a href="#chat-input" onclick="closeAmberMobileNav(false)"><span class="amber-nav-index">13</span><span class="amber-nav-copy">AI chat input<small>Prompt composer &amp; slash commands</small></span></a>
     </nav>
     <div class="amber-mobile-nav-footer">
       <button class="btn btn-secondary" type="button" onclick="closeAmberMobileNav(false); Amber.CommandPalette.open();">Open command palette <span class="kbd">⌘K</span></button>
@@ -2278,6 +2328,42 @@ html.amber-mobile-nav-open { overflow: hidden; }
     </div>
   </section>
 
+  <!-- SECTION 13: AI CHAT INPUT -->
+  <section class="ds-section" id="chat-input" data-keywords="chat input composer prompt ai assistant slash commands message textarea send stop attach context">
+    <div class="sec-header">
+      <h2>
+        <span class="li" style="color:var(--accent)" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg></span>
+        13. AI Chat Input
+      </h2>
+      <p>An auto-growing prompt composer with slash commands, context chips, a send/stop button, and a one-line action status.</p>
+    </div>
+
+    <div class="canvas-card">
+      <div class="canvas-subhead" id="chatInputTitle">Chat Composer with Slash Commands</div>
+      <p class="amber-component-note">Type <span class="kbd">/</span> to open commands: <span class="kbd">↑</span> <span class="kbd">↓</span> choose, <span class="kbd">Enter</span> or <span class="kbd">Tab</span> run, <span class="kbd">Esc</span> close. While a request runs, the send button becomes Stop.</p>
+      <div class="amber-chat-stage" id="amberChatDemo">
+        <div class="amber-chat-status" id="amberChatStatus" role="status" aria-live="polite" hidden></div>
+        <form class="amber-chat-composer" id="amberChatComposer" autocomplete="off" aria-labelledby="chatInputTitle">
+          <div class="amber-chat-menu" id="amberChatMenu" role="listbox" aria-label="Commands" hidden></div>
+          <ul class="amber-chat-context" id="amberChatContext" aria-label="Attached context"></ul>
+          <label class="sr-only" for="amberChatPrompt">Message</label>
+          <textarea class="amber-chat-prompt" id="amberChatPrompt" rows="1" placeholder="Ask anything, or type / for commands" role="combobox" aria-expanded="false" aria-controls="amberChatMenu" aria-autocomplete="list" aria-describedby="amberChatHint"></textarea>
+          <div class="amber-chat-bar">
+            <div class="amber-chat-tools">
+              <button class="amber-chat-tool" type="button" data-amber-chat-attach aria-label="Attach a sample file"><span data-amber-icon="paperclip" class="li-sm"></span><span class="amber-chat-tool-label">Attach</span></button>
+              <button class="amber-chat-tool" type="button" data-amber-chat-slash aria-label="Show commands"><span class="amber-chat-slash" aria-hidden="true">/</span><span class="amber-chat-tool-label">Commands</span></button>
+            </div>
+            <div class="amber-chat-send-wrap">
+              <span class="amber-chat-hint" id="amberChatHint"><span class="kbd">Enter</span> send · <span class="kbd">Shift</span>+<span class="kbd">Enter</span> new line</span>
+              <button class="amber-chat-send" id="amberChatSend" type="submit" aria-label="Send" disabled></button>
+            </div>
+          </div>
+        </form>
+      </div>
+      <p class="amber-component-footnote">Local demo: prompts are never sent or stored.</p>
+    </div>
+  </section>
+
 </main>
 
 <!-- TOKEN EXPORT MODAL -->
@@ -2357,7 +2443,12 @@ html.amber-mobile-nav-open { overflow: hidden; }
     'credit-card': '<rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/>',
     'lock': '<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
     'plus': '<path d="M5 12h14"/><path d="M12 5v14"/>',
-    'minus': '<path d="M5 12h14"/>'
+    'minus': '<path d="M5 12h14"/>',
+    'paperclip': '<path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/>',
+    'arrow-up': '<path d="m5 12 7-7 7 7"/><path d="M12 19V5"/>',
+    'square': '<rect width="14" height="14" x="5" y="5" rx="2"/>',
+    'message-circle': '<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>',
+    'globe': '<circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>'
   };
 
   const VERSION = '2.9.2';
@@ -2812,6 +2903,7 @@ html.amber-mobile-nav-open { overflow: hidden; }
       { title: 'Search, Activity & Form Components', category: 'Navigation', icon: 'search', action: function () { root.location.hash = '#workflow-components'; } },
       { title: 'Charts & Sparklines', category: 'Navigation', icon: 'activity', action: function () { root.location.hash = '#analytics-charts'; } },
       { title: 'Alerts, Input Groups & Content', category: 'Navigation', icon: 'bell', action: function () { root.location.hash = '#content-components'; } },
+      { title: 'AI Chat Input', category: 'Navigation', icon: 'message-circle', action: function () { root.location.hash = '#chat-input'; } },
       { title: 'Toggle Theme (Light / Dark)', category: 'System', icon: 'moon', action: function () { Theme.toggle(); } },
       { title: 'Export Tokens (CSS Variables)', category: 'Tokens', icon: 'copy', action: function () { if (typeof root.openTokenModal === 'function') root.openTokenModal(); } }
     ];
@@ -4355,6 +4447,211 @@ html.amber-mobile-nav-open { overflow: hidden; }
     });
   }
 
+  const AMBER_CHAT_COMMANDS = [
+    { name: 'summarize', icon: 'sparkles', group: 'Write', desc: 'Summarize the attached context' },
+    { name: 'explain', icon: 'code', group: 'Write', desc: 'Explain a selection in plain language' },
+    { name: 'translate', args: '<language>', icon: 'globe', group: 'Write', desc: 'Translate the last answer', options: ['English', 'German', 'Slovak', 'Spanish'] },
+    { name: 'attach', icon: 'paperclip', group: 'Context', desc: 'Attach a sample file' },
+    { name: 'clear', icon: 'trash-2', group: 'Context', desc: 'Remove all attached context' },
+    { name: 'theme', icon: 'moon', group: 'System', desc: 'Toggle light / dark theme' }
+  ];
+  const AMBER_CHAT_SAMPLE_FILES = ['q3-revenue.csv', 'release-notes.md', 'invoice-1042.pdf'];
+
+  function initializeAmberChatInput() {
+    const stage = document.getElementById('amberChatDemo');
+    if (!stage || stage.dataset.ready === 'true') return;
+    stage.dataset.ready = 'true';
+    const form = document.getElementById('amberChatComposer');
+    const prompt = document.getElementById('amberChatPrompt');
+    const menu = document.getElementById('amberChatMenu');
+    const context = document.getElementById('amberChatContext');
+    const status = document.getElementById('amberChatStatus');
+    const send = document.getElementById('amberChatSend');
+    const state = { items: [], active: 0, files: [], timer: 0, busy: false };
+
+    function showStatus(kind, message) {
+      let icon;
+      if (kind === 'run') { icon = node('span', 'amber-inline-spinner'); icon.setAttribute('aria-hidden', 'true'); }
+      else icon = Amber.Icons.render(kind === 'ok' ? 'check-circle' : 'info', { className: 'li-sm' });
+      status.className = 'amber-chat-status is-' + kind;
+      status.replaceChildren(icon, node('span', '', message));
+      status.hidden = false;
+    }
+    function renderContext() {
+      context.replaceChildren();
+      state.files.forEach(function (name, index) {
+        const chip = node('li', 'amber-chip');
+        const remove = node('button'); remove.type = 'button'; remove.dataset.amberChatRemove = String(index); remove.setAttribute('aria-label', 'Remove ' + name);
+        const cross = node('span', '', '×'); cross.setAttribute('aria-hidden', 'true'); remove.appendChild(cross);
+        chip.append(node('span', '', name), remove);
+        context.appendChild(chip);
+      });
+    }
+    function updateSend() { send.disabled = !state.busy && !prompt.value.trim(); }
+    function setBusy(on) {
+      state.busy = on;
+      send.classList.toggle('is-stop', on);
+      send.replaceChildren(Amber.Icons.render(on ? 'square' : 'arrow-up', { className: on ? 'li-sm' : '' }));
+      send.setAttribute('aria-label', on ? 'Stop' : 'Send');
+      updateSend();
+    }
+    function autosize() { prompt.style.height = 'auto'; prompt.style.height = Math.min(prompt.scrollHeight, 160) + 'px'; }
+    function parse(value) {
+      const match = /^\/([\w-]*)(\s+([\s\S]*))?$/.exec(value);
+      return match ? { name: match[1].toLowerCase(), spaced: !!match[2], arg: (match[3] || '').trim() } : null;
+    }
+    function closeMenu() {
+      menu.hidden = true; state.items = [];
+      prompt.setAttribute('aria-expanded', 'false'); prompt.removeAttribute('aria-activedescendant');
+    }
+    function setActive(index) {
+      if (!state.items.length) return;
+      state.active = (index + state.items.length) % state.items.length;
+      menu.querySelectorAll('[role="option"]').forEach(function (option) {
+        const on = Number(option.dataset.index) === state.active;
+        option.classList.toggle('is-active', on); option.setAttribute('aria-selected', String(on));
+        if (on) { prompt.setAttribute('aria-activedescendant', option.id); option.scrollIntoView({ block: 'nearest' }); }
+      });
+    }
+    function commandTitle(cmd, query) {
+      const title = node('strong');
+      const at = query ? cmd.name.indexOf(query) : -1;
+      if (at < 0) title.append('/' + cmd.name);
+      else title.append('/' + cmd.name.slice(0, at), node('mark', '', cmd.name.slice(at, at + query.length)), cmd.name.slice(at + query.length));
+      if (cmd.args) title.appendChild(node('em', '', ' ' + cmd.args));
+      return title;
+    }
+    function renderMenu(query) {
+      menu.replaceChildren(); menu.hidden = false; prompt.setAttribute('aria-expanded', 'true');
+      menu.style.maxHeight = Math.max(140, form.getBoundingClientRect().top - stage.getBoundingClientRect().top - 16) + 'px';
+      if (!state.items.length) { menu.appendChild(node('div', 'amber-chat-empty', 'No matching commands.')); prompt.removeAttribute('aria-activedescendant'); return; }
+      let group = '';
+      state.items.forEach(function (item, index) {
+        const heading = item.value ? 'Languages' : item.cmd.group;
+        if (heading !== group) { group = heading; const label = node('div', 'amber-chat-group', heading); label.setAttribute('role', 'presentation'); menu.appendChild(label); }
+        const option = node('div', 'amber-chat-item');
+        option.id = 'amberChatOption' + index; option.dataset.index = String(index);
+        option.setAttribute('role', 'option'); option.setAttribute('aria-selected', 'false');
+        const icon = node('span', 'amber-chat-item-icon'); icon.appendChild(Amber.Icons.render(item.cmd.icon, { className: 'li-sm' }));
+        let title;
+        if (item.value) { title = node('strong'); title.append(node('em', '', '/' + item.cmd.name + ' '), item.value); }
+        else title = commandTitle(item.cmd, query);
+        const copy = node('span', 'amber-chat-item-copy');
+        copy.append(title, node('small', '', item.value ? 'Translate into ' + item.value : item.cmd.desc));
+        option.append(icon, copy); menu.appendChild(option);
+      });
+      setActive(0);
+    }
+    function updateMenu() {
+      const parsed = parse(prompt.value);
+      if (!parsed) { closeMenu(); return; }
+      if (!parsed.spaced) {
+        state.items = AMBER_CHAT_COMMANDS.filter(function (cmd) { return cmd.name.includes(parsed.name); })
+          .sort(function (a, b) { return (b.name.startsWith(parsed.name) ? 1 : 0) - (a.name.startsWith(parsed.name) ? 1 : 0); })
+          .map(function (cmd) { return { cmd: cmd }; });
+        renderMenu(parsed.name);
+        return;
+      }
+      const cmd = AMBER_CHAT_COMMANDS.find(function (item) { return item.name === parsed.name; });
+      if (!cmd || !cmd.options) { closeMenu(); return; }
+      const query = parsed.arg.toLowerCase();
+      state.items = cmd.options.filter(function (option) { return option.toLowerCase().includes(query); }).map(function (option) { return { cmd: cmd, value: option }; });
+      renderMenu('');
+    }
+    function setPrompt(value) {
+      prompt.value = value;
+      autosize(); updateSend(); updateMenu();
+      prompt.focus(); prompt.setSelectionRange(value.length, value.length);
+    }
+    function work(message, done) {
+      window.clearTimeout(state.timer);
+      showStatus('run', message); setBusy(true);
+      state.timer = window.setTimeout(function () { setBusy(false); showStatus('ok', done); }, 1100);
+    }
+    function stop() {
+      if (!state.busy) return;
+      window.clearTimeout(state.timer); setBusy(false);
+      showStatus('warn', 'Stopped. Nothing was sent.');
+    }
+    function attach() {
+      const next = AMBER_CHAT_SAMPLE_FILES.find(function (name) { return state.files.indexOf(name) < 0; });
+      if (!next) { showStatus('warn', 'All sample files are already attached.'); return; }
+      state.files.push(next); renderContext(); showStatus('ok', 'Attached ' + next + '.'); prompt.focus();
+    }
+    function run(text) {
+      const parsed = parse(text);
+      if (!parsed) {
+        const short = text.length > 48 ? text.slice(0, 48) + '…' : text;
+        work('Working on “' + short + '”', 'Done: answered “' + short + '” (demo).');
+        return;
+      }
+      const cmd = AMBER_CHAT_COMMANDS.find(function (item) { return item.name === parsed.name; });
+      if (!cmd) { showStatus('warn', 'Unknown command /' + parsed.name + '. Type / to see all commands.'); return; }
+      if (cmd.name === 'attach') attach();
+      else if (cmd.name === 'clear') {
+        const count = state.files.length;
+        state.files = []; renderContext();
+        showStatus(count ? 'ok' : 'warn', count ? 'Removed ' + count + (count === 1 ? ' attachment.' : ' attachments.') : 'Nothing is attached.');
+      } else if (cmd.name === 'theme') {
+        Amber.Theme.toggle(); showStatus('ok', 'Switched to the ' + Amber.Theme.get() + ' theme.');
+      } else if (cmd.name === 'translate') {
+        const language = cmd.options.find(function (option) { return option.toLowerCase() === parsed.arg.toLowerCase(); });
+        if (language) work('Translating into ' + language + '…', 'Translated into ' + language + ' (demo).');
+        else setPrompt('/translate ');
+      } else if (cmd.name === 'summarize') {
+        const subject = state.files.length ? state.files.join(', ') : 'the conversation';
+        work('Summarizing ' + subject + '…', 'Summary of ' + subject + ' is ready (demo).');
+      } else {
+        work('Explaining…', 'Explanation is ready (demo).');
+      }
+    }
+    function pick(index) {
+      const item = state.items[index];
+      if (!item) return;
+      if (!item.value && item.cmd.options) { setPrompt('/' + item.cmd.name + ' '); return; }
+      setPrompt(''); closeMenu();
+      run('/' + item.cmd.name + (item.value ? ' ' + item.value : ''));
+    }
+    function submit() {
+      const text = prompt.value.trim();
+      if (!text) { stop(); return; }
+      setPrompt(''); closeMenu();
+      run(text);
+    }
+
+    prompt.addEventListener('input', function () { autosize(); updateSend(); updateMenu(); });
+    prompt.addEventListener('keydown', function (event) {
+      const open = !menu.hidden && state.items.length;
+      if (open && event.key === 'ArrowDown') { event.preventDefault(); setActive(state.active + 1); }
+      else if (open && event.key === 'ArrowUp') { event.preventDefault(); setActive(state.active - 1); }
+      else if (open && (event.key === 'Tab' || (event.key === 'Enter' && !event.shiftKey))) { event.preventDefault(); pick(state.active); }
+      else if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) { event.preventDefault(); submit(); }
+      else if (event.key === 'Escape' && !menu.hidden) { event.preventDefault(); closeMenu(); }
+      else if (event.key === 'Escape' && state.busy) { event.preventDefault(); stop(); }
+    });
+    menu.addEventListener('mousedown', function (event) { event.preventDefault(); });
+    menu.addEventListener('click', function (event) {
+      const option = event.target.closest('[role="option"]');
+      if (option) pick(Number(option.dataset.index));
+    });
+    menu.addEventListener('mousemove', function (event) {
+      const option = event.target.closest('[role="option"]');
+      if (option && Number(option.dataset.index) !== state.active) setActive(Number(option.dataset.index));
+    });
+    form.addEventListener('submit', function (event) { event.preventDefault(); submit(); });
+    stage.addEventListener('click', function (event) {
+      if (event.target.closest('[data-amber-chat-attach]')) { attach(); return; }
+      if (event.target.closest('[data-amber-chat-slash]')) { setPrompt('/'); return; }
+      const remove = event.target.closest('[data-amber-chat-remove]');
+      if (remove) {
+        const name = state.files.splice(Number(remove.dataset.amberChatRemove), 1)[0];
+        renderContext(); showStatus('ok', 'Removed ' + name + '.'); prompt.focus();
+      }
+    });
+    document.addEventListener('pointerdown', function (event) { if (!form.contains(event.target)) closeMenu(); });
+    setBusy(false);
+  }
+
   document.addEventListener('change', function (event) {
     if (event.target && event.target.matches('input[type="radio"]')) syncRadioPresentation(event.target);
   });
@@ -4392,7 +4689,7 @@ html.amber-mobile-nav-open { overflow: hidden; }
   Amber.ready.then(function () {
     document.querySelectorAll('[data-amber-version]').forEach(function (element) { element.textContent = Amber.version; });
     localizeShortcuts(document.body); initializeCodeTabs();
-    iconGallery(); initializeSentenceBuilder(); initializeDataTable(); initializeComponentInteractions(); initializeResponsiveComponents(); initializeAmberComboboxes(); initializeAmberAnalytics(); initializeContentComponents(); updateAmberTextareaCount(document.getElementById('amberReleaseNote')); showExportFormat('json');
+    iconGallery(); initializeSentenceBuilder(); initializeDataTable(); initializeComponentInteractions(); initializeResponsiveComponents(); initializeAmberComboboxes(); initializeAmberAnalytics(); initializeContentComponents(); initializeAmberChatInput(); updateAmberTextareaCount(document.getElementById('amberReleaseNote')); showExportFormat('json');
   });
 }());
 
