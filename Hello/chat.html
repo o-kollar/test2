@@ -1,0 +1,1214 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Amber Chat</title>
+<script>
+// Apply the saved theme before first paint to avoid a light-theme flash.
+(function () {
+  try {
+    var saved = localStorage.getItem('amber_theme');
+    var theme = saved === 'light' || saved === 'dark' ? saved : (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    document.documentElement.setAttribute('data-theme', theme);
+    document.documentElement.style.colorScheme = theme;
+  } catch (error) {}
+}());
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Playfair+Display:ital,wght@0,600;0,700;1,500&display=swap" rel="stylesheet">
+
+<style>
+/* ==========================================================================
+   1. AMBER DESIGN TOKENS (from design.html)
+   ========================================================================== */
+:root {
+  --bg: #F9F8F6;
+  --surface: #FFFFFF;
+  --surface-alt: #F3EFE9;
+  --surface-hover: #ECE7DE;
+  --surface-active: #E4DDD1;
+  --border: #E5DFD5;
+  --border-strong: #CEC5B7;
+  --border-focus: #D4622B;
+
+  --text: #191817;
+  --text-muted: #68625B;
+  --text-faint: #989187;
+
+  --accent: #D4622B;
+  --accent-hover: #BF5321;
+  --accent-tint: rgba(212, 98, 43, 0.09);
+  --accent-tint-hover: rgba(212, 98, 43, 0.16);
+  --accent-glow: rgba(212, 98, 43, 0.26);
+  --accent-contrast: #FFFFFF;
+
+  --success: #1E8E3E;  --warning: #B77900;  --danger: #D93025;  --info: #2563EB;
+  --info-tint: rgba(37, 99, 235, 0.07);  --success-tint: rgba(30, 142, 62, 0.07);  --warning-tint: rgba(183, 121, 0, 0.08);
+
+  --r-xs: 6px;  --r-sm: 8px;  --r-md: 12px;  --r-lg: 16px;  --r-xl: 24px;  --r-pill: 9999px;
+
+  --shadow-xs: 0 1px 2px rgba(25, 24, 23, 0.04);
+  --shadow-sm: 0 1px 3px rgba(25, 24, 23, 0.06);
+  --shadow-md: 0 4px 14px rgba(25, 24, 23, 0.07), 0 16px 28px rgba(25, 24, 23, 0.04);
+  --shadow-lg: 0 12px 36px rgba(25, 24, 23, 0.10), 0 28px 64px rgba(25, 24, 23, 0.06);
+
+  --font-serif: "Playfair Display", Georgia, serif;
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+
+  --z-dropdown: 1000;
+  --dur-fast: 140ms;  --dur-med: 260ms;  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --tap-target: 44px;
+}
+
+[data-theme="dark"] {
+  --bg: #121211;
+  --surface: #1B1A19;
+  --surface-alt: #242220;
+  --surface-hover: #2C2926;
+  --surface-active: #35322E;
+  --border: rgba(255, 255, 255, 0.10);
+  --border-strong: rgba(255, 255, 255, 0.18);
+  --border-focus: #F08E5A;
+
+  --text: #F5F3EF;
+  --text-muted: #A59D92;
+  --text-faint: #736C63;
+
+  --accent: #F08E5A;
+  --accent-hover: #F3A072;
+  --accent-tint: rgba(240, 142, 90, 0.15);
+  --accent-tint-hover: rgba(240, 142, 90, 0.24);
+  --accent-glow: rgba(240, 142, 90, 0.32);
+  --accent-contrast: #18110D;
+
+  --success: #53C378;  --warning: #F2B957;  --danger: #F16E63;  --info: #6BA5FA;
+  --info-tint: rgba(107, 165, 250, 0.10);  --success-tint: rgba(83, 195, 120, 0.10);  --warning-tint: rgba(242, 185, 87, 0.10);
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 6px 18px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 16px 44px rgba(0, 0, 0, 0.7);
+}
+
+/* ==========================================================================
+   2. BASE
+   ========================================================================== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font-family: var(--font-sans);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.5;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color var(--dur-med) var(--ease-out), color var(--dur-med) var(--ease-out);
+}
+button { font: inherit; color: inherit; }
+/* Scrolling still works (wheel, touch, keyboard); only the bars are hidden. */
+* { scrollbar-width: none; -ms-overflow-style: none; }
+*::-webkit-scrollbar { display: none; width: 0; height: 0; }
+:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent-glow); }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+}
+@media (forced-colors: active) { :focus-visible { outline: 2px solid Highlight; outline-offset: 2px; box-shadow: none; } }
+.sr-only { position: absolute !important; width: 1px !important; height: 1px !important; overflow: hidden !important; clip: rect(0,0,0,0) !important; white-space: nowrap !important; border: 0 !important; }
+
+.li { display: inline-flex; align-items: center; justify-content: center; line-height: 0; flex-shrink: 0; }
+.li svg { stroke: currentColor; fill: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.kbd { font-family: var(--font-mono); font-size: 10.5px; font-weight: 600; padding: 1px 6px; border-radius: 4px; background: var(--surface-alt); border: 1px solid var(--border); color: var(--text-muted); white-space: nowrap; }
+
+.icon-btn {
+  width: max(32px, var(--tap-target)); height: max(32px, var(--tap-target)); flex: 0 0 auto;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 0; border-radius: var(--r-sm); background: transparent; color: var(--text-muted); cursor: pointer;
+  transition: background var(--dur-fast), color var(--dur-fast);
+}
+.icon-btn:hover { background: var(--surface-hover); color: var(--text); }
+
+@keyframes msgIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes blink { 50% { opacity: 0; } }
+
+/* ==========================================================================
+   3. LAYOUT
+   ========================================================================== */
+.app { height: 100vh; height: 100dvh; display: flex; flex-direction: column; }
+
+.top { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; min-height: 56px; padding: 6px 8px 6px 16px; }
+.brand { display: flex; align-items: center; gap: 8px; font-family: var(--font-serif); font-size: 1.2rem; font-weight: 700; white-space: nowrap; }
+.brand-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); flex: 0 0 auto; }
+.brand-name { display: none; }
+.model-chip {
+  min-width: 0; display: inline-flex; align-items: center; gap: 6px;
+  min-height: max(30px, var(--tap-target)); padding: 0 10px;
+  border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--surface);
+  color: var(--text-muted); font-size: 12px; font-weight: 600; cursor: pointer; box-shadow: var(--shadow-xs);
+}
+.model-chip:hover { border-color: var(--border-strong); color: var(--text); }
+.model-chip .name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-mono); }
+.top-actions { margin-left: auto; display: flex; align-items: center; gap: 2px; }
+
+.thread { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.messages { max-width: 760px; margin: 0 auto; padding: 8px 14px 28px; display: flex; flex-direction: column; gap: 22px; }
+
+/* Empty state */
+.empty { margin: 8vh auto 0; padding: 0 4px; text-align: center; animation: msgIn var(--dur-med) var(--ease-out); }
+.empty-orb { width: 64px; height: 64px; margin: 0 auto 16px; display: grid; place-items: center; border-radius: 50%; background: var(--accent-tint); color: var(--accent); }
+.eyebrow { font-size: 11.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); margin-bottom: 6px; }
+.empty h1 { font-family: var(--font-serif); font-size: clamp(1.7rem, 6vw, 2.3rem); line-height: 1.15; letter-spacing: -0.02em; margin-bottom: 10px; }
+.empty p { color: var(--text-muted); }
+.suggestions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 20px; }
+.suggestion { max-width: 100%; min-height: max(34px, var(--tap-target)); padding: 6px 14px; border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--surface); color: var(--text-muted); font-size: 12.5px; cursor: pointer; box-shadow: var(--shadow-xs); overflow-wrap: anywhere; }
+.suggestion:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-tint); }
+.suggestion code { font-family: var(--font-mono); font-weight: 600; color: var(--accent); }
+
+/* ==========================================================================
+   4. MESSAGES
+   ========================================================================== */
+.msg { animation: msgIn var(--dur-med) var(--ease-out); }
+.msg-user { align-self: flex-end; max-width: min(88%, 560px); display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.msg-text { padding: 10px 14px; border: 1px solid var(--border); border-radius: 18px 18px 6px 18px; background: var(--surface-alt); font-size: 15px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
+.msg-files { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; max-width: 100%; }
+.file-chip { display: inline-flex; align-items: center; gap: 5px; max-width: 100%; padding: 3px 10px 3px 8px; border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--surface); color: var(--text-muted); font-size: 11.5px; font-weight: 600; }
+.file-chip .li { color: var(--accent); }
+.file-chip span:last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.msg-ai { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 12px; }
+.ai-avatar { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; background: var(--accent-tint); color: var(--accent); }
+.ai-name { display: flex; align-items: baseline; gap: 8px; min-height: 28px; padding-top: 4px; font-size: 12.5px; font-weight: 700; }
+.ai-name span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-mono); font-size: 11px; font-weight: 500; color: var(--text-faint); }
+.ai-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; min-height: 8px; margin-top: 6px; }
+.ai-foot .icon-btn { width: max(28px, var(--tap-target)); height: max(28px, var(--tap-target)); color: var(--text-faint); }
+.ai-foot .icon-btn:hover { color: var(--text); }
+.ai-flag { margin-left: 6px; padding: 1px 8px; border: 1px solid var(--border); border-radius: var(--r-pill); color: var(--warning); font-size: 11px; font-weight: 600; }
+@media (hover: hover) {
+  .msg-ai:not(:last-child) .ai-foot .icon-btn { opacity: 0; transition: opacity var(--dur-fast); }
+  .msg-ai:hover .ai-foot .icon-btn, .msg-ai:focus-within .ai-foot .icon-btn { opacity: 1; }
+}
+
+.thinking { display: inline-flex; gap: 5px; padding: 10px 0; }
+.thinking span { width: 7px; height: 7px; border-radius: 50%; background: var(--text-faint); animation: think 1.1s var(--ease-out) infinite; }
+.thinking span:nth-child(2) { animation-delay: 0.15s; }
+.thinking span:nth-child(3) { animation-delay: 0.3s; }
+@keyframes think { 0%, 80%, 100% { transform: translateY(0); opacity: 0.4; } 40% { transform: translateY(-4px); opacity: 1; } }
+.caret { display: inline-block; width: 0.5em; height: 1.05em; margin-left: 2px; vertical-align: -0.15em; border-radius: 2px; background: var(--accent); animation: blink 1s steps(2) infinite; }
+
+/* One-line notes for commands (model switched, copied, …) */
+.note { align-self: center; max-width: 100%; display: inline-flex; align-items: center; gap: 7px; padding: 5px 12px; border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--surface); color: var(--text-muted); font-size: 12px; box-shadow: var(--shadow-xs); animation: msgIn var(--dur-med) var(--ease-out); }
+.note span:last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.note.is-ok .li { color: var(--success); }
+.note.is-warn .li { color: var(--warning); }
+
+/* ==========================================================================
+   5. MARKDOWN RENDERING
+   ========================================================================== */
+.md { min-width: 0; font-size: 15px; line-height: 1.68; overflow-wrap: anywhere; }
+.md > * + *, .callout-body > * + *, .md blockquote > * + * { margin-top: 0.85em; }
+.md h1, .md h2, .md h3, .md h4, .md h5, .md h6 { line-height: 1.3; letter-spacing: -0.01em; }
+.md h1 { font-family: var(--font-serif); font-size: 1.6em; }
+.md h2 { font-family: var(--font-serif); font-size: 1.3em; }
+.md h3 { font-size: 1.08em; }
+.md h4, .md h5, .md h6 { font-size: 1em; color: var(--text-muted); }
+.md * + h1, .md * + h2, .md * + h3 { margin-top: 1.3em; }
+.md strong { font-weight: 700; }
+.md del { color: var(--text-faint); }
+.md a { color: var(--accent); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 2px; }
+.md a:hover { color: var(--accent-hover); }
+.md code { padding: 0.1em 0.38em; border: 1px solid var(--border); border-radius: 5px; background: var(--surface-alt); font-family: var(--font-mono); font-size: 0.86em; }
+.md ul, .md ol { padding-left: 1.45em; }
+.md li + li, .md li > ul, .md li > ol { margin-top: 0.3em; }
+.md li::marker { color: var(--text-faint); }
+.md ol > li::marker { font-weight: 600; }
+.md li.task { list-style: none; margin-left: -1.35em; }
+.md li.task input { width: 14px; height: 14px; margin: 0 0.5em 0 0; vertical-align: -2px; accent-color: var(--accent); }
+.md hr { border: 0; border-top: 1px solid var(--border); margin: 1.4em 0; }
+.md blockquote { padding: 2px 0 2px 14px; border-left: 3px solid var(--border-strong); color: var(--text-muted); }
+
+.callout { padding: 10px 14px 12px; border: 1px solid var(--border); border-left: 3px solid var(--info); border-radius: var(--r-sm); background: var(--info-tint); }
+.callout-title { display: flex; align-items: center; gap: 7px; margin-bottom: 2px; font-size: 13px; font-weight: 700; color: var(--info); }
+.callout-tip { border-left-color: var(--success); background: var(--success-tint); }
+.callout-tip .callout-title { color: var(--success); }
+.callout-warning { border-left-color: var(--warning); background: var(--warning-tint); }
+.callout-warning .callout-title { color: var(--warning); }
+
+.table-wrap { max-width: 100%; overflow-x: auto; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface); }
+.md table { width: 100%; border-collapse: collapse; font-size: 13.5px; line-height: 1.5; }
+.md th, .md td { padding: 8px 12px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; overflow-wrap: normal; }
+.md th { background: var(--surface-alt); font-weight: 600; white-space: nowrap; }
+.md tbody tr:last-child td { border-bottom: 0; }
+.md .al-c { text-align: center; }
+.md .al-r { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* Code blocks are always dark, like the Amber code block */
+.code-block { border: 1px solid #2B2824; border-radius: var(--r-md); background: #141312; color: #ECE7DE; overflow: hidden; }
+.code-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 4px 4px 14px; background: #1B1A19; border-bottom: 1px solid #2B2824; color: #A59D92; font-family: var(--font-mono); font-size: 11.5px; }
+.code-copy { display: inline-flex; align-items: center; gap: 5px; min-height: max(26px, var(--tap-target)); padding: 0 10px; border: 0; border-radius: var(--r-pill); background: transparent; color: #A59D92; font-size: 11.5px; font-weight: 600; cursor: pointer; }
+.code-copy:hover { background: rgba(255, 255, 255, 0.08); color: #F5F3EF; }
+.code-block pre { margin: 0; padding: 12px 14px; overflow-x: auto; font-family: var(--font-mono); font-size: 12.5px; line-height: 1.7; tab-size: 4; }
+.code-block code { padding: 0; border: 0; background: none; font-size: inherit; white-space: pre; overflow-wrap: normal; }
+.tk-k { color: #F08E5A; font-weight: 600; }
+.tk-s { color: #53C378; }
+.tk-n { color: #6BA5FA; }
+.tk-c { color: #736C63; font-style: italic; }
+.tk-f { color: #F2B957; }
+
+/* ==========================================================================
+   6. CHAT INPUT (same composer as studio.html)
+   ========================================================================== */
+.dock { flex: 0 0 auto; padding: 0 10px max(10px, env(safe-area-inset-bottom)); }
+.dock-inner { position: relative; max-width: 760px; margin: 0 auto; }
+
+.jump { position: absolute; left: 50%; bottom: calc(100% + 10px); transform: translateX(-50%); display: inline-flex; align-items: center; gap: 6px; min-height: max(30px, var(--tap-target)); padding: 0 14px; border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--surface); color: var(--text); font-size: 12px; font-weight: 600; cursor: pointer; box-shadow: var(--shadow-md); animation: msgIn var(--dur-fast) var(--ease-out); }
+.jump:hover { border-color: var(--accent); color: var(--accent); }
+.jump[hidden] { display: none; }
+
+.composer {
+  position: relative;
+  padding: 8px 8px 8px 14px;
+  border: 1px solid var(--border); border-radius: var(--r-xl);
+  background: var(--surface); box-shadow: var(--shadow-md);
+  transition: border-color var(--dur-fast), box-shadow var(--dur-fast);
+}
+.composer:focus-within { border-color: var(--border-focus); box-shadow: 0 0 0 3px var(--accent-glow), var(--shadow-md); }
+.ctx-row { display: flex; flex-wrap: wrap; gap: 6px; padding: 2px 0 4px; }
+.ctx-row:empty { display: none; }
+.ctx-chip { display: inline-flex; align-items: center; gap: 5px; max-width: 100%; padding: 2px 2px 2px 8px; border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--surface-alt); color: var(--text-muted); font-size: 11.5px; font-weight: 600; }
+.ctx-chip .li:first-child { color: var(--accent); }
+.ctx-chip span.name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ctx-chip small { color: var(--text-faint); font-weight: 500; white-space: nowrap; }
+.ctx-chip button { width: max(20px, var(--tap-target)); height: max(20px, var(--tap-target)); flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 50%; background: transparent; color: var(--text-faint); cursor: pointer; }
+.ctx-chip button:hover { background: var(--surface-hover); color: var(--text); }
+.prompt { display: block; width: 100%; max-height: 160px; padding: 6px 0; border: 0; outline: none; resize: none; background: transparent; color: var(--text); font: 16px/1.5 var(--font-sans); }
+.prompt:focus-visible { box-shadow: none; }
+.prompt::placeholder { color: var(--text-faint); }
+.composer-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.composer-tools { display: flex; align-items: center; gap: 4px; min-width: 0; }
+.tool-btn { display: inline-flex; align-items: center; gap: 6px; min-height: max(30px, var(--tap-target)); min-width: max(30px, var(--tap-target)); justify-content: center; padding: 0 10px; border: 1px solid var(--border); border-radius: var(--r-pill); background: transparent; color: var(--text-muted); font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.tool-btn:hover { background: var(--surface-alt); color: var(--text); }
+.tool-btn .slash { font-family: var(--font-mono); font-weight: 700; color: var(--accent); }
+.tool-btn .label { display: none; }
+.composer-send { display: flex; align-items: center; gap: 10px; }
+.hint { display: none; font-size: 11px; color: var(--text-faint); white-space: nowrap; }
+.send { width: max(34px, var(--tap-target)); height: max(34px, var(--tap-target)); display: grid; place-items: center; border: 0; border-radius: 50%; background: var(--accent); color: var(--accent-contrast); cursor: pointer; transition: background var(--dur-fast), transform var(--dur-fast); }
+.send:hover { background: var(--accent-hover); }
+.send:active { transform: scale(0.94); }
+.send:disabled { background: var(--surface-active); color: var(--text-faint); cursor: default; transform: none; }
+.send.is-stop { background: var(--text); color: var(--bg); }
+.send.is-stop svg { fill: currentColor; }
+
+/* Slash command menu */
+.slash-menu {
+  position: absolute; left: 0; right: 0; bottom: calc(100% + 8px); z-index: var(--z-dropdown);
+  max-height: min(52vh, 360px); overflow-y: auto;
+  padding: 6px;
+  border: 1px solid var(--border); border-radius: var(--r-lg);
+  background: var(--surface); box-shadow: var(--shadow-lg);
+  animation: msgIn var(--dur-fast) var(--ease-out);
+}
+.slash-menu[hidden] { display: none; }
+.slash-group { padding: 8px 10px 4px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-faint); }
+.slash-item { display: flex; align-items: center; gap: 10px; min-height: max(40px, var(--tap-target)); padding: 6px 10px; border-radius: var(--r-sm); cursor: pointer; }
+.slash-item.is-active { background: var(--accent-tint); }
+.slash-icon { width: 28px; height: 28px; flex: 0 0 28px; display: grid; place-items: center; border-radius: var(--r-sm); background: var(--surface-alt); color: var(--accent); }
+.slash-item.is-active .slash-icon { background: var(--surface); }
+.slash-text { min-width: 0; flex: 1 1 auto; display: flex; flex-direction: column; }
+.slash-cmd { font-family: var(--font-mono); font-size: 12.5px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.slash-cmd em { font-style: normal; font-weight: 500; color: var(--text-faint); }
+.slash-cmd mark { background: transparent; color: var(--accent); }
+.slash-desc { font-size: 11.5px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.slash-empty { padding: 14px 10px; color: var(--text-muted); font-size: 12.5px; text-align: center; }
+.slash-foot { display: flex; justify-content: space-between; gap: 8px; margin-top: 4px; padding: 8px 10px 4px; border-top: 1px solid var(--border); font-size: 11px; color: var(--text-faint); }
+
+/* ==========================================================================
+   7. RESPONSIVE ENHANCEMENT LAYERS
+   ========================================================================== */
+@media (min-width: 391px) {
+  .brand-name { display: inline; }
+}
+@media (min-width: 641px) {
+  .top { padding: 8px 16px 8px 24px; }
+  .messages { padding: 12px 24px 32px; gap: 26px; }
+  .msg-ai { grid-template-columns: 30px minmax(0, 1fr); gap: 14px; }
+  .ai-avatar { width: 30px; height: 30px; }
+  .dock { padding: 0 24px 18px; }
+  .prompt { font-size: 14px; }
+  .tool-btn .label { display: inline; }
+  .hint { display: inline; }
+}
+@media (min-width: 901px) {
+  :root { --tap-target: 0px; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand"><span class="brand-dot"></span><span class="brand-name">Amber Chat</span></div>
+    <button class="model-chip" id="modelBtn" type="button" aria-label="Switch model" data-slash="/model "><span data-i="cpu" data-s="14"></span><span class="name" id="modelName"></span><span data-i="chevron-down" data-s="13"></span></button>
+    <div class="top-actions">
+      <button class="icon-btn" type="button" data-run="/new" aria-label="New chat" title="New chat"><span data-i="square-pen" data-s="17"></span></button>
+      <button class="icon-btn" id="themeBtn" type="button" aria-label="Toggle color theme" title="Toggle theme"><span id="themeIcon"></span></button>
+    </div>
+  </header>
+
+  <main class="thread" id="thread">
+    <div class="messages" id="messages" role="log" aria-live="polite" aria-label="Conversation"></div>
+  </main>
+
+  <section class="dock" aria-label="Chat input">
+    <div class="dock-inner">
+      <button class="jump" id="jumpBtn" type="button" hidden><span data-i="arrow-down" data-s="14"></span>Latest</button>
+
+      <form class="composer" id="composer" autocomplete="off">
+        <div class="slash-menu" id="slashMenu" role="listbox" aria-label="Commands" hidden></div>
+        <div class="ctx-row" id="ctxRow"></div>
+        <label class="sr-only" for="prompt">Message Amber</label>
+        <textarea class="prompt" id="prompt" rows="1" placeholder="Ask anything, or type / for commands" role="combobox" aria-expanded="false" aria-controls="slashMenu" aria-autocomplete="list"></textarea>
+        <div class="composer-bar">
+          <div class="composer-tools">
+            <button class="tool-btn" type="button" id="attachBtn" aria-label="Attach files"><span data-i="paperclip" data-s="14"></span><span class="label">Attach</span></button>
+            <button class="tool-btn" type="button" data-slash="/" aria-label="Commands"><span class="slash">/</span><span class="label">Commands</span></button>
+          </div>
+          <div class="composer-send">
+            <span class="hint"><span class="kbd">Enter</span> send · <span class="kbd">Shift</span>+<span class="kbd">Enter</span> new line</span>
+            <button class="send" id="sendBtn" type="submit" aria-label="Send" disabled></button>
+          </div>
+        </div>
+        <input type="file" id="filePicker" multiple hidden>
+      </form>
+    </div>
+  </section>
+</div>
+
+<!-- Canned replies for the mock AI. Plain markdown, read with textContent. -->
+<script type="text/markdown" data-reply="general">
+Here's how I'd approach **{topic}**:
+
+1. **Clarify the goal** — what does *done* look like?
+2. **Break it down** into small, testable steps.
+3. **Ship a first version**, then iterate on real feedback.
+
+> [!TIP]
+> Type `/` to see commands, or try `/demo markdown` to see everything I can render.
+
+Want me to turn this into a checklist?
+</script>
+
+<script type="text/markdown" data-reply="hello">
+Hi! I'm **Amber**. Ask me anything — I can answer with formatted text, tables, checklists and code.
+
+A few things to try:
+
+- `Write a Python script that counts words`
+- `Compare the models in a table`
+- `/demo markdown` to see every formatting option
+</script>
+
+<script type="text/markdown" data-reply="code">
+Here's a small, dependency-free **Python** script that prints the most common words in a file:
+
+~~~python
+from collections import Counter
+import sys
+
+def top_words(path: str, n: int = 5) -> list[tuple[str, int]]:
+    """Return the n most common words in a text file."""
+    with open(path, encoding="utf-8") as f:
+        words = f.read().lower().split()
+    return Counter(words).most_common(n)
+
+if __name__ == "__main__":
+    for word, count in top_words(sys.argv[1]):
+        print(f"{word:<12} {count}")  # aligned output
+~~~
+
+Run it with `python top_words.py notes.txt`. The same idea in **JavaScript**:
+
+~~~js
+const fs = require('fs');
+
+// Count words, then print the top five
+const words = fs.readFileSync(process.argv[2], 'utf8').toLowerCase().split(/\s+/);
+const counts = words.reduce((map, w) => map.set(w, (map.get(w) || 0) + 1), new Map());
+console.log([...counts].sort((a, b) => b[1] - a[1]).slice(0, 5));
+~~~
+</script>
+
+<script type="text/markdown" data-reply="table">
+Here's a quick comparison of the models:
+
+| Model | Speed | Price / 1M tokens | Best for |
+| :--- | :---: | ---: | :--- |
+| **amber-fast** | Very fast | $0.10 | Short answers, autocomplete |
+| **amber-pro** | Fast | $0.60 | Everyday writing and code |
+| **amber-reasoning** | Slower | $2.40 | Multi-step problems and planning |
+
+**Recommendation:** start with `amber-pro` and switch with `/model` when you need more depth.
+</script>
+
+<script type="text/markdown" data-reply="list">
+### Release plan
+
+- [x] Freeze the feature branch
+- [x] Run the full test suite
+- [ ] Update the changelog
+- [ ] Tag `v2.4.0` and publish
+
+**Rollout**
+
+1. Deploy to *staging* and smoke-test
+2. Enable for 10% of users
+   - watch error rates for 30 minutes
+   - roll back if p95 latency grows by more than 20%
+3. Go to 100%
+
+---
+
+> [!WARNING]
+> Don't deploy on a Friday afternoon.
+</script>
+
+<script type="text/markdown" data-reply="markdown">
+# Heading one
+## Heading two
+### Heading three
+
+Text can be **bold**, *italic*, ***both***, ~~struck through~~ and `inline code`. Links look like [the Amber docs](https://example.com/docs), and bare URLs such as https://example.com/path?q=1 are linked too.
+
+> A plain blockquote for quoting someone
+> across two lines.
+
+> [!NOTE]
+> Callouts come in **note**, **tip** and **warning** flavours.
+
+> [!TIP]
+> Type `/` in the input to see every command.
+
+> [!WARNING]
+> Very long words like Pneumonoultramicroscopicsilicovolcanoconiosis_and_some_more_text_without_any_spaces wrap instead of overflowing.
+
+1. Ordered lists
+2. with nested items
+   - a bullet inside
+   - another one
+     1. and deeper still
+3. back to the top level
+
+- [x] Task lists
+- [ ] with checkboxes
+
+| Left | Center | Right |
+| :--- | :----: | ----: |
+| a | b | 1.00 |
+| a longer cell | `code` | 42.50 |
+
+~~~json
+{ "name": "amber-chat", "version": 1, "stream": true, "models": ["amber-fast", null] }
+~~~
+
+~~~bash
+# Shell snippets are highlighted too
+npm install && npm run build --if-present
+~~~
+
+---
+
+That's everything the renderer supports. HTML like <b>this</b> is shown as text, never run.
+</script>
+
+<script>
+(function () {
+  'use strict';
+
+  // Icon paths from Lucide (https://lucide.dev), ISC License.
+  const ICONS = {
+    'sparkles': '<path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>',
+    'arrow-up': '<path d="m5 12 7-7 7 7"/><path d="M12 19V5"/>',
+    'arrow-down': '<path d="M12 5v14"/><path d="m19 12-7 7-7-7"/>',
+    'square': '<rect width="14" height="14" x="5" y="5" rx="2"/>',
+    'paperclip': '<path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/>',
+    'x': '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+    'copy': '<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
+    'check': '<path d="M20 6 9 17l-5-5"/>',
+    'refresh-cw': '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>',
+    'square-pen': '<path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"/>',
+    'moon': '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
+    'sun': '<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>',
+    'cpu': '<rect width="16" height="16" x="4" y="4" rx="2"/><rect width="6" height="6" x="9" y="9" rx="1"/><path d="M15 2v2"/><path d="M15 20v2"/><path d="M2 15h2"/><path d="M2 9h2"/><path d="M20 15h2"/><path d="M20 9h2"/><path d="M9 2v2"/><path d="M9 20v2"/>',
+    'chevron-down': '<path d="m6 9 6 6 6-6"/>',
+    'help-circle': '<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/>',
+    'info': '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
+    'lightbulb': '<path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/>',
+    'alert-triangle': '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+    'file-text': '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/>',
+    'code': '<polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>',
+    'table': '<path d="M12 3v18"/><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/>',
+    'list-checks': '<path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/>',
+    'align-left': '<line x1="21" x2="3" y1="6" y2="6"/><line x1="15" x2="3" y1="12" y2="12"/><line x1="17" x2="3" y1="18" y2="18"/>'
+  };
+
+  const $ = function (sel, scope) { return (scope || document).querySelector(sel); };
+  const $$ = function (sel, scope) { return Array.from((scope || document).querySelectorAll(sel)); };
+  const esc = function (value) {
+    return String(value == null ? '' : value).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; });
+  };
+  const ic = function (name, size) {
+    size = size || 16;
+    return '<span class="li" aria-hidden="true"><svg viewBox="0 0 24 24" style="width:' + size + 'px;height:' + size + 'px">' + (ICONS[name] || '') + '</svg></span>';
+  };
+
+  /* ------------------------------------------------------------------------
+     Markdown renderer. Everything is escaped first; only http(s)/mailto links.
+     ------------------------------------------------------------------------ */
+  const FENCE = /^\s{0,3}(`{3,}|~{3,})\s*([\w+#.-]*)\s*$/;
+  const HEADING = /^\s{0,3}(#{1,6})\s+(.*?)\s*#*\s*$/;
+  const HR = /^\s{0,3}([-*_])(\s*\1){2,}\s*$/;
+  const QUOTE = /^\s{0,3}>\s?(.*)$/;
+  const ITEM = /^(\s*)([-*+]|\d{1,9}[.)])\s+(.*)$/;
+  const TABLE_SEP = /^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$/;
+  const CALLOUT = /^\[!(note|tip|important|warning|caution)\]\s*(.*)$/i;
+  const CALLOUT_KIND = { note: ['note', 'info'], important: ['note', 'info'], tip: ['tip', 'lightbulb'], warning: ['warning', 'alert-triangle'], caution: ['warning', 'alert-triangle'] };
+
+  function isTableStart(lines, i) { return lines[i].includes('|') && i + 1 < lines.length && lines[i + 1].includes('-') && TABLE_SEP.test(lines[i + 1]); }
+  function startsBlock(lines, i) { const l = lines[i]; return FENCE.test(l) || HEADING.test(l) || HR.test(l) || QUOTE.test(l) || ITEM.test(l) || isTableStart(lines, i); }
+  function cells(line) { return line.trim().replace(/^\|/, '').replace(/\|$/, '').split(/(?<!\\)\|/).map(function (c) { return c.trim().replace(/\\\|/g, '|'); }); }
+
+  function renderMarkdown(src) {
+    const lines = String(src).replace(/\r\n?/g, '\n').split('\n');
+    let html = '', i = 0, m;
+    while (i < lines.length) {
+      const line = lines[i];
+      if (!line.trim()) { i++; continue; }
+
+      if ((m = FENCE.exec(line))) {
+        const close = new RegExp('^\\s{0,3}' + m[1].charAt(0) + '{' + m[1].length + ',}\\s*$');
+        const buf = [];
+        i++;
+        while (i < lines.length && !close.test(lines[i])) buf.push(lines[i++]);
+        i++;
+        html += codeBlock(buf.join('\n'), m[2]);
+        continue;
+      }
+      if ((m = HEADING.exec(line))) { const lv = m[1].length; html += '<h' + lv + '>' + inline(m[2]) + '</h' + lv + '>'; i++; continue; }
+      if (HR.test(line)) { html += '<hr>'; i++; continue; }
+
+      if (QUOTE.test(line)) {
+        const buf = [];
+        while (i < lines.length && (m = QUOTE.exec(lines[i]))) { buf.push(m[1]); i++; }
+        const c = CALLOUT.exec(buf[0].trim());
+        if (c) {
+          const kind = CALLOUT_KIND[c[1].toLowerCase()];
+          const title = c[2] ? inline(c[2]) : c[1].charAt(0).toUpperCase() + c[1].slice(1).toLowerCase();
+          html += '<div class="callout callout-' + kind[0] + '"><div class="callout-title">' + ic(kind[1], 15) + '<span>' + title + '</span></div>' +
+            '<div class="callout-body">' + renderMarkdown(buf.slice(1).join('\n')) + '</div></div>';
+        } else {
+          html += '<blockquote>' + renderMarkdown(buf.join('\n')) + '</blockquote>';
+        }
+        continue;
+      }
+
+      if (isTableStart(lines, i)) {
+        const head = cells(lines[i]);
+        const aligns = cells(lines[i + 1]).map(function (c) { return /^:-+:$/.test(c) ? 'c' : /-:$/.test(c) ? 'r' : ''; });
+        const al = function (k) { return aligns[k] ? ' class="al-' + aligns[k] + '"' : ''; };
+        const rows = [];
+        i += 2;
+        while (i < lines.length && lines[i].includes('|') && lines[i].trim()) rows.push(cells(lines[i++]));
+        html += '<div class="table-wrap"><table><thead><tr>' +
+          head.map(function (h, k) { return '<th' + al(k) + '>' + inline(h) + '</th>'; }).join('') + '</tr></thead><tbody>' +
+          rows.map(function (r) { return '<tr>' + head.map(function (_, k) { return '<td' + al(k) + '>' + inline(r[k] || '') + '</td>'; }).join('') + '</tr>'; }).join('') +
+          '</tbody></table></div>';
+        continue;
+      }
+
+      if (ITEM.test(line)) {
+        const items = [];
+        while (i < lines.length) {
+          const l = lines[i];
+          if ((m = ITEM.exec(l)) && !HR.test(l)) { items.push({ indent: m[1].replace(/\t/g, '    ').length, ordered: /\d/.test(m[2]), num: parseInt(m[2], 10), text: m[3] }); i++; }
+          else if (l.trim() && /^\s{2,}/.test(l) && !FENCE.test(l)) { items[items.length - 1].text += '\n' + l.trim(); i++; }
+          else if (!l.trim() && i + 1 < lines.length && (m = ITEM.exec(lines[i + 1])) && (m[1].length > 0 || /\d/.test(m[2]) === items[0].ordered)) i++;
+          else break;
+        }
+        html += listHtml(items);
+        continue;
+      }
+
+      const buf = [line];
+      i++;
+      while (i < lines.length && lines[i].trim() && !startsBlock(lines, i)) buf.push(lines[i++]);
+      html += '<p>' + inlineLines(buf.join('\n')) + '</p>';
+    }
+    return html;
+  }
+
+  function listHtml(items) {
+    const stack = [];
+    let html = '';
+    items.forEach(function (it) {
+      while (stack.length && it.indent < stack[stack.length - 1].indent) html += '</li></' + stack.pop().tag + '>';
+      const top = stack[stack.length - 1];
+      const tag = it.ordered ? 'ol' : 'ul';
+      if (!top || it.indent > top.indent) {
+        html += '<' + tag + (it.ordered && it.num !== 1 ? ' start="' + it.num + '"' : '') + '>';
+        stack.push({ indent: it.indent, tag: tag });
+      } else {
+        html += '</li>';
+      }
+      const task = /^\[([ xX])\]\s+([\s\S]*)$/.exec(it.text);
+      if (task) {
+        const done = task[1] !== ' ';
+        html += '<li class="task"><input type="checkbox" disabled' + (done ? ' checked' : '') + ' aria-label="' + (done ? 'Done' : 'Not done') + '">' + inlineLines(task[2]);
+      } else {
+        html += '<li>' + inlineLines(it.text);
+      }
+    });
+    while (stack.length) html += '</li></' + stack.pop().tag + '>';
+    return html;
+  }
+
+  function inlineLines(text) { return text.split('\n').map(inline).join('<br>'); }
+
+  function anchor(url, label) { return '<a href="' + esc(url) + '" target="_blank" rel="noopener noreferrer">' + label + '</a>'; }
+  function unescapeMd(text) { return text.replace(/\\([\\`*_~\[\]()#|>!.+-])/g, '$1'); }
+
+  function emphasis(s) {
+    return s
+      .replace(/\*\*\*(?=\S)([\s\S]*?\S)\*\*\*/g, '<strong><em>$1</em></strong>')
+      .replace(/\*\*(?=\S)([\s\S]*?\S)\*\*/g, '<strong>$1</strong>')
+      .replace(/(^|[^\w])__(?=\S)([\s\S]*?\S)__(?!\w)/g, '$1<strong>$2</strong>')
+      .replace(/(^|[^*\w])\*(?=[^\s*])([^*\n]*?[^\s*])\*(?![*\w])/g, '$1<em>$2</em>')
+      .replace(/(^|[^\w])_(?=[^\s_])([^_\n]*?[^\s_])_(?!\w)/g, '$1<em>$2</em>')
+      .replace(/~~(?=\S)([\s\S]*?\S)~~/g, '<del>$1</del>');
+  }
+
+  // Code spans, escapes and links are parked in slots so emphasis can't touch them.
+  function inline(src) {
+    const slots = [];
+    const put = function (html) { return '\u0000' + (slots.push(html) - 1) + '\u0000'; };
+    let s = String(src).replace(/\u0000/g, '');
+    s = s.replace(/`([^`\n]+)`/g, function (_, code) { return put('<code>' + esc(code) + '</code>'); });
+    s = s.replace(/\[([^\]\n]+)\]\(\s*(https?:\/\/[^\s)]+|mailto:[^\s)]+)\s*\)/g, function (_, text, url) { return put(anchor(unescapeMd(url), emphasis(esc(text)))); });
+    s = s.replace(/\bhttps?:\/\/[^\s<>()*\u0000]*[^\s<>().,;:!?'"*…\\\u0000]/g, function (url) { url = unescapeMd(url); return put(anchor(url, esc(url))); });
+    s = s.replace(/\\([\\`*_~\[\]()#|>!.+-])/g, function (_, c) { return put(esc(c)); });
+    s = emphasis(esc(s));
+    for (let pass = 0; pass < 3 && s.indexOf('\u0000') !== -1; pass++) s = s.replace(/\u0000(\d+)\u0000/g, function (_, n) { return slots[n]; });
+    return s;
+  }
+
+  /* Syntax highlighting (small, regex based) */
+  const KEYWORDS = {
+    js: 'const let var function return if else for while do switch case break continue new class extends import from export default async await try catch finally throw typeof instanceof of in this null undefined true false require',
+    py: 'def return if elif else for while in not and or is import from as class try except finally raise with lambda pass yield async await None True False self global nonlocal',
+    sh: 'if then else fi for do done while case esac function return export echo cd ls npm npx node python pip git sudo',
+    json: 'true false null'
+  };
+  Object.keys(KEYWORDS).forEach(function (k) { KEYWORDS[k] = new Set(KEYWORDS[k].split(' ')); });
+  const LANGS = { js: 'js', javascript: 'js', jsx: 'js', ts: 'js', typescript: 'js', tsx: 'js', mjs: 'js', json: 'json', py: 'py', python: 'py', sh: 'sh', bash: 'sh', shell: 'sh', zsh: 'sh', powershell: 'sh', ps1: 'sh' };
+  const TOKENS_SLASH = /(\/\/[^\n]*|\/\*[\s\S]*?\*\/)|("(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'|`(?:[^`\\]|\\.)*`)|(\b\d+(?:\.\d+)?\b)|([A-Za-z_$][\w$]*)/g;
+  const TOKENS_HASH = /(#[^\n]*)|("(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*')|(\b\d+(?:\.\d+)?\b)|([A-Za-z_$][\w$]*)/g;
+
+  function highlightCode(code, lang) {
+    const kind = LANGS[String(lang).toLowerCase()];
+    if (!kind) return esc(code);
+    const re = new RegExp((kind === 'py' || kind === 'sh' ? TOKENS_HASH : TOKENS_SLASH).source, 'g');
+    const kw = KEYWORDS[kind];
+    let out = '', last = 0, m;
+    while ((m = re.exec(code))) {
+      out += esc(code.slice(last, m.index));
+      last = re.lastIndex;
+      const cls = m[1] ? 'c' : m[2] ? 's' : m[3] ? 'n' : kw.has(m[0]) ? 'k' : code.charAt(last) === '(' ? 'f' : '';
+      out += cls ? '<span class="tk-' + cls + '">' + esc(m[0]) + '</span>' : esc(m[0]);
+    }
+    return out + esc(code.slice(last));
+  }
+
+  function codeBlock(code, lang) {
+    return '<div class="code-block"><div class="code-head"><span>' + esc(lang || 'text') + '</span>' +
+      '<button class="code-copy" type="button" data-copy-code>' + ic('copy', 13) + '<span>Copy</span></button></div>' +
+      '<pre><code>' + highlightCode(code, lang || '') + '</code></pre></div>';
+  }
+
+  /* ------------------------------------------------------------------------
+     Mock AI
+     ------------------------------------------------------------------------ */
+  const REPLIES = {};
+  $$('script[data-reply]').forEach(function (el) { REPLIES[el.dataset.reply] = el.textContent.trim(); });
+
+  const MODELS = [['amber-fast', 'Quick answers'], ['amber-pro', 'Balanced — the default'], ['amber-reasoning', 'Thinks longer on hard problems']];
+  const DEMOS = [['markdown', 'Everything the renderer supports', 'sparkles'], ['code', 'Syntax-highlighted code blocks', 'code'], ['table', 'Tables with column alignment', 'table'], ['list', 'Task lists and nested steps', 'list-checks'], ['long', 'A long answer, to watch auto-scroll', 'align-left']];
+
+  const COMMANDS = [
+    { name: 'new', group: 'Chat', icon: 'square-pen', desc: 'Start a new chat' },
+    { name: 'retry', group: 'Chat', icon: 'refresh-cw', desc: 'Regenerate the last answer' },
+    { name: 'copy', group: 'Chat', icon: 'copy', desc: 'Copy the last answer' },
+    { name: 'stop', group: 'Chat', icon: 'square', desc: 'Stop generating' },
+    { name: 'model', args: '<name>', suggest: 'models', group: 'Settings', icon: 'cpu', desc: 'Switch the AI model' },
+    { name: 'theme', group: 'Settings', icon: 'moon', desc: 'Toggle light / dark theme' },
+    { name: 'demo', args: '<topic>', suggest: 'demos', group: 'Rendering', icon: 'sparkles', desc: 'Show a formatting example' },
+    { name: 'help', group: 'Help', icon: 'help-circle', desc: 'List all commands' }
+  ];
+
+  // Stops user text from being read as markdown when quoted inside a reply.
+  function mdEscape(text) { return String(text).replace(/`/g, "'").replace(/([\\*_~\[\]()#|>!])/g, '\\$1'); }
+  function fmtSize(bytes) { return bytes < 1024 ? bytes + ' B' : bytes < 1048576 ? Math.round(bytes / 1024) + ' KB' : (bytes / 1048576).toFixed(1) + ' MB'; }
+
+  function pickTopic(text) {
+    const t = text.toLowerCase();
+    if (/^(hi|hello|hey|ahoj)\b/.test(t)) return 'hello';
+    if (/\b(code|python|script|function|javascript|js|program)\b/.test(t)) return 'code';
+    if (/\b(table|compare|comparison|vs|versus|difference|models?)\b/.test(t)) return 'table';
+    if (/\b(plan|steps|list|checklist|todo|release)\b/.test(t)) return 'list';
+    if (/\b(markdown|format|formatting|render)\b/.test(t)) return 'markdown';
+    if (/\b(long|essay|detailed|explain everything)\b/.test(t)) return 'long';
+    return 'general';
+  }
+
+  function longReply() {
+    const topics = ['Context', 'Constraints', 'Options', 'Trade-offs', 'Risks', 'Plan', 'Metrics', 'Rollout', 'Communication', 'Follow-up'];
+    const parts = ['## A long answer', 'This reply is deliberately long so you can watch the thread **follow the newest text**. Scroll up at any time — following pauses, and the **Latest** button brings you back.'];
+    topics.forEach(function (name, i) {
+      parts.push('### ' + (i + 1) + '. ' + name);
+      parts.push('Every good answer about *' + name.toLowerCase() + '* starts with the facts you already have. Write them down, separate assumptions from evidence, and keep the list short enough that someone new to the project could read it in a minute. When a point is uncertain, say so — and name who can confirm it.');
+      if (i % 3 === 1) parts.push('- Keep it specific\n- Keep it measurable\n- Keep it owned by one person');
+      if (i % 4 === 3) parts.push('> [!NOTE]\n> Section ' + (i + 1) + ' of ' + topics.length + '. Nearly there.');
+    });
+    parts.push('**That’s the end.** Try scrolling up while the next answer streams.');
+    return parts.join('\n\n');
+  }
+
+  function helpReply() {
+    return '### Commands\n\n| Command | What it does |\n| :--- | :--- |\n' +
+      COMMANDS.map(function (c) { return '| `/' + c.name + (c.args ? ' ' + c.args : '') + '` | ' + c.desc + ' |'; }).join('\n') +
+      '\n\n**Models:** ' + MODELS.map(function (m) { return '`' + m[0] + '`'; }).join(', ') +
+      '\n\n**Demos:** ' + DEMOS.map(function (d) { return '`' + d[0] + '`'; }).join(', ') +
+      '\n\n**Keys:** `Enter` send · `Shift+Enter` new line · `/` or `Ctrl+K` commands · `Esc` stop';
+  }
+
+  function buildReply(text, files, topic) {
+    topic = topic || pickTopic(text);
+    let md = topic === 'long' ? longReply()
+      : topic === 'help' ? helpReply()
+      : topic === 'general' ? REPLIES.general.replace('{topic}', function () { return mdEscape(text.length > 60 ? text.slice(0, 60) + '…' : text); })
+      : REPLIES[topic];
+    if (files.length) {
+      md = 'I read ' + files.map(function (f) { return '**' + mdEscape(f.name) + '** (' + fmtSize(f.size) + ')'; }).join(', ') + '. Here’s what I’d do with ' + (files.length > 1 ? 'them' : 'it') + ':\n\n' + md;
+    }
+    return md;
+  }
+
+  /* ------------------------------------------------------------------------
+     Thread
+     ------------------------------------------------------------------------ */
+  const thread = $('#thread');
+  const list = $('#messages');
+  const prompt = $('#prompt');
+  const state = { model: 'amber-pro', attachments: [], messages: new Map(), lastAi: null, nextId: 1, streaming: null, follow: true };
+
+  function renderEmpty() {
+    list.innerHTML = '<div class="empty"><div class="empty-orb">' + ic('sparkles', 28) + '</div><div class="eyebrow">Amber Chat</div>' +
+      '<h1>What can I help with?</h1><p>Ask a question, attach a file, or type <span class="kbd">/</span> for commands.</p>' +
+      '<div class="suggestions">' +
+      '<button class="suggestion" type="button" data-send="Write a Python script that counts words">Write a Python script</button>' +
+      '<button class="suggestion" type="button" data-send="Compare the models in a table">Compare the models</button>' +
+      '<button class="suggestion" type="button" data-send="Plan a release with steps">Plan a release</button>' +
+      '<button class="suggestion" type="button" data-send="/demo markdown"><code>/demo</code> markdown</button>' +
+      '</div></div>';
+  }
+
+  function clearEmpty() { const e = $('.empty', list); if (e) e.remove(); }
+
+  function note(kind, text) {
+    clearEmpty();
+    const el = document.createElement('div');
+    el.className = 'note is-' + kind;
+    el.setAttribute('role', 'status');
+    el.innerHTML = ic(kind === 'ok' ? 'check' : 'info', 14) + '<span>' + esc(text) + '</span>';
+    list.appendChild(el);
+    state.follow = true; stick();
+  }
+
+  function addUser(text, files) {
+    clearEmpty();
+    const el = document.createElement('div');
+    el.className = 'msg msg-user';
+    el.innerHTML = (files.length ? '<div class="msg-files">' + files.map(function (f) { return '<span class="file-chip">' + ic('file-text', 12) + '<span>' + esc(f.name) + '</span></span>'; }).join('') + '</div>' : '') +
+      '<div class="msg-text">' + esc(text) + '</div>';
+    list.appendChild(el);
+  }
+
+  function addAi(text, files, topic) {
+    const id = String(state.nextId++);
+    const el = document.createElement('div');
+    el.className = 'msg msg-ai';
+    el.dataset.id = id;
+    el.innerHTML = '<div class="ai-avatar">' + ic('sparkles', 15) + '</div><div><div class="ai-name">Amber <span></span></div><div class="md"></div><div class="ai-foot"></div></div>';
+    list.appendChild(el);
+    const msg = { id: id, el: el, body: $('.md', el), foot: $('.ai-foot', el), prompt: text, files: files, topic: topic, text: '' };
+    state.messages.set(id, msg);
+    state.lastAi = msg;
+    return msg;
+  }
+
+  function addCaret(root) {
+    let el = root;
+    while (el.lastElementChild && !/^(INPUT|BR|HR|svg)$/.test(el.lastElementChild.tagName) && !el.lastElementChild.classList.contains('li')) el = el.lastElementChild;
+    const caret = document.createElement('span');
+    caret.className = 'caret';
+    caret.setAttribute('aria-hidden', 'true');
+    el.appendChild(caret);
+  }
+
+  let paintQueued = false;
+  function paint(msg, live) {
+    msg.body.innerHTML = renderMarkdown(msg.text);
+    if (live) addCaret(msg.body);
+    stick();
+  }
+
+  function generate(msg) {
+    stop();
+    const reply = buildReply(msg.prompt, msg.files, msg.topic);
+    const tokens = reply.match(/\s+|\S+/g) || [];
+    let i = 0;
+    msg.text = '';
+    $('.ai-name span', msg.el).textContent = state.model;
+    msg.body.innerHTML = '<div class="thinking" aria-label="Thinking"><span></span><span></span><span></span></div>';
+    msg.foot.innerHTML = '';
+    msg.el.setAttribute('aria-busy', 'true');
+    state.streaming = { msg: msg, timer: 0 };
+    setBusy(true);
+    state.follow = true; stick();
+
+    function tick() {
+      const n = 1 + Math.floor(Math.random() * 4);
+      msg.text += tokens.slice(i, i + n).join('');
+      i += n;
+      if (i >= tokens.length) { finish(false); return; }
+      if (!paintQueued) { paintQueued = true; requestAnimationFrame(function () { paintQueued = false; if (state.streaming && state.streaming.msg === msg) paint(msg, true); }); }
+      state.streaming.timer = setTimeout(tick, 24);
+    }
+    state.streaming.timer = setTimeout(tick, 550);
+  }
+
+  function finish(stopped) {
+    const s = state.streaming;
+    if (!s) return;
+    clearTimeout(s.timer);
+    state.streaming = null;
+    const msg = s.msg;
+    msg.el.removeAttribute('aria-busy');
+    if (!msg.text) msg.body.innerHTML = '';
+    else paint(msg, false);
+    msg.foot.innerHTML = '<button class="icon-btn" type="button" data-copy-msg="' + msg.id + '" aria-label="Copy answer" title="Copy">' + ic('copy', 15) + '</button>' +
+      '<button class="icon-btn" type="button" data-retry="' + msg.id + '" aria-label="Regenerate answer" title="Regenerate">' + ic('refresh-cw', 15) + '</button>' +
+      (stopped ? '<span class="ai-flag">Stopped</span>' : '');
+    setBusy(false);
+    stick();
+  }
+
+  function stop() { if (state.streaming) finish(true); }
+
+  function send(text) {
+    stop();
+    const files = state.attachments.splice(0);
+    renderAttachments();
+    addUser(text, files);
+    generate(addAi(text, files, null));
+  }
+
+  /* Stick to the bottom while streaming, unless the user scrolled up */
+  function stick() {
+    if (state.follow) thread.scrollTop = thread.scrollHeight;
+    $('#jumpBtn').hidden = state.follow || thread.scrollHeight - thread.clientHeight < 8;
+  }
+  thread.addEventListener('scroll', function () {
+    state.follow = thread.scrollHeight - thread.scrollTop - thread.clientHeight < 48;
+    $('#jumpBtn').hidden = state.follow;
+  }, { passive: true });
+  $('#jumpBtn').addEventListener('click', function () { state.follow = true; stick(); prompt.focus(); });
+
+  /* Clipboard */
+  function copyText(text, button) {
+    const done = function () {
+      if (!button) return;
+      const label = $('span:last-child', button);
+      const oldIcon = button.firstElementChild.outerHTML;
+      button.firstElementChild.outerHTML = ic('check', 13);
+      if (label && button.classList.contains('code-copy')) label.textContent = 'Copied';
+      setTimeout(function () {
+        if (!button.isConnected) return;
+        button.firstElementChild.outerHTML = oldIcon;
+        if (label && button.classList.contains('code-copy')) label.textContent = 'Copy';
+      }, 1400);
+    };
+    const fallback = function () {
+      const ta = document.createElement('textarea');
+      ta.value = text; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); } catch (error) {}
+      ta.remove(); done();
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, fallback);
+    else fallback();
+  }
+
+  /* Attachments */
+  function renderAttachments() {
+    $('#ctxRow').innerHTML = state.attachments.map(function (f, i) {
+      return '<span class="ctx-chip" title="' + esc(f.name) + '">' + ic('file-text', 12) + '<span class="name">' + esc(f.name) + '</span><small>' + fmtSize(f.size) + '</small>' +
+        '<button type="button" data-drop-file="' + i + '" aria-label="Remove ' + esc(f.name) + '">' + ic('x', 12) + '</button></span>';
+    }).join('');
+    updateSend();
+  }
+  function addFiles(files) {
+    Array.from(files || []).forEach(function (f) { state.attachments.push({ name: f.name, size: f.size }); });
+    renderAttachments();
+    prompt.focus();
+  }
+  $('#attachBtn').addEventListener('click', function () { $('#filePicker').click(); });
+  $('#filePicker').addEventListener('change', function (event) { addFiles(event.target.files); event.target.value = ''; });
+  window.addEventListener('dragover', function (event) { if (event.dataTransfer && Array.from(event.dataTransfer.types).includes('Files')) event.preventDefault(); });
+  window.addEventListener('drop', function (event) { if (event.dataTransfer && event.dataTransfer.files.length) { event.preventDefault(); addFiles(event.dataTransfer.files); } });
+
+  /* Theme */
+  function applyTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    document.documentElement.style.colorScheme = theme;
+    $('#themeIcon').innerHTML = ic(theme === 'dark' ? 'sun' : 'moon', 17);
+    try { localStorage.setItem('amber_theme', theme); } catch (error) {}
+  }
+  function toggleTheme() { applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'); }
+
+  function setModel(name) { state.model = name; $('#modelName').textContent = name; }
+
+  /* ------------------------------------------------------------------------
+     Commands
+     ------------------------------------------------------------------------ */
+  function parseSlash(value) {
+    const m = /^\/([\w-]*)(\s+([\s\S]*))?$/.exec(value);
+    return m ? { name: m[1].toLowerCase(), spaced: !!m[2], arg: (m[3] || '').trim().toLowerCase() } : null;
+  }
+
+  function execute(text) {
+    const p = parseSlash(text.trim());
+    if (!p) return;
+    const cmd = COMMANDS.find(function (c) { return c.name === p.name; });
+    if (!cmd) { note('warn', 'Unknown command /' + p.name + '. Type / to see all commands.'); return; }
+    switch (cmd.name) {
+      case 'new':
+        stop(); state.messages.clear(); state.lastAi = null; state.attachments = []; renderAttachments(); renderEmpty(); prompt.focus();
+        break;
+      case 'retry':
+        if (state.lastAi) generate(state.lastAi); else note('warn', 'Nothing to regenerate yet.');
+        break;
+      case 'copy':
+        if (state.lastAi && state.lastAi.text) { copyText(state.lastAi.text); note('ok', 'Copied the last answer'); } else note('warn', 'Nothing to copy yet.');
+        break;
+      case 'stop':
+        if (state.streaming) stop(); else note('warn', 'Nothing is generating.');
+        break;
+      case 'model': {
+        if (!p.arg) { setPrompt('/model '); return; }
+        const m = MODELS.find(function (x) { return x[0] === p.arg; }) || MODELS.find(function (x) { return x[0].includes(p.arg); });
+        if (m) { setModel(m[0]); note('ok', 'Model set to ' + m[0]); } else note('warn', 'Unknown model “' + p.arg + '”. Try ' + MODELS.map(function (x) { return x[0]; }).join(', ') + '.');
+        break;
+      }
+      case 'theme':
+        toggleTheme();
+        break;
+      case 'demo': {
+        if (!p.arg) { setPrompt('/demo '); return; }
+        const d = DEMOS.find(function (x) { return x[0] === p.arg; }) || DEMOS.find(function (x) { return x[0].includes(p.arg); });
+        if (!d) { note('warn', 'Unknown demo “' + p.arg + '”. Try ' + DEMOS.map(function (x) { return x[0]; }).join(', ') + '.'); return; }
+        stop();
+        addUser('/demo ' + d[0], []);
+        generate(addAi('/demo ' + d[0], [], d[0]));
+        break;
+      }
+      case 'help':
+        stop();
+        addUser('/help', []);
+        generate(addAi('/help', [], 'help'));
+        break;
+    }
+  }
+
+  /* Slash menu (same behaviour as studio.html) */
+  const menu = { el: $('#slashMenu'), items: [], active: 0 };
+
+  function updateMenu() {
+    const p = parseSlash(prompt.value);
+    if (!p) { closeMenu(); return; }
+    let items;
+    if (!p.spaced) {
+      items = COMMANDS.filter(function (c) { return c.name.includes(p.name); })
+        .sort(function (a, b) { return (b.name.startsWith(p.name) ? 1 : 0) - (a.name.startsWith(p.name) ? 1 : 0); })
+        .map(function (c) { return { kind: 'cmd', cmd: c }; });
+    } else {
+      const cmd = COMMANDS.find(function (c) { return c.name === p.name; });
+      if (!cmd || !cmd.suggest) { closeMenu(); return; }
+      items = argItems(cmd, p.arg);
+    }
+    menu.items = items;
+    menu.active = 0;
+    renderMenu(p);
+  }
+
+  function argItems(cmd, q) {
+    if (cmd.suggest === 'models') return MODELS.filter(function (m) { return m[0].includes(q); })
+      .map(function (m) { return { kind: 'arg', cmd: cmd, value: m[0], label: m[0], desc: m[1] + (m[0] === state.model ? ' · current' : ''), icon: ic('cpu', 15) }; });
+    return DEMOS.filter(function (d) { return d[0].includes(q); })
+      .map(function (d) { return { kind: 'arg', cmd: cmd, value: d[0], label: d[0], desc: d[1], icon: ic(d[2], 15) }; });
+  }
+
+  function renderMenu(p) {
+    const el = menu.el;
+    el.hidden = false;
+    prompt.setAttribute('aria-expanded', 'true');
+    if (!menu.items.length) {
+      el.innerHTML = '<div class="slash-empty">No matching commands. Try <span class="kbd">/help</span>.</div>';
+      prompt.removeAttribute('aria-activedescendant');
+      return;
+    }
+    let group = null, html = '';
+    menu.items.forEach(function (item, i) {
+      const g = item.kind === 'cmd' ? item.cmd.group : (item.cmd.suggest === 'models' ? 'Models' : 'Demos');
+      if (g !== group) { group = g; html += '<div class="slash-group" role="presentation">' + g + '</div>'; }
+      let label, desc, icon;
+      if (item.kind === 'cmd') {
+        const name = item.cmd.name, at = p.name ? name.indexOf(p.name) : -1;
+        label = '/' + (at >= 0 ? esc(name.slice(0, at)) + '<mark>' + esc(name.slice(at, at + p.name.length)) + '</mark>' + esc(name.slice(at + p.name.length)) : esc(name)) +
+          (item.cmd.args ? ' <em>' + esc(item.cmd.args) + '</em>' : '');
+        desc = esc(item.cmd.desc);
+        icon = ic(item.cmd.icon, 15);
+      } else {
+        label = '<em>/' + esc(item.cmd.name) + '</em> ' + esc(item.label);
+        desc = esc(item.desc);
+        icon = item.icon;
+      }
+      html += '<div class="slash-item" role="option" id="slash-' + i + '" data-index="' + i + '" aria-selected="false">' +
+        '<span class="slash-icon">' + icon + '</span><span class="slash-text"><span class="slash-cmd">' + label + '</span><span class="slash-desc">' + desc + '</span></span></div>';
+    });
+    html += '<div class="slash-foot" aria-hidden="true"><span><span class="kbd">↑</span> <span class="kbd">↓</span> choose</span><span><span class="kbd">Enter</span> run · <span class="kbd">Esc</span> close</span></div>';
+    el.innerHTML = html;
+    setActive(0);
+  }
+
+  function setActive(i) {
+    if (!menu.items.length) return;
+    menu.active = (i + menu.items.length) % menu.items.length;
+    $$('.slash-item', menu.el).forEach(function (el) {
+      const on = Number(el.dataset.index) === menu.active;
+      el.classList.toggle('is-active', on); el.setAttribute('aria-selected', String(on));
+      if (on) { prompt.setAttribute('aria-activedescendant', el.id); el.scrollIntoView({ block: 'nearest' }); }
+    });
+  }
+
+  function closeMenu() {
+    menu.el.hidden = true; menu.items = [];
+    prompt.setAttribute('aria-expanded', 'false');
+    prompt.removeAttribute('aria-activedescendant');
+  }
+
+  function pick(i) {
+    const item = menu.items[i];
+    if (!item) return;
+    if (item.kind === 'cmd' && item.cmd.suggest) { setPrompt('/' + item.cmd.name + ' '); return; }
+    const text = item.kind === 'cmd' ? '/' + item.cmd.name : '/' + item.cmd.name + ' ' + item.value;
+    setPrompt('');
+    closeMenu();
+    execute(text);
+  }
+
+  function setPrompt(value) {
+    prompt.value = value;
+    autosize(); updateSend(); updateMenu();
+    prompt.focus();
+    prompt.setSelectionRange(value.length, value.length);
+  }
+  function autosize() { prompt.style.height = 'auto'; prompt.style.height = Math.min(prompt.scrollHeight, 160) + 'px'; }
+  function updateSend() { $('#sendBtn').disabled = !state.streaming && !prompt.value.trim(); }
+  function setBusy(on) {
+    const btn = $('#sendBtn');
+    btn.classList.toggle('is-stop', on);
+    btn.innerHTML = ic(on ? 'square' : 'arrow-up', on ? 14 : 18);
+    btn.setAttribute('aria-label', on ? 'Stop generating' : 'Send');
+    updateSend();
+  }
+
+  function submit() {
+    const text = prompt.value.trim();
+    if (!text) { stop(); return; }
+    setPrompt('');
+    closeMenu();
+    if (text.charAt(0) === '/') execute(text);
+    else send(text);
+  }
+
+  prompt.addEventListener('input', function () { autosize(); updateSend(); updateMenu(); });
+  prompt.addEventListener('keydown', function (event) {
+    const open = !menu.el.hidden && menu.items.length;
+    if (open && event.key === 'ArrowDown') { event.preventDefault(); setActive(menu.active + 1); }
+    else if (open && event.key === 'ArrowUp') { event.preventDefault(); setActive(menu.active - 1); }
+    else if (open && (event.key === 'Tab' || (event.key === 'Enter' && !event.shiftKey))) { event.preventDefault(); pick(menu.active); }
+    else if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) { event.preventDefault(); submit(); }
+    else if (event.key === 'Escape' && !menu.el.hidden) { event.preventDefault(); closeMenu(); }
+    else if (event.key === 'Escape' && state.streaming) { event.preventDefault(); stop(); }
+  });
+  menu.el.addEventListener('mousedown', function (event) { event.preventDefault(); });
+  menu.el.addEventListener('click', function (event) {
+    const item = event.target.closest('.slash-item');
+    if (item) pick(Number(item.dataset.index));
+  });
+  menu.el.addEventListener('mousemove', function (event) {
+    const item = event.target.closest('.slash-item');
+    if (item && Number(item.dataset.index) !== menu.active) setActive(Number(item.dataset.index));
+  });
+  $('#composer').addEventListener('submit', function (event) { event.preventDefault(); submit(); });
+  document.addEventListener('pointerdown', function (event) { if (!event.target.closest('#composer')) closeMenu(); });
+
+  /* ------------------------------------------------------------------------
+     Events
+     ------------------------------------------------------------------------ */
+  document.addEventListener('click', function (event) {
+    const t = event.target;
+    const slash = t.closest('[data-slash]');
+    if (slash) { setPrompt(slash.dataset.slash); return; }
+    const runBtn = t.closest('[data-run]');
+    if (runBtn) { execute(runBtn.dataset.run); return; }
+    const sendBtn = t.closest('[data-send]');
+    if (sendBtn) { const text = sendBtn.dataset.send; if (text.charAt(0) === '/') execute(text); else send(text); return; }
+    const codeCopy = t.closest('[data-copy-code]');
+    if (codeCopy) { copyText($('code', codeCopy.closest('.code-block')).textContent, codeCopy); return; }
+    const msgCopy = t.closest('[data-copy-msg]');
+    if (msgCopy) { const msg = state.messages.get(msgCopy.dataset.copyMsg); if (msg) copyText(msg.text, msgCopy); return; }
+    const retry = t.closest('[data-retry]');
+    if (retry) { const msg = state.messages.get(retry.dataset.retry); if (msg) generate(msg); return; }
+    const drop = t.closest('[data-drop-file]');
+    if (drop) { state.attachments.splice(Number(drop.dataset.dropFile), 1); renderAttachments(); prompt.focus(); }
+  });
+  $('#themeBtn').addEventListener('click', toggleTheme);
+
+  document.addEventListener('keydown', function (event) {
+    const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName);
+    if ((event.key === '/' && !typing) || ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k')) { event.preventDefault(); setPrompt('/'); }
+    else if (event.key === 'Escape' && !typing && state.streaming) stop();
+  });
+
+  /* Boot */
+  $$('[data-i]').forEach(function (el) { el.insertAdjacentHTML('afterbegin', ic(el.dataset.i, Number(el.dataset.s) || 16)); el.removeAttribute('data-i'); });
+  applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light');
+  setModel(state.model);
+  setBusy(false);
+  renderEmpty();
+  prompt.focus();
+}());
+</script>
+</body>
+</html>
