@@ -1,0 +1,2063 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<title>Pretrain Studio — toy LLM trainer</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Playfair+Display:ital,wght@0,600;0,700;1,500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
+<style>
+  :root{
+    --bg: #F9F8F6; --surface: #FFFFFF; --surface-alt: #F3EFE9; --surface-hover: #ECE7DE; --surface-active: #E4DDD1;
+    --surface-glass: rgba(255, 255, 255, 0.88);
+    --border: #E5DFD5; --border-strong: #CEC5B7; --border-focus: #D4622B;
+    --text: #191817; --text-muted: #68625B; --text-faint: #989187; --text-inverse: #FFFFFF;
+    --accent: #D4622B; --accent-hover: #BF5321; --accent-tint: rgba(212, 98, 43, 0.09);
+    --accent-tint-hover: rgba(212, 98, 43, 0.16); --accent-glow: rgba(212, 98, 43, 0.26); --accent-contrast: #FFFFFF;
+    --success: #1E8E3E; --success-dim: #EAF5ED; --success-border: #A6D7B2;
+    --warning: #B77900; --warning-dim: #FDF5E5; --warning-border: #F7D488;
+    --danger: #D93025; --danger-dim: #FCEAE8; --danger-border: #F5A9A4;
+    --info: #2563EB; --info-dim: #EFF6FF; --info-border: #93C5FD;
+    --r-xs: 6px; --r-sm: 8px; --r-md: 12px; --r-lg: 16px; --r-xl: 24px; --r-pill: 9999px;
+    --shadow-xs: 0 1px 2px rgba(25, 24, 23, 0.04);
+    --shadow-sm: 0 1px 3px rgba(25, 24, 23, 0.06);
+    --shadow-md: 0 4px 14px rgba(25, 24, 23, 0.07), 0 16px 28px rgba(25, 24, 23, 0.04);
+    --shadow-lg: 0 12px 36px rgba(25, 24, 23, 0.10), 0 28px 64px rgba(25, 24, 23, 0.06);
+    --font-serif: "Playfair Display", Georgia, serif;
+    --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --font-mono: "JetBrains Mono", Consolas, monospace;
+    --dur-fast: 140ms; --dur-med: 260ms; --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  [data-theme="dark"]{
+    --bg: #121211; --surface: #1B1A19; --surface-alt: #242220; --surface-hover: #2C2926; --surface-active: #35322E;
+    --surface-glass: rgba(27, 26, 25, 0.88);
+    --border: rgba(255, 255, 255, 0.10); --border-strong: rgba(255, 255, 255, 0.18); --border-focus: #F08E5A;
+    --text: #F5F3EF; --text-muted: #A59D92; --text-faint: #736C63; --text-inverse: #191817;
+    --accent: #F08E5A; --accent-hover: #F3A072; --accent-tint: rgba(240, 142, 90, 0.15);
+    --accent-tint-hover: rgba(240, 142, 90, 0.24); --accent-glow: rgba(240, 142, 90, 0.32); --accent-contrast: #18110D;
+    --success: #53C378; --success-dim: rgba(83, 195, 120, 0.14); --success-border: rgba(83, 195, 120, 0.3);
+    --warning: #F2B957; --warning-dim: rgba(242, 185, 87, 0.14); --warning-border: rgba(242, 185, 87, 0.3);
+    --danger: #F16E63; --danger-dim: rgba(241, 110, 99, 0.14); --danger-border: rgba(241, 110, 99, 0.3);
+    --info: #6BA5FA; --info-dim: rgba(107, 165, 250, 0.14); --info-border: rgba(107, 165, 250, 0.3);
+    --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 6px 18px rgba(0, 0, 0, 0.5);
+    --shadow-lg: 0 16px 44px rgba(0, 0, 0, 0.7);
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;margin:0;font-family:var(--font-sans);background:var(--bg);color:var(--text);transition:background-color var(--dur-med) var(--ease-out),color var(--dur-med) var(--ease-out);}
+  :focus-visible{outline:none;box-shadow:0 0 0 3px var(--accent-glow);}
+  #app{display:flex;flex-direction:column;height:100vh;}
+  .mono{font-family:var(--font-mono);}
+  .muted{color:var(--text-muted);}
+  .faint{color:var(--text-faint);}
+  *{scrollbar-width:thin;scrollbar-color:transparent transparent;}
+  *:hover{scrollbar-color:var(--border-strong) transparent;}
+  *::-webkit-scrollbar{width:7px;height:7px;}
+  *::-webkit-scrollbar-track{background:transparent;}
+  *::-webkit-scrollbar-thumb{background:transparent;border-radius:10px;}
+  *:hover::-webkit-scrollbar-thumb{background:var(--border-strong);}
+
+  /* Top bar */
+  #topbar{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--surface-glass);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid var(--border);box-shadow:var(--shadow-xs);flex-shrink:0;position:relative;z-index:6;}
+  #topbar h1{font-family:var(--font-serif);font-size:17px;margin:0 4px 0 0;font-weight:700;white-space:nowrap;display:flex;align-items:center;gap:8px;}
+  .brand-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);display:inline-block;}
+  #topbar input[type=text]{background:transparent;border:1px solid transparent;color:var(--text);border-radius:var(--r-sm);padding:7px 10px;font-size:13px;font-family:inherit;transition:all var(--dur-fast);}
+  #topbar input[type=text]:hover{background:var(--surface-alt);}
+  #topbar input[type=text]:focus{background:var(--surface);border-color:var(--border-focus);box-shadow:0 0 0 3px var(--accent-glow);outline:none;}
+  #projectName{width:130px;font-weight:700;font-family:var(--font-serif);font-size:14px;}
+  .breadcrumb{display:flex;align-items:center;gap:2px;flex-shrink:0;}
+  .crumb-sep{color:var(--text-faint);font-size:14px;user-select:none;}
+  .spacer{flex:1;}
+  .topbar-group{display:flex;align-items:center;gap:2px;padding:3px;background:var(--surface-alt);border:1px solid var(--border);border-radius:var(--r-pill);flex-shrink:0;}
+  .topbar-group:empty{display:none;}
+  .topbar-divider{width:1px;align-self:stretch;margin:4px 1px;background:var(--border);flex-shrink:0;}
+  .btn-icon-only{width:34px;height:34px;padding:0!important;border-radius:50%!important;flex-shrink:0;}
+  .cmd-trigger{gap:8px;flex-shrink:0;}
+  .cmd-kbd{font-size:10.5px;font-weight:700;color:var(--text-faint);background:var(--surface-alt);border:1px solid var(--border);border-radius:5px;padding:2px 5px;line-height:1;}
+  .tabs{display:flex;gap:2px;padding:3px;background:var(--surface-alt);border:1px solid var(--border);border-radius:var(--r-pill);margin-left:10px;flex-shrink:0;}
+  .tab{display:inline-flex;align-items:center;gap:7px;border:none;background:transparent;color:var(--text-muted);font:600 13px var(--font-sans);padding:7px 14px;border-radius:var(--r-pill);cursor:pointer;transition:all var(--dur-fast);white-space:nowrap;}
+  .tab:hover{color:var(--text);background:var(--surface-hover);}
+  .tab.active{background:var(--surface);color:var(--text);box-shadow:var(--shadow-sm);}
+  .tab.active .btn-ic{color:var(--accent);}
+  .tab-count{font-size:10.5px;font-weight:700;background:var(--accent-tint);color:var(--accent);border-radius:var(--r-pill);padding:2px 7px;line-height:1.2;}
+  .tab-count:empty{display:none;}
+  .machine-pill{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;color:var(--text-muted);padding:6px 12px;border:1px solid var(--border);border-radius:var(--r-pill);background:var(--surface);white-space:nowrap;cursor:pointer;}
+  .machine-pill:hover{border-color:var(--border-strong);color:var(--text);}
+  .live-dot{width:7px;height:7px;border-radius:50%;background:var(--text-faint);}
+  .live-dot.on{background:var(--success);box-shadow:0 0 0 3px var(--success-dim);animation:pulse 1.6s ease-in-out infinite;}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.45;}}
+
+  /* Buttons */
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;font-family:var(--font-sans);font-size:13px;font-weight:600;line-height:1;border-radius:var(--r-pill);padding:8px 16px;border:1px solid var(--border);background:var(--surface);color:var(--text);box-shadow:var(--shadow-xs);cursor:pointer;white-space:nowrap;transition:all var(--dur-fast) var(--ease-out);}
+  .btn:hover{background:var(--surface-alt);border-color:var(--border-strong);}
+  .btn:active{transform:scale(0.97);}
+  .btn:disabled{opacity:.5;cursor:default;transform:none;}
+  .btn-primary{background:var(--accent);border-color:var(--accent);color:var(--accent-contrast);box-shadow:0 1px 3px var(--accent-glow);}
+  .btn-primary:hover{background:var(--accent-hover);border-color:var(--accent-hover);box-shadow:0 4px 12px var(--accent-glow);}
+  .btn-danger{background:var(--danger-dim);border-color:var(--danger-border);color:var(--danger);box-shadow:none;}
+  .btn-danger:hover{background:var(--danger);color:#fff;border-color:var(--danger);}
+  .btn-ghost{background:transparent;border-color:transparent;color:var(--text-muted);box-shadow:none;}
+  .btn-ghost:hover{background:var(--surface-alt);color:var(--text);}
+  .btn-run{background:var(--success-dim);border-color:var(--success-border);color:var(--success);}
+  .btn-run:hover{background:var(--success);color:#fff;border-color:var(--success);}
+  .btn-sm{padding:6px 12px;font-size:12px;gap:5px;}
+  .btn-xs{padding:4px 9px;font-size:11px;gap:4px;}
+  .btn-ic{display:inline-flex;width:14px;height:14px;flex-shrink:0;}
+  .btn-ic svg{width:100%;height:100%;}
+
+  /* Layout */
+  #body{flex:1;display:flex;min-height:0;}
+  #leftpanel{width:280px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);overflow-y:auto;padding:16px 14px 24px;}
+  .side{display:none;}
+  .side.active{display:block;}
+  #main{flex:1;min-width:0;overflow-y:auto;}
+  .view{display:none;padding:22px 28px 48px;max-width:1400px;margin:0 auto;}
+  .view.active{display:block;}
+  .view-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:18px;flex-wrap:wrap;}
+  .eyebrow{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:4px;}
+  .view-title{font-family:var(--font-serif);font-size:27px;margin:0;font-weight:700;display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+  .view-sub{color:var(--text-muted);font-size:13px;margin:6px 0 0;max-width:760px;line-height:1.5;}
+  #statusbar{display:flex;justify-content:space-between;gap:12px;padding:6px 16px;font-size:11.5px;color:var(--text-muted);background:var(--surface);border-top:1px solid var(--border);}
+  .status-right{color:var(--text-faint);white-space:nowrap;}
+
+  /* Left panel */
+  .panel-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:2px 0 10px;}
+  .panel-heading h3{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-faint);font-weight:700;margin:0;}
+  .panel-heading-hint{font-size:10.5px;color:var(--text-faint);font-weight:500;font-family:var(--font-mono);}
+  .side-list{display:flex;flex-direction:column;gap:3px;}
+  .side-group{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-faint);font-weight:700;margin:14px 4px 4px;}
+  .side-item{display:flex;gap:10px;align-items:flex-start;padding:8px 10px;border-radius:var(--r-sm);cursor:pointer;border:1px solid transparent;transition:background var(--dur-fast);}
+  .side-item:hover{background:var(--surface-alt);}
+  .side-item.active{background:var(--accent-tint);border-color:var(--accent-tint-hover);}
+  .side-item .run-dot,.side-item .st-dot{margin-top:4px;}
+  .si-main{flex:1;min-width:0;}
+  .si-row{display:flex;align-items:center;justify-content:space-between;gap:6px;}
+  .si-name{font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .si-name.mono{font-weight:500;font-size:12px;}
+  .si-tag{font-size:10.5px;font-family:var(--font-mono);color:var(--text-faint);flex-shrink:0;}
+  .si-sub{font-size:11px;color:var(--text-muted);margin:2px 0 5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .run-dot,.st-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;display:inline-block;}
+  .run-dot.running{box-shadow:0 0 0 3px var(--info-dim);animation:pulse 1.4s infinite;}
+  .st-dot{background:var(--border-strong);}
+  .st-dot.done{background:var(--success);} .st-dot.failed{background:var(--danger);} .st-dot.running{background:var(--info);animation:pulse 1s infinite;} .st-dot.queued{background:var(--warning);}
+  .lib-section{margin-top:16px;border-top:1px solid var(--border);padding-top:10px;}
+  .lib-section summary{display:flex;align-items:center;gap:7px;cursor:pointer;list-style:none;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-faint);font-weight:700;padding:2px 0;user-select:none;}
+  .lib-section summary::-webkit-details-marker{display:none;}
+  .lib-section summary .chev{width:12px;height:12px;transition:transform var(--dur-fast);}
+  .lib-section[open] summary .chev{transform:rotate(90deg);}
+  .lib-section-body{padding-top:8px;}
+  .tips-hint{font-size:11.5px;color:var(--text-faint);line-height:1.6;}
+  .tips-hint b{color:var(--text-muted);}
+  .lib-upload{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding:12px 10px;border:1px dashed var(--border-strong);border-radius:var(--r-sm);color:var(--text-faint);font-size:11.5px;text-align:center;cursor:pointer;margin-top:8px;transition:all var(--dur-fast);}
+  .lib-upload:hover,.lib-upload.dragover{border-color:var(--accent);color:var(--accent);background:var(--accent-tint);}
+  .lib-upload .btn-ic{width:17px;height:17px;}
+  .db-card{display:flex;gap:10px;align-items:center;padding:10px 12px;border:1px solid var(--border);border-radius:var(--r-md);background:var(--surface-alt);}
+  .db-card > .btn-ic{width:22px;height:22px;color:var(--accent);}
+  .db-name{font-family:var(--font-mono);font-weight:600;font-size:12.5px;word-break:break-all;}
+  .db-meta{font-size:11px;color:var(--text-muted);margin-top:2px;}
+  .db-actions{display:flex;gap:6px;margin:8px 0 4px;flex-wrap:wrap;}
+  .check-row{display:flex;align-items:center;gap:8px;padding:5px 6px;border-radius:var(--r-xs);font-size:12px;cursor:pointer;color:var(--text-muted);}
+  .check-row:hover{background:var(--surface-alt);color:var(--text);}
+  .check-row input{accent-color:var(--accent);margin:0;}
+  .check-row .grow{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .check-row .mini{font-size:10px;color:var(--text-faint);font-family:var(--font-mono);}
+  .kv-mini{display:flex;justify-content:space-between;gap:10px;font-size:12px;color:var(--text-muted);padding:4px 2px;}
+  .kv-mini b{font-family:var(--font-mono);font-weight:600;color:var(--text);}
+
+  /* Cards / KPIs / tables */
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--shadow-xs);padding:16px 18px;margin-bottom:14px;min-width:0;}
+  .card.placeholder{border-style:dashed;background:transparent;box-shadow:none;}
+  .card-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;flex-wrap:wrap;}
+  .card-title{font-size:13.5px;font-weight:700;}
+  .card-sub{font-size:11.5px;color:var(--text-faint);margin-top:2px;line-height:1.5;}
+  .card-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .grid-2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-bottom:14px;}
+  .grid-2 > .card{margin-bottom:0;}
+  .grid-2.wide-left{grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:14px;}
+  .kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);padding:12px 14px;box-shadow:var(--shadow-xs);min-width:0;}
+  .kpi-label{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-faint);font-weight:700;}
+  .kpi-value{font-family:var(--font-mono);font-size:21px;font-weight:600;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .kpi-sub{font-size:11px;color:var(--text-muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .kpi-sub .up{color:var(--danger);} .kpi-sub .down{color:var(--success);}
+  .table-wrap{overflow-x:auto;}
+  .table{width:100%;border-collapse:collapse;font-size:12.5px;}
+  .table th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-faint);font-weight:700;padding:8px 10px;border-bottom:1px solid var(--border);white-space:nowrap;}
+  .table td{padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:middle;}
+  .table tr:last-child td{border-bottom:none;}
+  .table tr.clickable{cursor:pointer;}
+  .table tr.clickable:hover td{background:var(--surface-alt);}
+  .table .num{font-family:var(--font-mono);text-align:right;white-space:nowrap;}
+  .table th.num{text-align:right;}
+  .table td.txt{max-width:520px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .table.grid td{font-family:var(--font-mono);font-size:11.5px;}
+  .null{color:var(--text-faint);font-style:italic;}
+  .cell-name{font-weight:600;}
+  .cell-sub{font-size:10.5px;color:var(--text-faint);font-family:var(--font-mono);margin-top:2px;}
+  .search{background:var(--surface-alt);border:1px solid var(--border);color:var(--text);border-radius:var(--r-pill);padding:6px 12px;font:12px var(--font-sans);width:210px;}
+  .search:focus{outline:none;border-color:var(--border-focus);box-shadow:0 0 0 3px var(--accent-glow);background:var(--surface);}
+  .schema-line{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
+  .col-chip{font-family:var(--font-mono);font-size:11px;color:var(--text-muted);background:var(--surface-alt);border:1px solid var(--border);border-radius:var(--r-xs);padding:3px 8px;}
+  .col-chip b{color:var(--text);font-weight:600;}
+  .pager{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-muted);font-family:var(--font-mono);}
+
+  .badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:3px 9px;border-radius:var(--r-pill);border:1px solid var(--border);color:var(--text-muted);background:var(--surface-alt);white-space:nowrap;font-family:var(--font-sans);line-height:1.3;}
+  .badge .dot{width:6px;height:6px;border-radius:50%;background:currentColor;}
+  .badge.running,.badge.info{color:var(--info);background:var(--info-dim);border-color:var(--info-border);}
+  .badge.running .dot{animation:pulse 1.2s infinite;}
+  .badge.completed,.badge.done,.badge.ok{color:var(--success);background:var(--success-dim);border-color:var(--success-border);}
+  .badge.failed,.badge.err{color:var(--danger);background:var(--danger-dim);border-color:var(--danger-border);}
+  .badge.queued,.badge.warn{color:var(--warning);background:var(--warning-dim);border-color:var(--warning-border);}
+  .badge.mono{font-family:var(--font-mono);font-weight:500;}
+  .progress{height:6px;background:var(--surface-alt);border-radius:var(--r-pill);overflow:hidden;border:1px solid var(--border);}
+  .progress.thin{height:4px;border:none;background:var(--surface-hover);}
+  .progress > span{display:block;height:100%;background:var(--accent);border-radius:var(--r-pill);transition:width var(--dur-med) var(--ease-out);}
+  .progress.info > span{background:var(--info);}
+  .seg{display:inline-flex;gap:2px;padding:3px;background:var(--surface-alt);border:1px solid var(--border);border-radius:var(--r-pill);}
+  .seg button{display:inline-flex;align-items:center;gap:6px;border:none;background:transparent;color:var(--text-muted);font:600 12.5px var(--font-sans);padding:7px 14px;border-radius:var(--r-pill);cursor:pointer;}
+  .seg button:hover{color:var(--text);}
+  .seg button.active{background:var(--surface);color:var(--text);box-shadow:var(--shadow-sm);}
+  .seg button.active .btn-ic{color:var(--accent);}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center;}
+  .chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:var(--r-pill);border:1px solid var(--border);background:var(--surface);font:600 11.5px var(--font-sans);color:var(--text-muted);cursor:pointer;transition:all var(--dur-fast);}
+  .chip:hover{border-color:var(--border-strong);color:var(--text);}
+  .chip.active{border-color:var(--accent);color:var(--accent);background:var(--accent-tint);}
+  .chip .dot{width:7px;height:7px;border-radius:50%;}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--text-muted);margin-top:8px;align-items:center;}
+  .legend span{display:inline-flex;align-items:center;gap:6px;}
+  .notice{display:flex;gap:9px;align-items:flex-start;font-size:12px;padding:9px 12px;border-radius:var(--r-sm);margin-bottom:12px;line-height:1.5;}
+  .notice .btn-ic{margin-top:1px;}
+  .notice.warn{background:var(--warning-dim);color:var(--warning);border:1px solid var(--warning-border);}
+  .notice.info{background:var(--info-dim);color:var(--info);border:1px solid var(--info-border);}
+  .notice.err{background:var(--danger-dim);color:var(--danger);border:1px solid var(--danger-border);}
+  .empty{color:var(--text-muted);font-size:13px;padding:36px 10px;text-align:center;}
+  .empty .btn{margin-top:12px;}
+
+  /* Sentence-first configuration */
+  .sentence-line{display:flex;flex-wrap:wrap;align-items:center;gap:5px;font-size:12.5px;line-height:1.7;color:var(--text-muted);}
+  .sentence-line.lg{font-size:14px;gap:6px;}
+  .phrase-pill{display:inline-flex;align-items:center;gap:3px;background:var(--accent-tint);color:var(--accent);border:1px dashed var(--accent);border-radius:var(--r-xs);padding:1px 8px;font-weight:700;font-size:inherit;cursor:pointer;position:relative;user-select:none;}
+  .phrase-pill:hover,.phrase-pill.active{background:var(--accent-tint-hover);border-style:solid;}
+  .phrase-pill::after{content:"▾";font-size:9px;margin-left:2px;opacity:.7;}
+  .phrase-pill.toggle-pill::after{content:none;}
+  .phrase-pill.toggle-pill.off{color:var(--text-faint);border-color:var(--border-strong);background:transparent;}
+  .phrase-static{font-weight:700;color:var(--text);font-family:var(--font-mono);font-size:.95em;}
+  .phrase-popover{position:absolute;top:calc(100% + 5px);left:0;min-width:150px;max-height:260px;overflow-y:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);box-shadow:var(--shadow-lg);padding:5px 0;z-index:40;display:flex;flex-direction:column;font-weight:400;cursor:default;}
+  .phrase-popover.text-popover{padding:6px;min-width:200px;}
+  .phrase-popover-item{padding:6px 12px;font-size:12px;font-weight:500;color:var(--text);cursor:pointer;white-space:nowrap;}
+  .phrase-popover-item:hover{background:var(--surface-alt);}
+  .phrase-popover-item.selected{font-weight:700;color:var(--accent);background:var(--accent-tint);}
+  .phrase-popover input[type=text]{width:100%;font:12px var(--font-mono);color:var(--text);background:var(--surface-alt);border:1px solid var(--border);border-radius:var(--r-xs);padding:6px 8px;}
+  .phrase-popover input[type=text]:focus{background:var(--surface);border-color:var(--border-focus);outline:none;box-shadow:0 0 0 2px var(--accent-glow);}
+  .switch-ctrl{position:relative;width:34px;height:19px;border-radius:var(--r-pill);background:var(--border-strong);border:none;cursor:pointer;flex-shrink:0;transition:background-color var(--dur-fast);padding:0;}
+  .switch-ctrl::after{content:"";position:absolute;top:2px;left:2px;width:15px;height:15px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:transform var(--dur-fast);}
+  .switch-ctrl[aria-checked="true"]{background:var(--accent);}
+  .switch-ctrl[aria-checked="true"]::after{transform:translateX(15px);}
+
+  /* Pipelines */
+  .flow-strip{display:flex;align-items:stretch;overflow-x:auto;padding:2px 0 4px;}
+  .flow-node{flex:1;min-width:128px;border:1px solid var(--border);border-radius:var(--r-md);padding:10px 12px;background:var(--surface-alt);}
+  .flow-node.tbl{border-color:var(--accent-tint-hover);background:var(--accent-tint);}
+  .fn-kind{font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-faint);font-weight:700;}
+  .fn-name{font-family:var(--font-mono);font-weight:600;font-size:12px;margin:3px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .fn-val{font-size:11.5px;color:var(--text-muted);white-space:nowrap;}
+  .flow-arrow{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:0 4px;color:var(--text-faint);font-size:10px;font-family:var(--font-mono);min-width:40px;}
+  .flow-arrow .btn-ic{width:16px;height:16px;}
+  .pipe-head{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap;}
+  .pipe-num{width:30px;height:30px;border-radius:50%;background:var(--accent-tint);color:var(--accent);font:700 12px var(--font-mono);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .pipe-title{flex:1;min-width:180px;}
+  .cli{font-family:var(--font-mono);font-size:11.5px;color:var(--text-muted);background:var(--surface-alt);border:1px solid var(--border);border-radius:var(--r-sm);padding:7px 10px;margin-top:10px;white-space:pre-wrap;word-break:break-all;}
+  .cli .p{color:var(--text-faint);user-select:none;}
+  .cli .f{color:var(--accent);}
+  .code-edit{display:block;width:100%;min-height:280px;background:#141312;color:#ECE7DE;font:12px/1.6 var(--font-mono);border:1px solid rgba(255,255,255,.08);border-radius:var(--r-md);padding:12px 14px;resize:vertical;tab-size:4;margin-top:10px;white-space:pre;}
+  .code-edit:focus{outline:none;border-color:var(--border-focus);box-shadow:0 0 0 3px var(--accent-glow);}
+  .code-edit.sql{min-height:110px;margin-top:0;}
+  .console{background:#141312;color:#ECE7DE;font-family:var(--font-mono);font-size:11.5px;border-radius:var(--r-md);padding:12px 14px;height:220px;overflow-y:auto;line-height:1.6;border:1px solid rgba(255,255,255,.06);}
+  .console .ln{white-space:pre-wrap;word-break:break-word;}
+  .console .t{color:#6f685f;margin-right:10px;}
+  .console .l-warn{color:#F2B957;} .console .l-err{color:#F16E63;} .console .l-ok{color:#53C378;} .console .l-dim{color:#A59D92;} .console .l-cmd{color:#F08E5A;}
+  .sql-meta{font-size:11.5px;color:var(--text-muted);margin:10px 0 6px;font-family:var(--font-mono);}
+
+  /* Training */
+  .run-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;margin-bottom:16px;flex-wrap:wrap;}
+  .run-actions{display:flex;gap:6px;flex-wrap:wrap;}
+  .rp-top{display:flex;justify-content:space-between;gap:12px;font-size:12px;color:var(--text-muted);margin-bottom:8px;flex-wrap:wrap;}
+  .rp-top b{color:var(--text);font-family:var(--font-mono);font-weight:600;}
+  .kv-groups{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 18px;}
+  .kv-group h4{margin:0 0 6px;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-faint);}
+  .kv{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:12px;margin:0;}
+  .kv dt{color:var(--text-muted);}
+  .kv dd{margin:0;font-family:var(--font-mono);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .sample-out{font-family:var(--font-mono);font-size:12.5px;white-space:pre-wrap;line-height:1.65;background:var(--surface-alt);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px 14px;min-height:84px;word-break:break-word;}
+  .sample-out .pr{color:var(--text-faint);}
+  .bar-cell{display:flex;align-items:center;gap:8px;justify-content:flex-end;}
+  .bar-cell .bar{height:7px;border-radius:4px;display:inline-block;}
+  .prompt-input{width:100%;background:var(--surface-alt);border:1px solid var(--border);color:var(--text);border-radius:var(--r-sm);padding:8px 11px;font:12.5px var(--font-mono);margin:12px 0 10px;}
+  .prompt-input:focus{outline:none;border-color:var(--border-focus);box-shadow:0 0 0 3px var(--accent-glow);background:var(--surface);}
+  .idea-list{margin:8px 0 0;padding-left:18px;font-size:12.5px;color:var(--text-muted);line-height:1.8;}
+  .idea-list code{font-family:var(--font-mono);font-size:11.5px;color:var(--text);}
+
+  /* Charts */
+  .chart{position:relative;}
+  .chart svg{width:100%;height:auto;display:block;overflow:visible;}
+  .chart .gl{stroke:var(--border);stroke-width:1;}
+  .chart .ax{fill:var(--text-faint);font-size:10.5px;font-family:var(--font-mono);}
+  .chart .ax-label{fill:var(--text-faint);font-size:10px;font-family:var(--font-sans);}
+  .chart .hover-line{stroke:var(--border-strong);stroke-dasharray:3 3;display:none;}
+  .chart .dot-stroke{stroke:var(--surface);stroke-width:1.5;}
+  .chart .area-fill{opacity:.10;}
+  .chart-empty{font-size:12px;color:var(--text-faint);padding:60px 0;text-align:center;}
+  .chart-tip{position:absolute;pointer-events:none;background:var(--surface);border:1px solid var(--border);box-shadow:var(--shadow-md);border-radius:var(--r-sm);padding:7px 9px;font-size:11px;font-family:var(--font-mono);display:none;white-space:nowrap;z-index:5;top:6px;}
+  .chart-tip .tip-x{color:var(--text-faint);margin-bottom:3px;}
+  .chart-tip i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px;}
+  .chart-tip b{font-weight:600;margin-left:6px;}
+
+  /* Modal */
+  .modal-overlay{position:fixed;inset:0;background:rgba(15,14,13,.55);backdrop-filter:blur(3px);z-index:150;display:flex;align-items:center;justify-content:center;padding:20px;}
+  .modal{width:1020px;max-width:96vw;max-height:92vh;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);box-shadow:var(--shadow-lg);display:flex;flex-direction:column;overflow:hidden;}
+  .modal.sm{width:640px;}
+  .modal-head{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);}
+  .modal-head h3{margin:0;font-family:var(--font-serif);font-size:20px;}
+  .modal-body{padding:18px 20px;overflow-y:auto;flex:1;}
+  .modal-foot{display:flex;justify-content:flex-end;align-items:center;gap:8px;padding:12px 20px;border-top:1px solid var(--border);background:var(--surface-alt);}
+  .modal-foot .foot-note{margin-right:auto;font-size:11.5px;color:var(--text-faint);}
+  .row-field{margin-bottom:12px;}
+  .row-field label{display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-faint);font-weight:700;margin-bottom:4px;}
+  .row-field pre{margin:0;font:12px/1.55 var(--font-mono);white-space:pre-wrap;word-break:break-word;background:var(--surface-alt);border:1px solid var(--border);border-radius:var(--r-sm);padding:8px 10px;max-height:320px;overflow:auto;}
+  .nr-layout{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:22px;}
+  .nr-est{position:sticky;top:0;align-self:start;background:var(--surface-alt);border:1px solid var(--border);border-radius:var(--r-lg);padding:16px;}
+  .form-section{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-faint);font-weight:700;margin:18px 0 10px;padding-top:14px;border-top:1px solid var(--border);}
+  .form-section.first{margin-top:0;padding-top:0;border-top:none;}
+  .form-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px 12px;}
+  .fld{min-width:0;}
+  .fld.span-2{grid-column:span 2;}
+  .fld label{display:block;font-size:10.5px;color:var(--text-faint);font-weight:700;margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .fld input[type=text],.fld input[type=number],.fld select{width:100%;background:var(--surface-alt);border:1px solid var(--border);color:var(--text);border-radius:var(--r-sm);padding:7px 9px;font:12.5px var(--font-mono);}
+  .fld input:focus,.fld select:focus{outline:none;border-color:var(--border-focus);box-shadow:0 0 0 3px var(--accent-glow);background:var(--surface);}
+  .est-kicker{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-faint);font-weight:700;}
+  .est-big{font-family:var(--font-serif);font-size:34px;font-weight:700;line-height:1.1;margin:4px 0 2px;}
+  .est-sub{font-size:11.5px;color:var(--text-muted);margin-bottom:10px;}
+  .est-row{display:flex;justify-content:space-between;gap:10px;font-size:12px;padding:6px 0;border-bottom:1px dashed var(--border);color:var(--text-muted);}
+  .est-row b{font-family:var(--font-mono);font-weight:600;color:var(--text);text-align:right;}
+  .warn-item{display:flex;gap:7px;font-size:11.5px;padding:7px 9px;border-radius:var(--r-sm);margin-top:6px;line-height:1.45;}
+  .warn-item .btn-ic{margin-top:1px;}
+  .warn-item.err{background:var(--danger-dim);color:var(--danger);}
+  .warn-item.warn{background:var(--warning-dim);color:var(--warning);}
+  .warn-item.info{background:var(--info-dim);color:var(--info);}
+
+  /* Command palette + toast */
+  .cmd-overlay{position:fixed;inset:0;background:rgba(15,14,13,0.5);backdrop-filter:blur(2px);z-index:200;display:flex;align-items:flex-start;justify-content:center;padding-top:12vh;}
+  .cmd-palette{width:560px;max-width:92vw;max-height:60vh;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--shadow-lg);display:flex;flex-direction:column;overflow:hidden;}
+  #cmdInput{border:none;border-bottom:1px solid var(--border);background:var(--surface);color:var(--text);font-family:inherit;font-size:14px;padding:14px 16px;outline:none;}
+  .cmd-list{overflow-y:auto;padding:6px;}
+  .cmd-item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 12px;border-radius:var(--r-sm);cursor:pointer;font-size:13px;}
+  .cmd-item-main{display:flex;align-items:center;gap:9px;min-width:0;}
+  .cmd-icon{width:14px;height:14px;flex-shrink:0;display:flex;color:var(--text-faint);}
+  .cmd-icon svg{width:100%;height:100%;}
+  .cmd-item .cmd-hint{font-size:11px;color:var(--text-faint);white-space:nowrap;}
+  .cmd-item.active{background:var(--accent-tint);color:var(--accent);}
+  .cmd-item.active .cmd-icon,.cmd-item.active .cmd-hint{color:var(--accent);}
+  .cmd-empty{padding:16px;color:var(--text-muted);font-size:13px;text-align:center;}
+  .toast{position:fixed;bottom:42px;right:20px;z-index:300;background:var(--surface);color:var(--text);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:var(--r-sm);box-shadow:var(--shadow-lg);padding:10px 14px;font-size:12.5px;max-width:400px;opacity:0;transform:translateY(8px);transition:all var(--dur-med) var(--ease-out);pointer-events:none;}
+  .toast.show{opacity:1;transform:none;}
+  .toast.ok{border-left-color:var(--success);} .toast.err{border-left-color:var(--danger);} .toast.warn{border-left-color:var(--warning);}
+
+  @media (max-width:1250px){
+    .grid-2,.grid-2.wide-left{grid-template-columns:minmax(0,1fr);}
+    .nr-layout{grid-template-columns:minmax(0,1fr);}
+    .nr-est{position:static;}
+    .form-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+    .cmd-trigger span:not(.btn-ic){display:none;}
+    .cmd-trigger{width:34px;height:34px;padding:0;}
+    #topbar h1 + .breadcrumb{display:none;}
+    .tab{padding:7px 11px;}
+  }
+  @media (max-width:1100px){
+    .tab .btn-ic,#btnPrimary .btn-ic{display:none;}
+    #topbar h1{font-size:15px;}
+    #leftpanel{width:240px;}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="topbar">
+    <h1><span class="brand-dot"></span>Pretrain Studio</h1>
+    <div class="breadcrumb"><span class="crumb-sep">/</span><input id="projectName" type="text" value="tiny-lm" title="Project name"></div>
+    <nav class="tabs" role="tablist" aria-label="Sections">
+      <button class="tab active" role="tab" data-tab="data" aria-selected="true" title="Alt+1"><span class="btn-ic" data-icon="database"></span>Data Manager<span class="tab-count" id="countData"></span></button>
+      <button class="tab" role="tab" data-tab="runs" aria-selected="false" title="Alt+2"><span class="btn-ic" data-icon="activity"></span>Training<span class="tab-count" id="countRuns"></span></button>
+      <button class="tab" role="tab" data-tab="evals" aria-selected="false" title="Alt+3"><span class="btn-ic" data-icon="gauge"></span>Evaluations</button>
+    </nav>
+    <div class="spacer"></div>
+    <div class="machine-pill" id="machinePill" title="This machine"></div>
+    <button class="btn btn-ghost btn-icon-only" id="btnThemeToggle" title="Toggle light/dark theme"><span class="btn-ic" data-icon="moon"></span></button>
+    <button class="btn btn-ghost cmd-trigger" id="btnCmdPalette" title="Command palette (Ctrl+K)"><span class="btn-ic" data-icon="command"></span><span>Commands</span><span class="cmd-kbd">Ctrl K</span></button>
+    <div class="topbar-divider"></div>
+    <div class="topbar-group"><button class="btn btn-primary" id="btnPrimary"></button></div>
+  </div>
+
+  <div id="body">
+    <aside id="leftpanel">
+      <div class="side active" data-side="data">
+        <div class="panel-heading"><h3>Database</h3><span class="panel-heading-hint" id="dbEngine"></span></div>
+        <div id="dbCard"></div>
+        <div class="db-actions">
+          <button class="btn btn-xs" id="btnOpenDb"><span class="btn-ic" data-icon="folder"></span>Open…</button>
+          <button class="btn btn-xs" id="btnDownloadDb"><span class="btn-ic" data-icon="download"></span>Download</button>
+          <button class="btn btn-xs btn-ghost" id="btnResetDb" title="Recreate the demo database"><span class="btn-ic" data-icon="refresh"></span>Reset</button>
+        </div>
+        <input type="file" id="dbFileInput" accept=".sqlite,.sqlite3,.db" style="display:none;">
+        <div class="side-group">Tables</div>
+        <div id="tableList" class="side-list"></div>
+        <details class="lib-section" open>
+          <summary><span class="btn-ic chev" data-icon="chevron"></span><span class="btn-ic" data-icon="code"></span><span>Pipelines</span></summary>
+          <div class="lib-section-body">
+            <div id="pipeList" class="side-list"></div>
+            <div id="pyUpload" class="lib-upload" tabindex="0" role="button" title="Add a Python pipeline script">
+              <span class="btn-ic" data-icon="upload"></span><b>Drop .py scripts or click</b>
+            </div>
+            <input type="file" id="pyFileInput" accept=".py" multiple style="display:none;">
+          </div>
+        </details>
+        <details class="lib-section">
+          <summary><span class="btn-ic chev" data-icon="chevron"></span><span class="btn-ic" data-icon="info"></span><span>Tips</span></summary>
+          <div class="lib-section-body tips-hint">
+            The database is the single source of truth. Each pipeline is a plain Python script taking <b>--db</b> plus its own flags: it reads tables, writes tables, and the last one exports <b>train.bin / val.bin</b> for <b>train.py</b>.
+          </div>
+        </details>
+      </div>
+
+      <div class="side" data-side="runs">
+        <div class="panel-heading"><h3>Runs</h3><button class="btn btn-xs btn-primary" id="btnNewRunSide"><span class="btn-ic" data-icon="plus"></span>New run</button></div>
+        <div id="runList" class="side-list"></div>
+        <details class="lib-section" open>
+          <summary><span class="btn-ic chev" data-icon="chevron"></span><span class="btn-ic" data-icon="cpu"></span><span>This machine</span></summary>
+          <div class="lib-section-body" id="machineBox"></div>
+        </details>
+        <details class="lib-section">
+          <summary><span class="btn-ic chev" data-icon="chevron"></span><span class="btn-ic" data-icon="info"></span><span>Tips</span></summary>
+          <div class="lib-section-body tips-hint">
+            On a CPU keep models <b>under ~10M params</b> and use character-level tokens. Watch <b>epochs</b>: with a small corpus the model starts memorising after a few passes and val loss climbs — add data or dropout.
+          </div>
+        </details>
+      </div>
+
+      <div class="side" data-side="evals">
+        <div class="panel-heading"><h3>Compare runs</h3></div>
+        <div id="evalRunList"></div>
+      </div>
+    </aside>
+
+    <main id="main">
+      <section class="view active" data-view="data">
+        <div class="view-head">
+          <div>
+            <div class="eyebrow">Step 1 · Data</div>
+            <h2 class="view-title">Data Manager</h2>
+            <p class="view-sub">A thin wrapper around one SQLite file. Python pipeline scripts load text into it, clean it, build a vocabulary and export token files for training.</p>
+          </div>
+          <div class="seg" id="dataSeg">
+            <button data-sub="database" class="active"><span class="btn-ic" data-icon="table"></span>Database</button>
+            <button data-sub="pipelines"><span class="btn-ic" data-icon="code"></span>Pipelines</button>
+          </div>
+        </div>
+        <div id="dbNotice"></div>
+        <div class="kpis" id="dataKpis"></div>
+        <div id="dataPane"></div>
+      </section>
+
+      <section class="view" data-view="runs"><div id="runDetail"></div></section>
+
+      <section class="view" data-view="evals">
+        <div class="view-head">
+          <div>
+            <div class="eyebrow">Step 3 · Measure</div>
+            <h2 class="view-title">Evaluations</h2>
+            <p class="view-sub">For now: compare validation loss across runs and eyeball samples. Proper benchmarks can come later.</p>
+          </div>
+        </div>
+        <div class="card" id="evalCompare"></div>
+        <div class="card" id="evalPlay"></div>
+        <div class="card placeholder" id="evalIdeas"></div>
+      </section>
+    </main>
+  </div>
+  <div id="statusbar"><span id="statusText">Loading SQLite…</span><span class="status-right" id="statusRight"></span></div>
+</div>
+
+<div id="modalOverlay" class="modal-overlay" style="display:none;">
+  <div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal-head"><h3 id="modalTitle"></h3><button class="btn btn-ghost btn-icon-only" id="modalClose" title="Close (Esc)"><span class="btn-ic" data-icon="x"></span></button></div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-foot" id="modalFoot"></div>
+  </div>
+</div>
+<div id="cmdPaletteOverlay" class="cmd-overlay" style="display:none;">
+  <div class="cmd-palette">
+    <input id="cmdInput" type="text" placeholder="Type a command… (Esc to close)" autocomplete="off" spellcheck="false">
+    <div id="cmdList" class="cmd-list"></div>
+  </div>
+</div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ================= Helpers ================= */
+  const $ = (s, r) => (r || document).querySelector(s);
+  const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+  function clamp(v, a, b){ return Math.max(a, Math.min(b, v)); }
+  function mulberry32(a){ return function(){ a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  function hashStr(s){ let h = 2166136261; for(let i = 0; i < s.length; i++){ h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+  // Deterministic noise in [-0.5, 0.5) so charts are stable between re-renders.
+  function noise(seed, i){ return mulberry32((seed ^ Math.imul(i + 1, 2654435761)) >>> 0)() - 0.5; }
+  function fmtCompact(n, d){
+    if(n == null || !isFinite(n)) return '—';
+    d = d == null ? 1 : d;
+    const a = Math.abs(n);
+    for(const [v, s] of [[1e9,'B'],[1e6,'M'],[1e3,'K']]) if(a >= v) return (n / v).toFixed(d).replace(/\.0+$/, '') + s;
+    return String(Math.round(n * 100) / 100);
+  }
+  function fmtInt(n){ return Math.round(n).toLocaleString('en-US'); }
+  function fmtParams(n){ return n >= 1e7 ? Math.round(n / 1e6) + 'M' : n >= 1e6 ? parseFloat((n / 1e6).toFixed(2)) + 'M' : Math.round(n / 1e3) + 'K'; }
+  function fmtBytes(b){ return b >= 1e9 ? (b / 1e9).toFixed(2) + ' GB' : b >= 1e6 ? (b / 1e6).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1e3)) + ' KB'; }
+  function fmtDuration(sec){
+    if(!isFinite(sec) || sec < 0) return '—';
+    const d = Math.floor(sec / 86400), h = Math.floor(sec % 86400 / 3600), m = Math.floor(sec % 3600 / 60), s = Math.floor(sec % 60);
+    return d ? d + 'd ' + h + 'h' : h ? h + 'h ' + m + 'm' : m ? m + 'm ' + s + 's' : s + 's';
+  }
+  function fmtAxis(v){ const a = Math.abs(v); if(a >= 1000) return fmtCompact(v); if(a !== 0 && a < 0.01) return v.toExponential(0); return String(+v.toFixed(2)); }
+  function pct(x, d){ return (x * 100).toFixed(d == null ? 1 : d) + '%'; }
+  function timeStr(t){ return t.toTimeString().slice(0, 8); }
+  function isoNow(agoMs){ const d = new Date(Date.now() - (agoMs || 0)); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0') + ' ' + d.toTimeString().slice(0, 8); }
+  // Skip identical re-renders so buttons aren't replaced mid-click by the live tick.
+  function setHTML(el, html){ if(el && el._html !== html){ el.innerHTML = html; el._html = html; } }
+
+  /* ================= Icons ================= */
+  function iconSvg(p){ return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + p + '</svg>'; }
+  const ICONS = {
+    database: iconSvg('<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/>'),
+    activity: iconSvg('<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>'),
+    gauge: iconSvg('<path d="M12 14l4-4"/><path d="M3.3 19a10 10 0 1 1 17.4 0"/>'),
+    cpu: iconSvg('<rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3"/>'),
+    table: iconSvg('<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/>'),
+    code: iconSvg('<polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>'),
+    play: iconSvg('<polygon points="6 3 20 12 6 21 6 3"/>'),
+    pause: iconSvg('<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>'),
+    stop: iconSvg('<rect x="5" y="5" width="14" height="14" rx="2"/>'),
+    copy: iconSvg('<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>'),
+    arrow: iconSvg('<line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>'),
+    folder: iconSvg('<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>'),
+    alert: iconSvg('<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>'),
+    x: iconSvg('<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>'),
+    spark: iconSvg('<path d="M12 3l1.9 5.8L20 11l-6.1 2.2L12 19l-1.9-5.8L4 11l6.1-2.2z"/>'),
+    download: iconSvg('<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><path d="M12 15V3"/>'),
+    upload: iconSvg('<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><path d="M12 3v12"/>'),
+    sun: iconSvg('<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>'),
+    moon: iconSvg('<path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/>'),
+    command: iconSvg('<path d="M9 3a3 3 0 1 0 0 6h6a3 3 0 1 0 0-6M9 21a3 3 0 1 0 0-6h6a3 3 0 1 0 0 6"/><rect x="9" y="9" width="6" height="6" rx="1"/>'),
+    info: iconSvg('<circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>'),
+    chevron: iconSvg('<polyline points="9 18 15 12 9 6"/>'),
+    plus: iconSvg('<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>'),
+    check: iconSvg('<polyline points="20 6 9 17 4 12"/>'),
+    refresh: iconSvg('<path d="M21 12a9 9 0 1 1-3-6.7"/><polyline points="21 3 21 9 15 9"/>')
+  };
+  const ic = name => '<span class="btn-ic">' + (ICONS[name] || '') + '</span>';
+  function paintIcons(root){
+    (root || document).querySelectorAll('[data-icon]').forEach(el => {
+      const n = el.getAttribute('data-icon');
+      if(ICONS[n] && el.dataset.painted !== n){ el.innerHTML = ICONS[n]; el.dataset.painted = n; }
+    });
+  }
+  paintIcons();
+
+  /* ================= SQLite (sql.js) ================= */
+  const SQLJS_BASE = 'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/';
+  const DB_STORAGE_KEY = 'pretrain_studio_sqlite';
+  const SCHEMA = [
+    'CREATE TABLE IF NOT EXISTS raw_documents(id INTEGER PRIMARY KEY, source TEXT NOT NULL, title TEXT, text TEXT NOT NULL, created_at TEXT)',
+    "CREATE TABLE IF NOT EXISTS clean_documents(id INTEGER PRIMARY KEY, raw_id INTEGER REFERENCES raw_documents(id), text TEXT NOT NULL, n_chars INTEGER, split TEXT CHECK(split IN ('train','val')))",
+    'CREATE TABLE IF NOT EXISTS vocab(id INTEGER PRIMARY KEY, token TEXT NOT NULL, count INTEGER)',
+    'CREATE TABLE IF NOT EXISTS exports(id INTEGER PRIMARY KEY, name TEXT NOT NULL, path TEXT, split TEXT, n_tokens INTEGER, vocab_size INTEGER, created_at TEXT)',
+    'CREATE TABLE IF NOT EXISTS pipeline_runs(id INTEGER PRIMARY KEY, script TEXT, status TEXT, args TEXT, rows_in INTEGER, rows_out INTEGER, started_at TEXT, duration_ms INTEGER)'
+  ].join(';\n') + ';';
+  const TABLE_ORDER = ['raw_documents', 'clean_documents', 'vocab', 'exports', 'pipeline_runs'];
+  let SQL = null, db = null, dbError = null, dbName = 'data/corpus.sqlite', dbSize = 0, dbVersion = 0, sqliteVersion = '';
+
+  function q(sql, params){
+    if(!db) return [];
+    const st = db.prepare(sql);
+    try{ if(params) st.bind(params); const out = []; while(st.step()) out.push(st.getAsObject()); return out; }
+    finally{ st.free(); }
+  }
+  function scalar(sql, params){ const r = q(sql, params)[0]; return r ? r[Object.keys(r)[0]] : null; }
+  function exec(sql, params){ if(db) db.run(sql, params); }
+  const qi = s => '"' + String(s).replace(/"/g, '""') + '"';
+  function listTables(){
+    const names = q("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").map(r => r.name);
+    const rank = n => { const i = TABLE_ORDER.indexOf(n); return i < 0 ? 99 : i; };
+    return names.sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
+  }
+  function hasTable(t){ return !!scalar("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", [t]); }
+  function rowCount(t){ return hasTable(t) ? scalar('SELECT COUNT(*) FROM ' + qi(t)) || 0 : 0; }
+
+  let saveTimer = null;
+  function dbChanged(){ dbVersion++; clearTimeout(saveTimer); saveTimer = setTimeout(persistDb, 500); }
+  function persistDb(){
+    if(!db) return;
+    const bytes = db.export();
+    dbSize = bytes.length;
+    try{
+      let bin = '';
+      for(let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+      localStorage.setItem(DB_STORAGE_KEY, btoa(bin));
+    }catch(e){ setStatus('Database too large for browser storage — use Download to keep a copy.'); }
+    if(S.tab === 'data') renderDbCard();
+  }
+  function loadSavedDb(){
+    try{
+      const b64 = localStorage.getItem(DB_STORAGE_KEY);
+      if(!b64) return null;
+      const bin = atob(b64), u = new Uint8Array(bin.length);
+      for(let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+      return u;
+    }catch(e){ return null; }
+  }
+  async function initDb(){
+    if(typeof initSqlJs !== 'function'){ dbError = 'sql.js could not be loaded from the CDN (offline?).'; return; }
+    try{ SQL = await initSqlJs({ locateFile: f => SQLJS_BASE + f }); }
+    catch(e){ dbError = 'sql.js failed to initialise: ' + (e && e.message ? e.message : e); return; }
+    const saved = loadSavedDb();
+    if(saved){
+      try{ db = new SQL.Database(saved); scalar('SELECT COUNT(*) FROM sqlite_master'); }
+      catch(e){ db = null; }
+    }
+    if(!db){ db = new SQL.Database(); seedDemoDb(); }
+    sqliteVersion = scalar('SELECT sqlite_version()');
+    dbSize = db.export().length;
+    dbVersion++;
+  }
+  function downloadDb(){
+    if(!db) return;
+    const url = URL.createObjectURL(new Blob([db.export()], { type: 'application/x-sqlite3' }));
+    const a = document.createElement('a');
+    a.href = url; a.download = dbName.split('/').pop();
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+  function openDbFile(file){
+    const fr = new FileReader();
+    fr.onload = () => {
+      try{
+        const next = new SQL.Database(new Uint8Array(fr.result));
+        next.exec('SELECT COUNT(*) FROM sqlite_master');
+        if(db) db.close();
+        db = next; dbName = file.name;
+        S.table = null; S.page = 0; S.search = '';
+        dbChanged(); persistDb();
+        toast('Opened ' + file.name + '.', 'ok');
+        renderTab();
+      }catch(e){ toast('Not a valid SQLite file: ' + (e.message || e), 'err'); }
+    };
+    fr.readAsArrayBuffer(file);
+  }
+  function resetDb(){
+    if(!SQL) return;
+    if(!confirm('Replace the in-browser database with a fresh demo database? Download first if you want to keep the current one.')) return;
+    if(db) db.close();
+    db = new SQL.Database(); dbName = 'data/corpus.sqlite';
+    seedDemoDb();
+    S.table = null; S.page = 0;
+    dbChanged(); persistDb();
+    toast('Demo database recreated.', 'ok');
+    renderTab();
+  }
+
+  /* ================= Synthetic corpus (stands in for data/raw/*.txt) ================= */
+  const EN = {
+    names: ['Mia', 'Tom', 'Lily', 'Ben', 'Zoe', 'Max', 'Anna', 'Sam', 'Leo', 'Ella'],
+    animals: ['cat', 'dog', 'rabbit', 'fox', 'owl', 'bear', 'duck', 'frog', 'mouse', 'horse'],
+    adjs: ['little', 'brave', 'curious', 'sleepy', 'happy', 'shy', 'clever', 'tiny'],
+    places: ['forest', 'river', 'old mill', 'garden', 'hill', 'village', 'lake', 'park'],
+    things: ['red ball', 'shiny stone', 'blue kite', 'small boat', 'warm scarf', 'big apple', 'old key'],
+    feelings: ['happy', 'sad', 'scared', 'proud', 'surprised', 'tired'],
+    verbs: ['played in the grass', 'walked by the water', 'ran after the wind', 'looked at the clouds', 'sang a little song', 'jumped over stones']
+  };
+  const SK = {
+    names: ['Janko', 'Peťo', 'Miško', 'Ďurko', 'Paľko'],
+    animals: ['zajačik', 'medvedík', 'ježko', 'kocúrik', 'vtáčik', 'psíček'],
+    adjs: ['malý', 'odvážny', 'zvedavý', 'ospalý', 'veselý'],
+    places: ['pri lese', 'pri rieke', 'v záhrade', 'na kopci', 'v dedine'],
+    things: ['červenú loptu', 'lesklý kamienok', 'modrého šarkana', 'starý kľúč', 'teplý šál']
+  };
+  const JUNK = ['Chapter 3', '***', 'THE END', 'Page 12', '   ', 'Contents'];
+  function gen(seed){ const r = mulberry32(seed); return { r, pick: a => a[Math.floor(r() * a.length)] }; }
+  function storyEn(g){
+    const n = g.pick(EN.names), f = g.pick(EN.names.filter(x => x !== n)), th = g.pick(EN.things);
+    const mid = [
+      n + ' lived near the ' + g.pick(EN.places) + ' and ' + g.pick(EN.verbs) + ' every day.',
+      'One day, ' + n + ' found a ' + th + ' under a tree.',
+      g.r() < 0.5 ? n + ' felt ' + g.pick(EN.feelings) + ' and ran to show ' + f + '.' : n + ' did not know who the ' + th + ' belonged to.',
+      '"Can we keep it?" asked ' + f + '. "' + (g.r() < 0.5 ? 'No, we must give it back' : 'Yes, but we have to share') + '," said ' + n + '.',
+      'They ' + g.pick(EN.verbs) + ' together until the sun went down.'
+    ];
+    const k = 2 + Math.floor(g.r() * 4);
+    return ['Once upon a time, there was a ' + g.pick(EN.adjs) + ' ' + g.pick(EN.animals) + ' named ' + n + '.'].concat(mid.slice(0, k),
+      ['In the end, ' + n + ' was ' + g.pick(EN.feelings) + ', and the ' + th + ' ' + (g.r() < 0.5 ? 'went back to its owner.' : 'became their favorite toy.')]).join(' ');
+  }
+  function storySk(g){
+    const n = g.pick(SK.names), th = g.pick(SK.things);
+    const mid = [
+      n + ' býval ' + g.pick(SK.places) + ' a každý deň sa hral so svojimi kamarátmi.',
+      'Jedného dňa našiel pod stromom ' + th + '.',
+      '„Čie to asi je?“ pýtal sa ' + n + '.',
+      'Dlho hľadal, komu patrí, až kým nezapadlo slnko.'
+    ];
+    const k = 1 + Math.floor(g.r() * 4);
+    return ['Kde bolo, tam bolo, žil raz jeden ' + g.pick(SK.adjs) + ' ' + g.pick(SK.animals) + '. Volal sa ' + n + '.'].concat(mid.slice(0, k),
+      [g.r() < 0.5 ? 'Nakoniec to vrátil a všetci boli šťastní.' : 'A kto neverí, nech tam ide.']).join(' ');
+  }
+
+  /* ================= Pipelines (Python scripts; effects emulated in-browser) ================= */
+  const PY = {
+    ingest: `"""01 · Ingest raw text files into raw_documents."""
+import argparse, datetime, glob, os, sqlite3
+
+ap = argparse.ArgumentParser()
+ap.add_argument("--db", default="data/corpus.sqlite")
+ap.add_argument("--src", default="data/raw/tinystories/")
+ap.add_argument("--glob", default="*.txt")
+ap.add_argument("--limit", type=int, default=2500)
+ap.add_argument("--mode", choices=["append", "replace"], default="append")
+args = ap.parse_args()
+
+con = sqlite3.connect(args.db)
+con.executescript(open("schema.sql").read())
+if args.mode == "replace":
+    con.execute("DELETE FROM raw_documents WHERE source = ?", (args.src,))
+
+now = datetime.datetime.now().isoformat(" ", "seconds")
+n = 0
+for path in sorted(glob.glob(os.path.join(args.src, args.glob))):
+    with open(path, encoding="utf-8") as f:
+        for chunk in f.read().split("\\n\\n"):  # one document per paragraph block
+            if n >= args.limit:
+                break
+            con.execute(
+                "INSERT INTO raw_documents(source, title, text, created_at) VALUES (?, ?, ?, ?)",
+                (args.src, os.path.basename(path), chunk, now),
+            )
+            n += 1
+con.commit()
+print(f"inserted {n} documents")
+`,
+    clean: `"""02 · Normalise, filter and deduplicate raw_documents -> clean_documents (+ train/val split)."""
+import argparse, re, sqlite3
+
+ap = argparse.ArgumentParser()
+ap.add_argument("--db", default="data/corpus.sqlite")
+ap.add_argument("--min-chars", type=int, default=80)
+ap.add_argument("--dedupe", action=argparse.BooleanOptionalAction, default=True)
+ap.add_argument("--lowercase", action=argparse.BooleanOptionalAction, default=False)
+ap.add_argument("--val-frac", type=float, default=0.1)
+args = ap.parse_args()
+
+con = sqlite3.connect(args.db)
+rows = con.execute("SELECT id, text FROM raw_documents ORDER BY id").fetchall()
+con.execute("DELETE FROM clean_documents")
+
+seen, kept, every = set(), 0, round(1 / args.val_frac)
+for raw_id, text in rows:
+    text = re.sub(r"\\s+", " ", text).strip()
+    if args.lowercase:
+        text = text.lower()
+    if len(text) < args.min_chars:
+        continue
+    if args.dedupe:
+        if text in seen:
+            continue
+        seen.add(text)
+    kept += 1
+    split = "val" if kept % every == 0 else "train"
+    con.execute(
+        "INSERT INTO clean_documents(raw_id, text, n_chars, split) VALUES (?, ?, ?, ?)",
+        (raw_id, text, len(text), split),
+    )
+con.commit()
+print(f"kept {kept}/{len(rows)} documents")
+`,
+    vocab: `"""03 · Build a character-level vocabulary from clean_documents."""
+import argparse, sqlite3
+from collections import Counter
+
+ap = argparse.ArgumentParser()
+ap.add_argument("--db", default="data/corpus.sqlite")
+ap.add_argument("--min-count", type=int, default=1)
+args = ap.parse_args()
+
+con = sqlite3.connect(args.db)
+counts = Counter()
+for (text,) in con.execute("SELECT text FROM clean_documents"):
+    counts.update(text)
+    counts["\\n"] += 1  # document separator token
+
+con.execute("DELETE FROM vocab")
+kept = [(tok, c) for tok, c in counts.most_common() if c >= args.min_count]
+con.executemany(
+    "INSERT INTO vocab(id, token, count) VALUES (?, ?, ?)",
+    [(i, tok, c) for i, (tok, c) in enumerate(kept)],
+)
+con.commit()
+print(f"vocab_size = {len(kept)}")
+`,
+    export: `"""04 · Encode clean_documents with the vocab and write train.bin / val.bin for train.py."""
+import argparse, datetime, os, pickle, sqlite3
+import numpy as np
+
+ap = argparse.ArgumentParser()
+ap.add_argument("--db", default="data/corpus.sqlite")
+ap.add_argument("--name", default="stories-v1")
+args = ap.parse_args()
+
+con = sqlite3.connect(args.db)
+vocab = con.execute("SELECT id, token FROM vocab ORDER BY id").fetchall()
+stoi = {tok: i for i, tok in vocab}
+out_dir = os.path.join("data", args.name)
+os.makedirs(out_dir, exist_ok=True)
+now = datetime.datetime.now().isoformat(" ", "seconds")
+
+con.execute("DELETE FROM exports WHERE name = ?", (args.name,))
+for split in ("train", "val"):
+    ids = []
+    for (text,) in con.execute("SELECT text FROM clean_documents WHERE split = ? ORDER BY id", (split,)):
+        ids.extend(stoi[ch] for ch in text if ch in stoi)
+        ids.append(stoi["\\n"])
+    path = os.path.join(out_dir, f"{split}.bin")
+    np.array(ids, dtype=np.uint16).tofile(path)
+    con.execute(
+        "INSERT INTO exports(name, path, split, n_tokens, vocab_size, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+        (args.name, path, split, len(ids), len(vocab), now),
+    )
+
+with open(os.path.join(out_dir, "meta.pkl"), "wb") as f:
+    pickle.dump({"vocab_size": len(vocab), "stoi": stoi, "itos": {i: t for t, i in stoi.items()}}, f)
+con.commit()
+print(f"exported {args.name}")
+`
+  };
+
+  function ingestEffect(p){
+    exec(SCHEMA);
+    const sk = p.src.indexOf('rozpravky') >= 0, ext = p.glob.replace('*', '');
+    if(p.mode === 'replace') exec('DELETE FROM raw_documents WHERE source = ?', [p.src]);
+    const g = gen(hashStr(p.src) + (scalar('SELECT COUNT(*) FROM raw_documents') || 0));
+    const now = isoNow(), recent = [];
+    const st = db.prepare('INSERT INTO raw_documents(source, title, text, created_at) VALUES (?, ?, ?, ?)');
+    exec('BEGIN');
+    try{
+      for(let i = 0; i < p.limit; i++){
+        const u = g.r();
+        const text = u < 0.04 && recent.length ? g.pick(recent) : u < 0.08 ? g.pick(JUNK) : sk ? storySk(g) : storyEn(g);
+        if(recent.length < 200) recent.push(text);
+        st.run([p.src, String(Math.floor(i / 50)).padStart(4, '0') + ext, text, now]);
+      }
+      exec('COMMIT');
+    }catch(e){ exec('ROLLBACK'); throw e; }
+    finally{ st.free(); }
+    const files = Math.ceil(p.limit / 50);
+    return { rowsIn: files, rowsOut: p.limit, lines: ['found ' + files + ' files matching ' + p.src + p.glob, 'inserted ' + fmtInt(p.limit) + ' documents'] };
+  }
+  function cleanEffect(p){
+    exec(SCHEMA);
+    const rows = q('SELECT id, text FROM raw_documents ORDER BY id');
+    if(!rows.length) throw new Error('raw_documents is empty — run 01_ingest.py first');
+    exec('DELETE FROM clean_documents');
+    const seen = new Set(), every = Math.round(1 / p.valFrac);
+    let kept = 0, short = 0, dup = 0;
+    const st = db.prepare('INSERT INTO clean_documents(raw_id, text, n_chars, split) VALUES (?, ?, ?, ?)');
+    exec('BEGIN');
+    try{
+      rows.forEach(r => {
+        let t = String(r.text).replace(/\s+/g, ' ').trim();
+        if(p.lowercase) t = t.toLowerCase();
+        if(t.length < p.minChars){ short++; return; }
+        if(p.dedupe){ if(seen.has(t)){ dup++; return; } seen.add(t); }
+        kept++;
+        st.run([r.id, t, t.length, kept % every === 0 ? 'val' : 'train']);
+      });
+      exec('COMMIT');
+    }catch(e){ exec('ROLLBACK'); throw e; }
+    finally{ st.free(); }
+    return { rowsIn: rows.length, rowsOut: kept, lines: ['dropped ' + fmtInt(short) + ' short documents (< ' + p.minChars + ' chars)', 'dropped ' + fmtInt(dup) + ' exact duplicates', 'kept ' + fmtInt(kept) + '/' + fmtInt(rows.length) + ' documents'] };
+  }
+  function vocabEffect(p){
+    exec(SCHEMA);
+    const rows = q('SELECT text FROM clean_documents');
+    if(!rows.length) throw new Error('clean_documents is empty — run 02_clean.py first');
+    const counts = new Map();
+    rows.forEach(r => { for(const ch of r.text) counts.set(ch, (counts.get(ch) || 0) + 1); counts.set('\n', (counts.get('\n') || 0) + 1); });
+    const kept = [...counts].filter(e => e[1] >= p.minCount).sort((a, b) => b[1] - a[1]);
+    exec('DELETE FROM vocab');
+    const st = db.prepare('INSERT INTO vocab(id, token, count) VALUES (?, ?, ?)');
+    exec('BEGIN');
+    try{ kept.forEach((e, i) => st.run([i, e[0], e[1]])); exec('COMMIT'); }
+    catch(e){ exec('ROLLBACK'); throw e; }
+    finally{ st.free(); }
+    return { rowsIn: rows.length, rowsOut: kept.length, lines: [counts.size + ' distinct characters, kept ' + kept.length + ' (count ≥ ' + p.minCount + ')', 'vocab_size = ' + kept.length] };
+  }
+  function exportEffect(p){
+    exec(SCHEMA);
+    if(!/^[\w.-]{1,40}$/.test(p.name)) throw new Error('export name may only contain letters, digits, "_", "-" and "."');
+    const vocab = q('SELECT id, token FROM vocab ORDER BY id');
+    if(!vocab.length) throw new Error('vocab is empty — run 03_vocab.py first');
+    const stoi = new Set(vocab.map(v => v.token));
+    exec('DELETE FROM exports WHERE name = ?', [p.name]);
+    const lines = [], now = isoNow();
+    ['train', 'val'].forEach(split => {
+      let n = 0, docs = 0;
+      q('SELECT text FROM clean_documents WHERE split = ?', [split]).forEach(r => { for(const ch of r.text) if(stoi.has(ch)) n++; n++; docs++; });
+      const path = 'data/' + p.name + '/' + split + '.bin';
+      exec('INSERT INTO exports(name, path, split, n_tokens, vocab_size, created_at) VALUES (?, ?, ?, ?, ?, ?)', [p.name, path, split, n, vocab.length, now]);
+      lines.push(split + '.bin: ' + fmtInt(n) + ' tokens from ' + fmtInt(docs) + ' docs → ' + path + ' (' + fmtBytes(n * 2) + ')');
+    });
+    lines.push('wrote data/' + p.name + '/meta.pkl (vocab_size=' + vocab.length + ')');
+    return { rowsIn: vocab.length, rowsOut: 2, lines };
+  }
+
+  let pipeCounter = 0;
+  const PIPELINES = [
+    { id: 'p_ingest', file: 'pipelines/01_ingest.py', name: 'Ingest text files', from: 'files', to: 'raw_documents', code: PY.ingest, effect: ingestEffect,
+      params: { src: 'data/raw/tinystories/', glob: '*.txt', limit: 2500, mode: 'append' },
+      sentence: () => ['Read', { key: 'glob', kind: 'select', options: ['*.txt', '*.md'] }, 'files from', { key: 'src', kind: 'select', options: ['data/raw/tinystories/', 'data/raw/rozpravky_sk/'] }, ', split on blank lines and', { key: 'mode', kind: 'select', options: ['append', 'replace'] }, 'up to', { key: 'limit', kind: 'select', options: [100, 500, 2500, 5000].map(v => ({ value: v, label: fmtInt(v) })) }, 'documents into', { kind: 'static', text: 'raw_documents' }],
+      args: p => [['--src', p.src], ['--glob', '"' + p.glob + '"'], ['--limit', p.limit], ['--mode', p.mode]] },
+    { id: 'p_clean', file: 'pipelines/02_clean.py', name: 'Clean & split', from: 'raw_documents', to: 'clean_documents', code: PY.clean, effect: cleanEffect,
+      params: { minChars: 80, dedupe: true, lowercase: false, valFrac: 0.1 },
+      sentence: () => ['Normalise whitespace, drop documents shorter than', { key: 'minChars', kind: 'select', options: [20, 50, 80, 150, 300].map(v => ({ value: v, label: v + ' chars' })) }, ', remove exact duplicates', { key: 'dedupe', kind: 'toggle' }, ', lowercase', { key: 'lowercase', kind: 'toggle' }, 'and hold out', { key: 'valFrac', kind: 'select', options: [0.05, 0.1, 0.2].map(v => ({ value: v, label: pct(v, 0) })) }, 'for validation'],
+      args: p => [['--min-chars', p.minChars], [p.dedupe ? '--dedupe' : '--no-dedupe'], [p.lowercase ? '--lowercase' : '--no-lowercase'], ['--val-frac', p.valFrac]] },
+    { id: 'p_vocab', file: 'pipelines/03_vocab.py', name: 'Build vocabulary', from: 'clean_documents', to: 'vocab', code: PY.vocab, effect: vocabEffect,
+      params: { minCount: 1 },
+      sentence: () => ['Count characters in', { kind: 'static', text: 'clean_documents' }, 'and keep those seen at least', { key: 'minCount', kind: 'select', options: [1, 2, 5, 20].map(v => ({ value: v, label: v + (v === 1 ? ' time' : ' times') })) }, '(character-level tokens)'],
+      args: p => [['--min-count', p.minCount]] },
+    { id: 'p_export', file: 'pipelines/04_export.py', name: 'Export for training', from: 'clean_documents + vocab', to: 'train.bin / val.bin', code: PY.export, effect: exportEffect,
+      params: { name: 'stories-v1' },
+      sentence: () => ['Encode every document and write', { kind: 'static', text: 'train.bin' }, '+', { kind: 'static', text: 'val.bin' }, '(uint16) to data/', { key: 'name', kind: 'text' }, '/ for train.py'],
+      args: p => [['--name', p.name]] }
+  ];
+  const pipeById = id => PIPELINES.find(p => p.id === id);
+  function cliFor(p){ return (p.args ? p.args(p.params) : []).map(a => a.join(' ')).join(' '); }
+  function cliHtml(p){
+    const parts = (p.args ? p.args(p.params) : []).map(a => '<span class="f">' + esc(a[0]) + '</span>' + (a.length > 1 ? ' ' + esc(a[1]) : '')).join(' ');
+    return '<span class="p">$ </span>python ' + esc(p.file) + ' <span class="f">--db</span> ' + esc(dbName) + (parts ? ' ' + parts : '');
+  }
+  function recordRun(p, status, res, ms, at){
+    exec(SCHEMA);
+    exec('INSERT INTO pipeline_runs(script, status, args, rows_in, rows_out, started_at, duration_ms) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [p.file, status, cliFor(p), res ? res.rowsIn : null, res ? res.rowsOut : null, at || isoNow(), ms]);
+  }
+  function lastRunOf(p){ return hasTable('pipeline_runs') ? q('SELECT status, rows_out, started_at, duration_ms FROM pipeline_runs WHERE script = ? ORDER BY id DESC LIMIT 1', [p.file])[0] : null; }
+  function seedDemoDb(){
+    exec(SCHEMA);
+    const [ing, cln, voc, exp] = PIPELINES;
+    const steps = [
+      [ing, { src: 'data/raw/tinystories/', glob: '*.txt', limit: 2500, mode: 'append' }, 26 * 3600e3],
+      [ing, { src: 'data/raw/rozpravky_sk/', glob: '*.txt', limit: 500, mode: 'append' }, 25.9 * 3600e3],
+      [cln, cln.params, 25.8 * 3600e3], [voc, voc.params, 25.7 * 3600e3], [exp, exp.params, 25.6 * 3600e3]
+    ];
+    steps.forEach(([p, params, ago]) => {
+      const saved = p.params;
+      p.params = Object.assign({}, saved, params);
+      const t0 = performance.now(), res = p.effect(p.params);
+      recordRun(p, 'done', res, Math.round(performance.now() - t0) + 900, isoNow(ago));
+      p.params = saved;
+    });
+  }
+
+  const PLOGS = [];
+  function plog(level, msg){ PLOGS.push({ t: new Date(), level, msg }); if(PLOGS.length > 400) PLOGS.shift(); }
+  let pipeQueue = [], activePipe = null;
+  function queuePipeline(p){
+    if(!db){ toast('Database not available.', 'err'); return; }
+    if(p === activePipe || pipeQueue.includes(p)) return;
+    pipeQueue.push(p);
+    p.state = 'queued';
+  }
+  function tickPipelines(){
+    let changed = false, finished = false;
+    if(!activePipe && pipeQueue.length){
+      activePipe = pipeQueue.shift();
+      activePipe.state = 'running'; activePipe.progress = 0; activePipe.t0 = performance.now();
+      plog('cmd', '$ python ' + activePipe.file + ' --db ' + dbName + ' ' + cliFor(activePipe));
+      changed = true;
+    }
+    if(activePipe){
+      const p = activePipe;
+      p.progress = Math.min(1, p.progress + 0.2);
+      changed = true;
+      if(p.progress >= 1){
+        const ms = Math.round(performance.now() - p.t0);
+        try{
+          if(p.effect){
+            const res = p.effect(p.params);
+            res.lines.forEach(l => plog('info', l));
+            recordRun(p, 'done', res, ms);
+            plog('ok', 'exit 0 · ' + (ms / 1000).toFixed(1) + 's');
+          } else {
+            recordRun(p, 'done', null, ms);
+            plog('warn', 'finished (simulated) — uploaded scripts need the local runner backend to really execute');
+          }
+          p.state = 'idle';
+        }catch(e){
+          plog('err', 'Traceback (most recent call last): ' + (e.message || e));
+          plog('err', 'exit 1');
+          try{ recordRun(p, 'failed', null, ms); }catch(_){ /* schema may be foreign */ }
+          p.state = 'failed';
+          pipeQueue = [];
+        }
+        activePipe = null;
+        finished = true;
+        dbChanged();
+      }
+    }
+    return { changed, finished };
+  }
+
+  /* ================= Training model (CPU) ================= */
+  const CPU = { threads: navigator.hardwareConcurrency || 8, memGB: navigator.deviceMemory || null };
+  const PRESETS = {
+    nano:  { layers: 4, dModel: 128, heads: 4, ctx: 128 },
+    micro: { layers: 6, dModel: 256, heads: 8, ctx: 256 },
+    mini:  { layers: 8, dModel: 384, heads: 6, ctx: 256 }
+  };
+  const RUN_COLORS = ['#F08E5A', '#6BA5FA', '#53C378', '#B18CF0', '#F2B957', '#4FD1C5', '#E879F9', '#F16E63'];
+  function paramCount(c){ return 12 * c.layers * c.dModel * c.dModel + c.vocab * c.dModel + c.ctx * c.dModel; }
+  function matchPreset(c){ for(const k in PRESETS){ const p = PRESETS[k]; if(['layers', 'dModel', 'heads', 'ctx'].every(f => +p[f] === +c[f])) return k; } return null; }
+  function tokPerSec(c){
+    const fpt = 6 * paramCount(c) + 6 * c.layers * c.ctx * c.dModel;
+    const gflops = Math.min(c.threads, CPU.threads) * 9 * (c.dtype === 'bfloat16' ? 1.4 : 1);
+    return gflops * 1e9 / fpt;
+  }
+  function ramGB(c){
+    const states = paramCount(c) * 16;
+    const act = c.batch * c.ctx * c.dModel * c.layers * 34 + c.batch * c.heads * c.ctx * c.ctx * c.layers * 4;
+    return (states + act) / 1e9 + 0.6;
+  }
+  function exportNames(){ return hasTable('exports') ? q('SELECT name, MAX(created_at) AS at FROM exports GROUP BY name ORDER BY at DESC').map(r => r.name) : []; }
+  function exportInfo(name){
+    if(!hasTable('exports')) return null;
+    const rows = q('SELECT split, n_tokens, vocab_size FROM exports WHERE name = ?', [name]);
+    if(!rows.length) return null;
+    const o = { name, train: 0, val: 0, vocab: rows[0].vocab_size };
+    rows.forEach(r => { o[r.split] = r.n_tokens; });
+    return o;
+  }
+
+  let RUNS = [];
+  function mkRun(o){
+    const r = Object.assign({ status: 'queued', iter: 0, dropout: 0.1, batch: 32, lr: 1e-3, minLr: 1e-4, warmup: 100, maxIters: 3000, evalInterval: 250, threads: Math.min(CPU.threads, 8), dtype: 'float32', seed: 1337, export: 'stories-v1', logs: [] }, PRESETS[o.preset] || {}, o);
+    const ex = exportInfo(r.export);
+    r.vocab = ex ? ex.vocab : 76;
+    r.trainTokens = ex ? ex.train : 9.4e5;
+    r.params = paramCount(r);
+    r.tpi = r.batch * r.ctx;
+    r.preset = matchPreset(r);
+    r.color = RUN_COLORS[RUNS.length % RUN_COLORS.length];
+    r.seedN = hashStr(r.id + r.name);
+    return r;
+  }
+  const runById = id => RUNS.find(r => r.id === id);
+  const spc = r => Math.max(1, Math.round(r.maxIters / 300));
+  function epochsAt(r, it){ return it * r.tpi / r.trainTokens; }
+  function floorLoss(r){ return 0.9 + 0.6 * Math.pow(1e6 / r.params, 0.35) + 0.15 * r.dropout; }
+  // Past ~2 epochs (more with dropout) a small corpus gets memorised: train keeps falling, val rises.
+  function overfit(r, it){
+    const ex = Math.max(0, epochsAt(r, it) - (2 + 20 * r.dropout));
+    return 0.08 * Math.pow(r.params / 1e6, 0.35) * Math.max(0.15, 1 - 2 * r.dropout) * Math.log1p(ex);
+  }
+  function baseLoss(r, it){
+    const L0 = Math.log(r.vocab), fl = floorLoss(r);
+    const tau = 60 * Math.pow(1e-3 / r.lr, 0.8) * (r.params > 5e6 ? 1.4 : 1);
+    return fl + (L0 - fl) * Math.pow(1 + it / tau, -0.9);
+  }
+  function trainLoss(r, it, i){ return baseLoss(r, it) - 0.6 * overfit(r, it) + noise(r.seedN, i) * 0.05 * (1 + 2 * Math.exp(-it / 200)); }
+  function valLoss(r, it){ return baseLoss(r, it) + 0.02 + overfit(r, it) + noise(r.seedN + 7, Math.round(it / r.evalInterval)) * 0.012; }
+  function lrAt(r, it){
+    if(it < r.warmup) return r.lr * (it + 1) / (r.warmup + 1);
+    if(it >= r.maxIters) return r.minLr;
+    const p = (it - r.warmup) / Math.max(1, r.maxIters - r.warmup);
+    return r.minLr + 0.5 * (1 + Math.cos(Math.PI * p)) * (r.lr - r.minLr);
+  }
+  function evalPoints(r){ const out = []; for(let it = 0; it <= r.iter; it += r.evalInterval) out.push([it, valLoss(r, it)]); return out; }
+  function checkpoints(r){ let best = Infinity; const out = []; evalPoints(r).forEach(([it, v]) => { if(it > 0 && v < best){ best = v; out.push({ it, val: v }); } }); return out; }
+  function bestVal(r){ const c = checkpoints(r); return c.length ? c[c.length - 1] : null; }
+  function seriesUpTo(r, maxIt, fn){ const s = spc(r), P = []; for(let it = 0; it <= maxIt; it += s) P.push(fn(it, Math.round(it / s))); if(maxIt % s) P.push(fn(maxIt, Math.round(maxIt / s))); return P; }
+  function trainCli(r){
+    return 'OMP_NUM_THREADS=' + r.threads + ' python train.py --dataset=' + r.export + ' --device=cpu --dtype=' + r.dtype + ' --compile=False' +
+      ' --n_layer=' + r.layers + ' --n_head=' + r.heads + ' --n_embd=' + r.dModel + ' --block_size=' + r.ctx + ' --batch_size=' + r.batch +
+      ' --dropout=' + r.dropout + ' --learning_rate=' + r.lr + ' --min_lr=' + r.minLr + ' --warmup_iters=' + r.warmup +
+      ' --max_iters=' + r.maxIters + ' --lr_decay_iters=' + r.maxIters + ' --eval_interval=' + r.evalInterval + ' --out_dir=out/' + r.name;
+  }
+  function iterLine(r, it){ const i = Math.round(it / spc(r)); return 'iter ' + it + ': loss ' + trainLoss(r, it, i).toFixed(4) + ', time ' + (r.tpi / tokPerSec(r) * 1000 * (1 + noise(r.seedN + 3, i) * 0.1)).toFixed(1) + 'ms, lr ' + lrAt(r, it).toExponential(2); }
+  function evalLine(r, it){ return 'step ' + it + ': train loss ' + (baseLoss(r, it) - 0.6 * overfit(r, it)).toFixed(4) + ', val loss ' + valLoss(r, it).toFixed(4); }
+  function pushLog(r, level, msg, t){ r.logs.push({ t: t || new Date(), level, msg }); if(r.logs.length > 300) r.logs.shift(); }
+  function seedLogs(r){
+    const lines = [['cmd', '$ ' + trainCli(r)], ['dim', 'tokens per iteration will be: ' + fmtInt(r.tpi)], ['dim', 'found vocab_size = ' + r.vocab + ' (inside data/' + r.export + '/meta.pkl)'], ['dim', 'number of parameters: ' + (r.params / 1e6).toFixed(2) + 'M'], ['dim', 'torch.set_num_threads(' + r.threads + ') · device=cpu · dtype=' + r.dtype]];
+    if(r.status !== 'queued'){
+      const s = spc(r);
+      for(let k = 8; k >= 0; k--){ const it = Math.floor((r.iter - k * s) / s) * s; if(it >= 0) lines.push(['info', iterLine(r, it)]); }
+      const last = Math.floor(r.iter / r.evalInterval) * r.evalInterval;
+      lines.push(['dim', evalLine(r, last)]);
+      if(r.status === 'completed'){ const b = bestVal(r); lines.push(['ok', 'done · best val loss ' + (b ? b.val.toFixed(4) + ' @ iter ' + b.it : '—')]); }
+    } else lines.push(['warn', 'waiting — another run is using the CPU']);
+    lines.forEach((l, i) => pushLog(r, l[0], l[1], new Date(Date.now() - (lines.length - i) * 1500)));
+  }
+  function seedRuns(){
+    RUNS = [];
+    [
+      { id: 'run_04', name: 'mini-ctx256', preset: 'mini', batch: 16, lr: 6e-4, minLr: 6e-5, maxIters: 5000, dropout: 0.1, status: 'queued' },
+      { id: 'run_03', name: 'micro-dropout-0.2', preset: 'micro', batch: 32, lr: 1e-3, maxIters: 3000, dropout: 0.2, status: 'running', iter: 1150 },
+      { id: 'run_02', name: 'micro-no-dropout', preset: 'micro', batch: 32, lr: 1e-3, maxIters: 3000, dropout: 0.0, status: 'completed', iter: 3000 },
+      { id: 'run_01', name: 'nano-baseline', preset: 'nano', batch: 16, lr: 1e-3, maxIters: 2000, dropout: 0.0, evalInterval: 200, status: 'completed', iter: 2000 }
+    ].reverse().forEach(o => RUNS.unshift(mkRun(o)));
+    RUNS.forEach(seedLogs);
+  }
+  function scheduleQueue(){
+    if(RUNS.some(r => r.status === 'running')) return false;
+    const next = RUNS.slice().reverse().find(r => r.status === 'queued');
+    if(!next) return false;
+    next.status = 'running';
+    pushLog(next, 'ok', 'starting on ' + next.threads + ' CPU threads');
+    return true;
+  }
+  function advanceRun(r){
+    const prev = r.iter;
+    r.iter = Math.min(r.maxIters, r.iter + Math.max(1, Math.round(r.maxIters / 500)));
+    r._t = (r._t || 0) + 1;
+    if(r._t % 2 === 0) pushLog(r, 'info', iterLine(r, r.iter));
+    const ev = r.evalInterval;
+    if(Math.floor(r.iter / ev) > Math.floor(prev / ev)){
+      const it = Math.floor(r.iter / ev) * ev;
+      pushLog(r, 'dim', evalLine(r, it));
+      const b = bestVal(r);
+      if(b && b.it === it) pushLog(r, 'ok', 'saving checkpoint to out/' + r.name + '/ckpt.pt');
+    }
+    if(r.iter >= r.maxIters){
+      r.status = 'completed';
+      const b = bestVal(r);
+      pushLog(r, 'ok', 'done · best val loss ' + (b ? b.val.toFixed(4) + ' @ iter ' + b.it : '—'));
+      toast(r.name + ' finished training.', 'ok');
+    }
+  }
+
+  /* ================= n-gram stand-in sampler ================= */
+  // Until a real inference backend exists, samples come from a character n-gram model over clean_documents,
+  // with the n-gram order chosen from the checkpoint's val loss so better runs "read" better.
+  const NG = { version: -1, text: '', maps: {}, uni: [], uniTotal: 0 };
+  function ngText(){
+    if(NG.version !== dbVersion){
+      NG.version = dbVersion; NG.maps = {};
+      NG.text = hasTable('clean_documents') ? q("SELECT text FROM clean_documents WHERE split = 'train' ORDER BY id LIMIT 1500").map(r => r.text).join('\n') : '';
+      const cnt = new Map();
+      for(const ch of NG.text) cnt.set(ch, (cnt.get(ch) || 0) + 1);
+      NG.uni = [...cnt]; NG.uniTotal = NG.text.length;
+    }
+    return NG.text;
+  }
+  function ngMap(o){
+    if(!NG.maps[o]){
+      const t = NG.text, m = new Map();
+      for(let i = o; i < t.length; i++){ const k = t.slice(i - o, i); let a = m.get(k); if(!a){ a = []; m.set(k, a); } a.push(t[i]); }
+      NG.maps[o] = m;
+    }
+    return NG.maps[o];
+  }
+  function orderForLoss(L){ return L > 2.6 ? 0 : L > 2.0 ? 1 : L > 1.7 ? 2 : L > 1.45 ? 3 : L > 1.3 ? 5 : 7; }
+  function sampleText(loss, prompt, len, temp, seed){
+    if(!ngText()) return null;
+    const g = mulberry32(seed), order = orderForLoss(loss);
+    const uni = () => { let x = g() * NG.uniTotal; for(const [ch, c] of NG.uni){ x -= c; if(x <= 0) return ch; } return ' '; };
+    let out = '', ctx = prompt;
+    for(let i = 0; i < len; i++){
+      let ch = null;
+      if(g() < Math.max(0, temp - 0.7) * 0.25) ch = uni();
+      for(let o = order; o > 0 && ch == null; o--){ if(ctx.length >= o){ const a = ngMap(o).get(ctx.slice(-o)); if(a) ch = a[Math.floor(g() * a.length)]; } }
+      if(ch == null) ch = uni();
+      out += ch; ctx += ch;
+    }
+    return out;
+  }
+
+  /* ================= UI state ================= */
+  const SQL_EXAMPLES = [
+    { label: 'Docs per source', sql: 'SELECT source, COUNT(*) AS docs, ROUND(AVG(LENGTH(text))) AS avg_chars\nFROM raw_documents\nGROUP BY source\nORDER BY docs DESC;' },
+    { label: 'Train / val split', sql: 'SELECT split, COUNT(*) AS docs, SUM(n_chars) AS chars\nFROM clean_documents\nGROUP BY split;' },
+    { label: 'Duplicates', sql: 'SELECT text, COUNT(*) AS copies\nFROM raw_documents\nGROUP BY text\nHAVING copies > 1\nORDER BY copies DESC\nLIMIT 20;' },
+    { label: 'Top characters', sql: 'SELECT id, token, count\nFROM vocab\nORDER BY count DESC\nLIMIT 20;' },
+    { label: 'Pipeline history', sql: 'SELECT script, status, rows_in, rows_out, started_at, duration_ms\nFROM pipeline_runs\nORDER BY id DESC\nLIMIT 20;' }
+  ];
+  const S = {
+    tab: 'data', dataSub: 'database', table: null, page: 0, search: '', sql: SQL_EXAMPLES[0].sql, sqlResult: null, gridRows: [],
+    openCode: new Set(), selectedRun: 'run_03', detailSig: '', evalRuns: new Set(),
+    play: { runId: 'run_03', temp: 0.8, len: 300, prompt: 'Once upon a time' }, playOut: null, sampleSeed: 1
+  };
+  const PAGE = 25;
+
+  /* ================= Toast / status ================= */
+  let toastTimer = null;
+  function toast(msg, kind){
+    const t = $('#toast');
+    t.textContent = msg;
+    t.className = 'toast show ' + (kind || '');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { t.className = 'toast'; }, 3200);
+    setStatus(msg);
+  }
+  function setStatus(msg){ $('#statusText').textContent = msg; }
+
+  /* ================= Sentence pills ================= */
+  let openPop = null;
+  function closePopovers(){ if(openPop){ openPop.remove(); openPop = null; } $$('.phrase-pill.active').forEach(p => p.classList.remove('active')); }
+  document.addEventListener('mousedown', e => { if(openPop && !openPop.contains(e.target) && !e.target.closest('.phrase-pill')) closePopovers(); });
+  function optList(p){ const o = typeof p.options === 'function' ? p.options() : p.options; return o.map(x => typeof x === 'object' ? x : { value: x, label: String(x) }); }
+  function labelFor(p, v){ if(p.kind === 'select'){ const f = optList(p).find(o => o.value === v); if(f) return f.label; } return v == null || v === '' ? '—' : String(v); }
+  function openPopover(pill, p, obj, done){
+    closePopovers();
+    pill.classList.add('active');
+    const pop = document.createElement('div');
+    pop.className = 'phrase-popover' + (p.kind === 'text' ? ' text-popover' : '');
+    pop.addEventListener('mousedown', e => e.stopPropagation());
+    pop.addEventListener('click', e => e.stopPropagation());
+    if(p.kind === 'select'){
+      optList(p).forEach(o => {
+        const it = document.createElement('div');
+        it.className = 'phrase-popover-item' + (o.value === obj[p.key] ? ' selected' : '');
+        it.textContent = o.label;
+        it.addEventListener('click', () => { obj[p.key] = o.value; closePopovers(); done(); });
+        pop.appendChild(it);
+      });
+    } else {
+      const inp = document.createElement('input');
+      inp.type = 'text';
+      inp.value = obj[p.key] == null ? '' : obj[p.key];
+      pop.appendChild(inp);
+      const commit = () => { const v = inp.value.trim(); if(v) obj[p.key] = v; closePopovers(); done(); };
+      inp.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); commit(); } else if(e.key === 'Escape'){ e.preventDefault(); closePopovers(); } });
+      setTimeout(() => { inp.focus(); inp.select(); }, 0);
+    }
+    pill.appendChild(pop);
+    openPop = pop;
+  }
+  function renderSentence(container, partsFn, obj, onChange){
+    container.innerHTML = '';
+    partsFn().forEach(p => {
+      if(typeof p === 'string'){ const s = document.createElement('span'); s.textContent = p; container.appendChild(s); return; }
+      if(p.kind === 'static'){ const s = document.createElement('span'); s.className = 'phrase-static'; s.textContent = p.text; container.appendChild(s); return; }
+      const pill = document.createElement('span');
+      pill.className = 'phrase-pill' + (p.kind === 'toggle' ? ' toggle-pill' : '');
+      pill.tabIndex = 0;
+      pill.setAttribute('role', 'button');
+      const v = obj[p.key];
+      if(p.kind === 'toggle'){ pill.textContent = v ? 'on' : 'off'; pill.classList.toggle('off', !v); }
+      else pill.textContent = labelFor(p, v);
+      const act = e => {
+        if(e.target !== pill) return;
+        e.stopPropagation();
+        if(p.kind === 'toggle'){ obj[p.key] = !obj[p.key]; onChange(p.key); renderSentence(container, partsFn, obj, onChange); return; }
+        if(pill.classList.contains('active')){ closePopovers(); return; }
+        openPopover(pill, p, obj, () => { onChange(p.key); renderSentence(container, partsFn, obj, onChange); });
+      };
+      pill.addEventListener('click', act);
+      pill.addEventListener('keydown', e => { if(e.target === pill && (e.key === 'Enter' || e.key === ' ')){ e.preventDefault(); act(e); } });
+      container.appendChild(pill);
+    });
+  }
+
+  /* ================= Charts ================= */
+  function niceTicks(min, max, n){
+    if(min === max) max = min + 1;
+    const step0 = (max - min) / n, mag = Math.pow(10, Math.floor(Math.log10(step0))), err = step0 / mag;
+    const step = mag * (err >= 7.5 ? 10 : err >= 3.5 ? 5 : err >= 1.5 ? 2 : 1);
+    const t = [];
+    for(let v = Math.ceil(min / step) * step; v <= max + step * 1e-9; v += step) t.push(+v.toFixed(12));
+    return t;
+  }
+  function nearest(P, xv){
+    let lo = 0, hi = P.length - 1;
+    while(hi - lo > 1){ const mid = (lo + hi) >> 1; if(P[mid][0] < xv) lo = mid; else hi = mid; }
+    return Math.abs(P[lo][0] - xv) <= Math.abs(P[hi][0] - xv) ? P[lo] : P[hi];
+  }
+  function lineChart(el, o){
+    const W = 640, H = o.height || 220, m = { l: 50, r: 16, t: 12, b: 30 };
+    const pw = W - m.l - m.r, ph = H - m.t - m.b;
+    const series = o.series.map(s => Object.assign({}, s, { P: (s.points || []).filter(p => isFinite(p[1])) })).filter(s => s.P.length);
+    const pts = [];
+    series.forEach(s => { if(!s.noRange) s.P.forEach(p => pts.push(p)); });
+    if(!pts.length){ el.innerHTML = '<div class="chart-empty">' + esc(o.empty || 'No data yet') + '</div>'; return; }
+    let x0 = Math.min.apply(null, pts.map(p => p[0])), x1 = o.xMax != null ? o.xMax : Math.max.apply(null, pts.map(p => p[0]));
+    const ys = pts.map(p => p[1]);
+    let y0 = o.yMin != null ? o.yMin : Math.min.apply(null, ys), y1 = o.yMax != null ? Math.min(o.yMax, Math.max.apply(null, ys)) : Math.max.apply(null, ys);
+    if(y0 === y1){ y0 -= 1; y1 += 1; }
+    const pad = (y1 - y0) * 0.06;
+    if(o.yMin == null) y0 -= pad;
+    y1 += pad;
+    if(x0 === x1) x1 = x0 + 1;
+    const sx = v => m.l + (v - x0) / (x1 - x0) * pw;
+    const sy = v => m.t + (1 - (clamp(v, y0, y1) - y0) / (y1 - y0)) * ph;
+    const yF = o.yFmt || fmtAxis, xF = o.xFmt || fmtAxis;
+    let g = '';
+    niceTicks(y0, y1, 4).filter(v => v >= y0 && v <= y1).forEach(v => {
+      g += '<line class="gl" x1="' + m.l + '" x2="' + (W - m.r) + '" y1="' + sy(v).toFixed(1) + '" y2="' + sy(v).toFixed(1) + '"/>';
+      g += '<text class="ax" x="' + (m.l - 8) + '" y="' + (sy(v) + 3.5).toFixed(1) + '" text-anchor="end">' + esc(yF(v)) + '</text>';
+    });
+    niceTicks(x0, x1, 5).filter(v => v >= x0 && v <= x1).forEach(v => { g += '<text class="ax" x="' + sx(v).toFixed(1) + '" y="' + (H - m.b + 16) + '" text-anchor="middle">' + esc(xF(v)) + '</text>'; });
+    if(o.xLabel) g += '<text class="ax-label" x="' + (W - m.r) + '" y="' + (H - 2) + '" text-anchor="end">' + esc(o.xLabel) + '</text>';
+    (o.vlines || []).forEach(v => { if(v.x >= x0 && v.x <= x1) g += '<line x1="' + sx(v.x).toFixed(1) + '" x2="' + sx(v.x).toFixed(1) + '" y1="' + m.t + '" y2="' + (m.t + ph) + '" stroke="' + v.color + '" stroke-dasharray="2 3" opacity=".8"/><text class="ax-label" x="' + (sx(v.x) + 4).toFixed(1) + '" y="' + (m.t + 10) + '">' + esc(v.label) + '</text>'; });
+    series.forEach(s => {
+      const d = s.P.map((p, i) => (i ? 'L' : 'M') + sx(p[0]).toFixed(1) + ',' + sy(p[1]).toFixed(1)).join('');
+      if(s.area) g += '<path class="area-fill" d="' + d + 'L' + sx(s.P[s.P.length - 1][0]).toFixed(1) + ',' + (m.t + ph) + 'L' + sx(s.P[0][0]).toFixed(1) + ',' + (m.t + ph) + 'Z" fill="' + s.color + '"/>';
+      g += '<path d="' + d + '" fill="none" stroke="' + s.color + '" stroke-width="' + (s.width || 1.8) + '"' + (s.dashed ? ' stroke-dasharray="5 4"' : '') + ' opacity="' + (s.opacity || 1) + '" stroke-linejoin="round" stroke-linecap="round"/>';
+      if(s.markers) s.P.forEach(p => { g += '<circle cx="' + sx(p[0]).toFixed(1) + '" cy="' + sy(p[1]).toFixed(1) + '" r="2.8" fill="' + s.color + '"/>'; });
+    });
+    el.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '">' + g + '<line class="hover-line" y1="' + m.t + '" y2="' + (m.t + ph) + '"/><g class="hover-dots"></g><rect class="hover-rect" x="' + m.l + '" y="' + m.t + '" width="' + pw + '" height="' + ph + '" fill="transparent"/></svg><div class="chart-tip"></div>';
+    const svg = el.querySelector('svg'), tip = el.querySelector('.chart-tip'), hl = el.querySelector('.hover-line'), dots = el.querySelector('.hover-dots');
+    const rect = el.querySelector('.hover-rect');
+    rect.addEventListener('mousemove', e => {
+      const b = svg.getBoundingClientRect();
+      const xv = x0 + clamp(((e.clientX - b.left) / b.width * W - m.l) / pw, 0, 1) * (x1 - x0);
+      let rows = '', dh = '', snapX = null;
+      series.forEach(s => {
+        if(s.noTip) return;
+        const p = nearest(s.P, xv);
+        if(snapX == null) snapX = p[0];
+        rows += '<div><i style="background:' + s.color + '"></i>' + esc(s.name) + '<b>' + esc((o.tipFmt || yF)(p[1])) + '</b></div>';
+        dh += '<circle class="dot-stroke" cx="' + sx(p[0]).toFixed(1) + '" cy="' + sy(p[1]).toFixed(1) + '" r="3.8" fill="' + s.color + '"/>';
+      });
+      if(snapX == null) return;
+      hl.setAttribute('x1', sx(snapX)); hl.setAttribute('x2', sx(snapX)); hl.style.display = 'block';
+      dots.innerHTML = dh;
+      tip.innerHTML = '<div class="tip-x">' + esc((o.xTipFmt || xF)(snapX)) + '</div>' + rows;
+      tip.style.display = 'block';
+      const px = sx(snapX) / W * el.clientWidth;
+      tip.style.left = (px + tip.offsetWidth + 16 > el.clientWidth ? px - tip.offsetWidth - 12 : px + 12) + 'px';
+    });
+    rect.addEventListener('mouseleave', () => { hl.style.display = 'none'; dots.innerHTML = ''; tip.style.display = 'none'; });
+  }
+
+  /* ================= Common renderers ================= */
+  function kpi(label, value, sub){ return '<div class="kpi"><div class="kpi-label">' + label + '</div><div class="kpi-value">' + value + '</div><div class="kpi-sub">' + (sub || '&nbsp;') + '</div></div>'; }
+  function statusBadge(s){
+    const label = { running: 'Running', completed: 'Completed', failed: 'Failed', queued: 'Queued', paused: 'Paused', stopped: 'Stopped', done: 'Done' }[s] || s;
+    return '<span class="badge ' + s + '"><span class="dot"></span>' + label + '</span>';
+  }
+  function progressBar(frac, cls, color){ return '<div class="progress ' + (cls || '') + '"><span style="width:' + (clamp(frac, 0, 1) * 100).toFixed(1) + '%' + (color ? ';background:' + color : '') + '"></span></div>'; }
+  function consoleHtml(lines){ return lines.map(l => '<div class="ln"><span class="t">' + timeStr(l.t) + '</span><span class="l-' + l.level + '">' + esc(l.msg) + '</span></div>').join(''); }
+  function renderConsole(el, lines, first){
+    if(!el) return;
+    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
+    setHTML(el, lines.length ? consoleHtml(lines) : '<div class="ln"><span class="l-dim">No output yet.</span></div>');
+    if(first || atBottom) el.scrollTop = el.scrollHeight;
+  }
+  function updateCounts(){
+    $('#countData').textContent = activePipe || pipeQueue.length ? 'running' : '';
+    $('#countRuns').textContent = RUNS.some(r => r.status === 'running') ? 'live' : '';
+  }
+  function renderMachinePill(){
+    const r = RUNS.find(x => x.status === 'running');
+    setHTML($('#machinePill'), '<span class="live-dot' + (r ? ' on' : '') + '"></span>' + ic('cpu') + '<span>' + CPU.threads + ' threads · ' + (r ? esc(r.name) + ' ' + pct(r.iter / r.maxIters, 0) : 'idle') + '</span>');
+  }
+  function updatePrimary(){
+    const b = $('#btnPrimary'), grp = b.parentElement;
+    if(S.tab === 'evals'){ grp.style.display = 'none'; $('.topbar-divider').style.display = 'none'; return; }
+    grp.style.display = ''; $('.topbar-divider').style.display = '';
+    b.innerHTML = S.tab === 'data' ? ic('play') + 'Run all pipelines' : ic('plus') + 'New run';
+  }
+
+  /* ================= Tabs ================= */
+  function setTab(t){
+    S.tab = t;
+    closePopovers();
+    $$('.tab').forEach(b => { const a = b.dataset.tab === t; b.classList.toggle('active', a); b.setAttribute('aria-selected', a ? 'true' : 'false'); });
+    $$('.view').forEach(v => v.classList.toggle('active', v.dataset.view === t));
+    $$('.side').forEach(v => v.classList.toggle('active', v.dataset.side === t));
+    $('#main').scrollTop = 0;
+    updatePrimary();
+    renderTab();
+  }
+  function renderTab(){
+    if(S.tab === 'data') renderData();
+    else if(S.tab === 'runs') renderRuns();
+    else renderEvals();
+    updateCounts(); renderMachinePill();
+  }
+
+  /* ======================================================================
+     DATA MANAGER
+     ====================================================================== */
+  function renderData(){
+    renderDbCard(); renderTableList(); renderPipeList(); renderDataKpis();
+    $$('#dataSeg button').forEach(b => b.classList.toggle('active', b.dataset.sub === S.dataSub));
+    $('#dbNotice').innerHTML = dbError ? '<div class="notice err">' + ic('alert') + '<span><b>SQLite unavailable.</b> ' + esc(dbError) + ' The Data Manager needs sql.js; training and evaluation views still work with sample data.</span></div>' : '';
+    const pane = $('#dataPane');
+    if(!db){ pane.innerHTML = ''; return; }
+    if(S.dataSub === 'database') renderDatabasePane(pane); else renderPipelinesPane(pane);
+  }
+  function setDataSub(sub){ S.dataSub = sub; closePopovers(); renderData(); }
+  function renderDbCard(){
+    $('#dbEngine').textContent = sqliteVersion ? 'sqlite ' + sqliteVersion : '';
+    $('#dbCard').innerHTML = '<div class="db-card">' + ic('database') + '<div style="min-width:0"><div class="db-name">' + esc(dbName) + '</div><div class="db-meta">' + (db ? fmtBytes(dbSize) + ' · ' + listTables().length + ' tables · autosaved in browser' : 'not loaded') + '</div></div></div>';
+  }
+  function renderTableList(){
+    $('#tableList').innerHTML = db ? listTables().map(t => '<div class="side-item' + (S.dataSub === 'database' && t === S.table ? ' active' : '') + '" data-tbl="' + esc(t) + '"><span class="btn-ic" style="color:var(--text-faint);margin-top:1px">' + ICONS.table + '</span><div class="si-main"><div class="si-row"><span class="si-name mono">' + esc(t) + '</span><span class="si-tag">' + fmtInt(rowCount(t)) + '</span></div></div></div>').join('') : '<div class="tips-hint">No database loaded.</div>';
+  }
+  function pipeStatus(p){
+    if(p.state === 'running') return 'running';
+    if(p.state === 'queued') return 'queued';
+    const l = lastRunOf(p);
+    return l ? l.status : 'never';
+  }
+  function renderPipeList(){
+    setHTML($('#pipeList'), PIPELINES.map(p => {
+      const st = pipeStatus(p), l = lastRunOf(p);
+      return '<div class="side-item" data-pipe-nav="' + esc(p.id) + '"><span class="st-dot ' + st + '"></span><div class="si-main"><div class="si-name mono">' + esc(p.file.replace('pipelines/', '')) + '</div><div class="si-sub" style="margin-bottom:0">' + (st === 'running' ? 'running…' : st === 'queued' ? 'queued' : l ? esc(l.status) + ' · ' + esc(l.started_at) : 'never run') + '</div></div></div>';
+    }).join(''));
+  }
+  $('#tableList').addEventListener('click', e => { const it = e.target.closest('[data-tbl]'); if(!it) return; S.table = it.dataset.tbl; S.page = 0; S.search = ''; setDataSub('database'); });
+  $('#pipeList').addEventListener('mousedown', e => {
+    const it = e.target.closest('[data-pipe-nav]');
+    if(!it || e.button !== 0) return;
+    const id = it.dataset.pipeNav;
+    setDataSub('pipelines');
+    const card = $('[data-pipe="' + id + '"]');
+    if(card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+  function renderDataKpis(){
+    if(!db){ $('#dataKpis').innerHTML = ''; return; }
+    const raw = rowCount('raw_documents'), clean = rowCount('clean_documents'), v = rowCount('vocab');
+    const names = exportNames(), ex = names.length ? exportInfo(names[0]) : null;
+    const chars = hasTable('clean_documents') ? scalar('SELECT SUM(n_chars) FROM clean_documents') || 0 : 0;
+    $('#dataKpis').innerHTML =
+      kpi('Database', fmtBytes(dbSize), listTables().length + ' tables') +
+      kpi('Raw documents', fmtInt(raw), hasTable('raw_documents') ? (scalar('SELECT COUNT(DISTINCT source) FROM raw_documents') || 0) + ' sources' : 'table missing') +
+      kpi('Clean documents', fmtInt(clean), raw ? pct(clean / raw) + ' kept · ' + fmtCompact(chars) + ' chars' : '—') +
+      kpi('Vocabulary', fmtInt(v), 'character-level tokens') +
+      kpi('Latest export', ex ? esc(ex.name) : '—', ex ? fmtCompact(ex.train) + ' train · ' + fmtCompact(ex.val) + ' val tokens' : 'run 04_export.py');
+  }
+
+  /* ---------- Database pane ---------- */
+  function renderDatabasePane(el){
+    const tables = listTables();
+    if(!tables.includes(S.table)) S.table = tables[0] || null;
+    el.innerHTML =
+      '<div class="card"><div class="card-head"><div class="chips" id="tblChips"></div><div class="card-actions"><input class="search" id="tblSearch" placeholder="Search text columns…" value="' + esc(S.search) + '" aria-label="Search rows"><div class="pager" id="pager"></div></div></div>' +
+      '<div class="schema-line" id="tblSchema"></div><div class="table-wrap" id="tblGrid"></div></div>' +
+      '<div class="card"><div class="card-head"><div><div class="card-title">SQL console</div><div class="card-sub">Runs against the in-browser copy of <span class="mono">' + esc(dbName) + '</span> · Ctrl+Enter to run · changes autosave in this browser, use Download to get the file.</div></div>' +
+      '<div class="card-actions"><div class="chips">' + SQL_EXAMPLES.map((x, i) => '<span class="chip" data-ex="' + i + '">' + esc(x.label) + '</span>').join('') + '</div><button class="btn btn-sm btn-primary" id="btnSql">' + ic('play') + 'Run</button></div></div>' +
+      '<textarea class="code-edit sql" id="sqlInput" spellcheck="false" aria-label="SQL query"></textarea><div id="sqlOut"></div></div>';
+    $('#sqlInput').value = S.sql;
+    $('#sqlInput').addEventListener('input', e => { S.sql = e.target.value; });
+    $('#sqlInput').addEventListener('keydown', e => { if((e.ctrlKey || e.metaKey) && e.key === 'Enter'){ e.preventDefault(); runSql(); } });
+    $('#btnSql').addEventListener('click', runSql);
+    $('#tblSearch').addEventListener('input', e => { S.search = e.target.value; S.page = 0; renderTableGrid(); });
+    renderTableChips(); renderTableGrid(); renderSqlResult();
+  }
+  function renderTableChips(){
+    const el = $('#tblChips');
+    if(el) el.innerHTML = listTables().map(t => '<span class="chip' + (t === S.table ? ' active' : '') + '" data-chip-tbl="' + esc(t) + '">' + ic('table') + esc(t) + ' <span class="faint mono">' + fmtInt(rowCount(t)) + '</span></span>').join('');
+  }
+  function renderTableGrid(){
+    const grid = $('#tblGrid');
+    if(!grid) return;
+    const t = S.table;
+    if(!t){ grid.innerHTML = '<div class="empty">No tables yet — run a pipeline to create them.</div>'; $('#tblSchema').innerHTML = ''; $('#pager').innerHTML = ''; return; }
+    const cols = q('PRAGMA table_info(' + qi(t) + ')');
+    $('#tblSchema').innerHTML = cols.map(c => '<span class="col-chip"><b>' + esc(c.name) + '</b> ' + esc(c.type || 'ANY') + (c.pk ? ' · PK' : '') + (c.notnull ? ' · NOT NULL' : '') + '</span>').join('');
+    const textCols = cols.filter(c => /CHAR|TEXT|CLOB|^$/i.test(c.type || '')).map(c => c.name);
+    let where = '', params = [];
+    const term = S.search.trim();
+    if(term && textCols.length){ where = ' WHERE ' + textCols.map(c => qi(c) + ' LIKE ?').join(' OR '); params = textCols.map(() => '%' + term + '%'); }
+    let total = 0, rows = [];
+    try{
+      total = scalar('SELECT COUNT(*) FROM ' + qi(t) + where, params) || 0;
+      S.page = clamp(S.page, 0, Math.max(0, Math.ceil(total / PAGE) - 1));
+      rows = q('SELECT * FROM ' + qi(t) + where + ' LIMIT ' + PAGE + ' OFFSET ' + (S.page * PAGE), params);
+    }catch(e){ grid.innerHTML = '<div class="notice err">' + ic('alert') + '<span>' + esc(e.message || e) + '</span></div>'; return; }
+    S.gridRows = rows;
+    const from = total ? S.page * PAGE + 1 : 0, to = Math.min(total, (S.page + 1) * PAGE);
+    $('#pager').innerHTML = '<button class="btn btn-xs btn-ghost" data-pg="-1"' + (S.page === 0 ? ' disabled' : '') + '>‹</button><span>' + fmtInt(from) + '–' + fmtInt(to) + ' of ' + fmtInt(total) + '</span><button class="btn btn-xs btn-ghost" data-pg="1"' + (to >= total ? ' disabled' : '') + '>›</button>';
+    grid.innerHTML = gridTable(cols.map(c => c.name), rows.map(r => cols.map(c => r[c.name])), true) || '<div class="empty">' + (term ? 'No rows match “' + esc(term) + '”.' : 'Table is empty.') + '</div>';
+  }
+  function cellHtml(v){
+    if(v == null) return '<td><span class="null">NULL</span></td>';
+    if(typeof v === 'number') return '<td class="num">' + esc(Number.isInteger(v) ? v : +v.toFixed(6)) + '</td>';
+    if(v instanceof Uint8Array) return '<td><span class="null">&lt;blob ' + v.length + ' bytes&gt;</span></td>';
+    const s = String(v);
+    return '<td class="txt" title="' + esc(s.length > 300 ? s.slice(0, 300) + '…' : s) + '">' + esc(s.slice(0, 400)).replace(/\n/g, '↵') + '</td>';
+  }
+  function gridTable(cols, rows, clickable){
+    if(!rows.length) return '';
+    return '<table class="table grid"><thead><tr>' + cols.map(c => '<th>' + esc(c) + '</th>').join('') + '</tr></thead><tbody>' +
+      rows.map((r, i) => '<tr' + (clickable ? ' class="clickable" data-row="' + i + '"' : '') + '>' + r.map(cellHtml).join('') + '</tr>').join('') + '</tbody></table>';
+  }
+  $('#dataPane').addEventListener('click', e => {
+    const chip = e.target.closest('[data-chip-tbl]');
+    if(chip){ S.table = chip.dataset.chipTbl; S.page = 0; S.search = ''; $('#tblSearch').value = ''; renderTableChips(); renderTableGrid(); renderTableList(); return; }
+    const pg = e.target.closest('[data-pg]');
+    if(pg){ S.page += +pg.dataset.pg; renderTableGrid(); return; }
+    const ex = e.target.closest('[data-ex]');
+    if(ex){ S.sql = SQL_EXAMPLES[+ex.dataset.ex].sql; $('#sqlInput').value = S.sql; runSql(); return; }
+    const row = e.target.closest('#tblGrid tr[data-row]');
+    if(row){ openRowModal(S.table, S.gridRows[+row.dataset.row]); return; }
+    const pa = e.target.closest('[data-pact]');
+    if(pa){ onPipeAction(pa.dataset.pact, pa.closest('[data-pipe]').dataset.pipe); }
+  });
+  function openRowModal(table, row){
+    if(!row) return;
+    const body = document.createElement('div');
+    body.innerHTML = Object.keys(row).map(k => '<div class="row-field"><label>' + esc(k) + '</label><pre>' + (row[k] == null ? '<span class="null">NULL</span>' : esc(row[k] instanceof Uint8Array ? '<blob ' + row[k].length + ' bytes>' : row[k])) + '</pre></div>').join('');
+    openModal(table + ' · row', body, [{ label: 'Close', cls: 'btn-ghost', run: closeModal }], true);
+  }
+  function runSql(){
+    const sql = S.sql;
+    if(!db || !sql.trim()) return;
+    const t0 = performance.now();
+    try{
+      const res = db.exec(sql);
+      const ms = performance.now() - t0, last = res[res.length - 1];
+      const write = !/^\s*(select|pragma|explain|with)\b/i.test(sql);
+      S.sqlResult = { ok: true, cols: last ? last.columns : [], rows: last ? last.values.slice(0, 500) : [], total: last ? last.values.length : 0, ms, changed: db.getRowsModified(), write };
+      if(write){ dbChanged(); renderTableList(); renderDataKpis(); renderTableChips(); renderTableGrid(); }
+    }catch(e){ S.sqlResult = { ok: false, error: String(e.message || e) }; }
+    renderSqlResult();
+  }
+  function renderSqlResult(){
+    const el = $('#sqlOut'), r = S.sqlResult;
+    if(!el || !r) return;
+    if(!r.ok){ el.innerHTML = '<div class="notice err" style="margin:10px 0 0">' + ic('alert') + '<span class="mono">' + esc(r.error) + '</span></div>'; return; }
+    const meta = (r.cols.length ? fmtInt(r.total) + ' row(s)' + (r.total > 500 ? ' · showing first 500' : '') : 'OK') + (r.write ? ' · ' + fmtInt(r.changed) + ' row(s) changed' : '') + ' · ' + r.ms.toFixed(1) + ' ms';
+    el.innerHTML = '<div class="sql-meta">' + meta + '</div>' + (r.cols.length ? '<div class="table-wrap" style="max-height:360px;overflow:auto">' + (gridTable(r.cols, r.rows, false) || '<div class="empty" style="padding:16px">No rows.</div>') + '</div>' : '');
+  }
+
+  /* ---------- Pipelines pane ---------- */
+  function renderPipelinesPane(el){
+    el.innerHTML =
+      '<div class="card"><div class="card-head"><div><div class="card-title">Data flow</div><div class="card-sub">Each arrow is one script. Everything lands in the database; only the export step writes files for training.</div></div><button class="btn btn-sm btn-run" id="btnRunAll">' + ic('play') + 'Run all</button></div><div class="flow-strip" id="flowStrip"></div></div>' +
+      PIPELINES.map((p, i) =>
+        '<div class="card" data-pipe="' + esc(p.id) + '"><div class="pipe-head"><span class="pipe-num">' + String(i + 1).padStart(2, '0') + '</span><div class="pipe-title"><div class="card-title">' + esc(p.name) + '</div><div class="card-sub mono">' + esc(p.file) + '</div></div>' +
+        '<span class="badge mono">' + esc(p.from) + ' → ' + esc(p.to) + '</span><span data-role="status"></span>' +
+        '<button class="btn btn-xs btn-ghost" data-pact="code">' + ic('code') + 'Code</button>' + (p.custom ? '<button class="btn btn-xs btn-ghost" data-pact="remove" title="Remove script">' + ic('x') + '</button>' : '') + '<span data-role="runbtn"></span></div>' +
+        (p.sentence ? '<div class="sentence-line" data-role="sentence"></div>' : '<div class="tips-hint">Uploaded script — its arguments aren’t known to the UI. It will run as <span class="mono">python ' + esc(p.file) + ' --db ' + esc(dbName) + '</span>.</div>') +
+        '<div class="cli" data-role="cli"></div>' +
+        '<div class="progress thin info" data-role="prog" style="margin-top:10px;display:none"><span></span></div>' +
+        '<div data-role="codewrap"' + (S.openCode.has(p.id) ? '' : ' hidden') + '><textarea class="code-edit" spellcheck="false" data-role="code" aria-label="Python source of ' + esc(p.file) + '"></textarea></div></div>'
+      ).join('') +
+      '<div class="card"><div class="card-head"><div><div class="card-title">Output</div><div class="card-sub">stdout / stderr of pipeline runs</div></div><button class="btn btn-xs btn-ghost" id="btnClearPlog">' + ic('x') + 'Clear</button></div><div class="console" id="pipeConsole"></div></div>';
+    PIPELINES.forEach(p => {
+      const card = $('[data-pipe="' + p.id + '"]');
+      const ta = card.querySelector('[data-role=code]');
+      ta.value = p.code;
+      ta.addEventListener('input', () => { p.code = ta.value; });
+      ta.addEventListener('keydown', e => { if(e.key === 'Tab'){ e.preventDefault(); const s = ta.selectionStart; ta.setRangeText('    ', s, ta.selectionEnd, 'end'); p.code = ta.value; } });
+      const cli = card.querySelector('[data-role=cli]');
+      cli.innerHTML = cliHtml(p);
+      const sent = card.querySelector('[data-role=sentence]');
+      if(sent) renderSentence(sent, p.sentence, p.params, () => { cli.innerHTML = cliHtml(p); });
+    });
+    $('#btnRunAll').addEventListener('click', runAllPipelines);
+    $('#btnClearPlog').addEventListener('click', () => { PLOGS.length = 0; renderConsole($('#pipeConsole'), PLOGS); });
+    updatePipeCards();
+    renderFlowStrip();
+    renderConsole($('#pipeConsole'), PLOGS, true);
+  }
+  function runAllPipelines(){
+    if(!db){ toast('Database not available.', 'err'); return; }
+    PIPELINES.filter(p => !p.custom).forEach(queuePipeline);
+    toast('Queued ' + PIPELINES.filter(p => !p.custom).length + ' pipelines.', 'ok');
+    if(S.tab === 'data' && S.dataSub === 'pipelines') updatePipeCards(); else { setTab('data'); setDataSub('pipelines'); }
+  }
+  function onPipeAction(act, id){
+    const p = pipeById(id);
+    if(!p) return;
+    if(act === 'run'){ queuePipeline(p); updatePipeCards(); renderPipeList(); updateCounts(); }
+    else if(act === 'code'){
+      const wrap = $('[data-pipe="' + id + '"] [data-role=codewrap]');
+      wrap.hidden = !wrap.hidden;
+      if(wrap.hidden) S.openCode.delete(id); else S.openCode.add(id);
+    } else if(act === 'remove'){
+      if(p === activePipe || pipeQueue.includes(p)){ toast('Script is running or queued.', 'warn'); return; }
+      PIPELINES.splice(PIPELINES.indexOf(p), 1);
+      renderData();
+    }
+  }
+  function updatePipeCards(){
+    PIPELINES.forEach(p => {
+      const card = $('[data-pipe="' + p.id + '"]');
+      if(!card) return;
+      const st = pipeStatus(p), l = lastRunOf(p);
+      setHTML(card.querySelector('[data-role=status]'), st === 'running' ? statusBadge('running') : st === 'queued' ? statusBadge('queued') :
+        l ? '<span class="badge ' + (l.status === 'failed' ? 'err' : 'ok') + '" title="' + esc(l.started_at) + '">' + esc(l.status) + (l.rows_out != null ? ' · ' + fmtInt(l.rows_out) + ' rows' : '') + '</span>' : '<span class="badge">never run</span>');
+      setHTML(card.querySelector('[data-role=runbtn]'), st === 'running' || st === 'queued' ? '<button class="btn btn-xs" disabled>' + ic('clock') + (st === 'running' ? 'Running…' : 'Queued') + '</button>' : '<button class="btn btn-xs btn-run" data-pact="run">' + ic('play') + 'Run</button>');
+      const prog = card.querySelector('[data-role=prog]');
+      prog.style.display = st === 'running' ? 'block' : 'none';
+      prog.firstChild.style.width = (st === 'running' ? p.progress * 100 : 0) + '%';
+    });
+  }
+  function renderFlowStrip(){
+    const el = $('#flowStrip');
+    if(!el) return;
+    const names = exportNames(), ex = names.length ? exportInfo(names[0]) : null;
+    const srcs = hasTable('raw_documents') ? scalar('SELECT COUNT(DISTINCT source) FROM raw_documents') || 0 : 0;
+    const node = (kind, name, val, tbl) => '<div class="flow-node' + (tbl ? ' tbl' : '') + '"><div class="fn-kind">' + kind + '</div><div class="fn-name" title="' + esc(name) + '">' + esc(name) + '</div><div class="fn-val">' + val + '</div></div>';
+    const arrow = n => '<div class="flow-arrow">' + ic('arrow') + '<span>' + n + '</span></div>';
+    setHTML(el, node('files', 'data/raw/', srcs + ' folder(s) ingested') + arrow('01') +
+      node('table', 'raw_documents', fmtInt(rowCount('raw_documents')) + ' rows', true) + arrow('02') +
+      node('table', 'clean_documents', fmtInt(rowCount('clean_documents')) + ' rows', true) + arrow('03') +
+      node('table', 'vocab', fmtInt(rowCount('vocab')) + ' tokens', true) + arrow('04') +
+      node('files', ex ? 'data/' + ex.name + '/' : 'data/<name>/', ex ? fmtCompact(ex.train + ex.val) + ' tokens (.bin)' : 'not exported') + arrow('') +
+      node('trainer', 'train.py', RUNS.length + ' run(s)'));
+  }
+  function addPyScripts(files){
+    Array.from(files).forEach(f => {
+      if(!/\.py$/i.test(f.name)){ toast(f.name + ' is not a .py file.', 'warn'); return; }
+      if(f.size > 256 * 1024){ toast(f.name + ' is larger than 256 KB.', 'warn'); return; }
+      const fr = new FileReader();
+      fr.onload = () => {
+        const doc = /^\s*(?:"""|''')([\s\S]*?)(?:"""|''')/.exec(fr.result);
+        PIPELINES.push({ id: 'p_custom_' + (++pipeCounter), custom: true, file: 'pipelines/' + f.name, name: doc ? doc[1].trim().split('\n')[0].slice(0, 80) : f.name, from: 'db', to: 'db', code: fr.result, effect: null, params: {}, sentence: null, args: null });
+        toast('Added ' + f.name + ' to pipelines.', 'ok');
+        if(S.tab === 'data') renderData();
+      };
+      fr.readAsText(f);
+    });
+  }
+  const pyUp = $('#pyUpload'), pyIn = $('#pyFileInput');
+  pyUp.addEventListener('click', () => pyIn.click());
+  pyUp.addEventListener('keydown', e => { if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); pyIn.click(); } });
+  pyIn.addEventListener('change', () => { if(pyIn.files.length) addPyScripts(pyIn.files); pyIn.value = ''; });
+  pyUp.addEventListener('dragover', e => { e.preventDefault(); pyUp.classList.add('dragover'); });
+  pyUp.addEventListener('dragleave', () => pyUp.classList.remove('dragover'));
+  pyUp.addEventListener('drop', e => { e.preventDefault(); pyUp.classList.remove('dragover'); if(e.dataTransfer.files.length) addPyScripts(e.dataTransfer.files); });
+  $('#btnOpenDb').addEventListener('click', () => { if(!SQL){ toast('SQLite is not available.', 'err'); return; } $('#dbFileInput').click(); });
+  $('#dbFileInput').addEventListener('change', e => { const f = e.target.files[0]; if(f) openDbFile(f); e.target.value = ''; });
+  $('#btnDownloadDb').addEventListener('click', downloadDb);
+  $('#btnResetDb').addEventListener('click', resetDb);
+
+  /* ======================================================================
+     TRAINING
+     ====================================================================== */
+  function renderRuns(){ renderRunList(); renderMachineBox(); renderRunDetail(); }
+  function runSubText(r){
+    if(r.status === 'running') return pct(r.iter / r.maxIters, 0) + ' · loss ' + baseLoss(r, r.iter).toFixed(3) + ' · ETA ' + fmtDuration((r.maxIters - r.iter) * r.tpi / tokPerSec(r));
+    if(r.status === 'queued') return 'waiting for the CPU';
+    if(r.status === 'paused' || r.status === 'stopped') return r.status + ' at iter ' + fmtInt(r.iter);
+    const b = bestVal(r);
+    return 'best val ' + (b ? b.val.toFixed(3) : '—');
+  }
+  function renderRunList(){
+    let h = '';
+    [['Active', ['running', 'paused', 'queued']], ['Finished', ['completed', 'stopped']]].forEach(([g, sts]) => {
+      const rs = RUNS.filter(r => sts.includes(r.status));
+      if(!rs.length) return;
+      h += '<div class="side-group">' + g + '</div>';
+      rs.forEach(r => {
+        h += '<div class="side-item' + (r.id === S.selectedRun ? ' active' : '') + '" data-run="' + esc(r.id) + '"><span class="run-dot ' + r.status + '" style="background:' + r.color + '"></span><div class="si-main"><div class="si-row"><span class="si-name">' + esc(r.name) + '</span><span class="si-tag">' + fmtParams(r.params) + '</span></div><div class="si-sub">' + esc(runSubText(r)) + '</div>' + progressBar(r.iter / r.maxIters, 'thin', r.color) + '</div></div>';
+      });
+    });
+    $('#runList').innerHTML = h || '<div class="tips-hint">No runs yet.</div>';
+  }
+  // mousedown (not click): this list re-renders on every live tick.
+  $('#runList').addEventListener('mousedown', e => {
+    const it = e.target.closest('[data-run]');
+    if(!it || e.button !== 0) return;
+    S.selectedRun = it.dataset.run;
+    renderRuns();
+    $('#main').scrollTop = 0;
+  });
+  function renderMachineBox(){
+    const r = RUNS.find(x => x.status === 'running'), queued = RUNS.filter(x => x.status === 'queued').length;
+    $('#machineBox').innerHTML =
+      '<div class="kv-mini"><span>Logical CPU threads</span><b>' + CPU.threads + '</b></div>' +
+      '<div class="kv-mini"><span>RAM (browser hint)</span><b>' + (CPU.memGB ? (CPU.memGB >= 8 ? '≥ 8 GB' : CPU.memGB + ' GB') : '—') + '</b></div>' +
+      '<div class="kv-mini"><span>Device</span><b>cpu</b></div>' +
+      '<div class="kv-mini"><span>Now training</span><b>' + (r ? esc(r.name) : 'idle') + '</b></div>' +
+      '<div class="kv-mini"><span>Queued</span><b>' + queued + '</b></div>' +
+      '<div class="tips-hint" style="margin-top:6px">Runs execute one at a time; queued runs start automatically.</div>';
+  }
+  function renderRunDetail(){
+    const el = $('#runDetail'), r = runById(S.selectedRun);
+    if(!r){ el.innerHTML = '<div class="empty">No run selected.<br><button class="btn btn-primary" id="btnEmptyNew">' + ic('plus') + 'New run</button></div>'; $('#btnEmptyNew').addEventListener('click', () => openNewRunModal()); S.detailSig = ''; return; }
+    S.detailSig = r.id + ':' + r.status;
+    el.innerHTML =
+      '<div class="run-head"><div><div class="eyebrow">Step 2 · Train on CPU · <span class="mono">' + esc(r.id) + '</span></div><h2 class="view-title">' + esc(r.name) + ' ' + statusBadge(r.status) + '</h2>' +
+      '<p class="view-sub">' + fmtParams(r.params) + ' params' + (r.preset ? ' (' + r.preset + ')' : '') + ' · data <b class="mono">data/' + esc(r.export) + '/</b> · vocab ' + r.vocab + ' · ' + r.threads + ' threads · ' + esc(r.dtype) + '</p></div><div class="run-actions" id="runActions"></div></div>' +
+      '<div class="card" id="runProgress"></div><div class="kpis" id="runKpis"></div>' +
+      '<div class="grid-2 wide-left">' +
+        '<div class="card"><div class="card-head"><div><div class="card-title">Loss</div><div class="card-sub">Train (solid) vs val (dashed, every ' + r.evalInterval + ' iters) · ▲ = best checkpoint</div></div></div><div class="chart" id="chLoss"></div></div>' +
+        '<div class="card"><div class="card-head"><div><div class="card-title">Learning rate</div><div class="card-sub">Linear warmup ' + r.warmup + ' iters → cosine to ' + r.minLr + '</div></div></div><div class="chart" id="chLr"></div></div>' +
+      '</div>' +
+      '<div class="grid-2">' +
+        '<div class="card"><div class="card-head"><div><div class="card-title">Checkpoints</div><div class="card-sub">Saved to <span class="mono">out/' + esc(r.name) + '/ckpt.pt</span> whenever val loss improves</div></div></div><div id="runCkpts"></div></div>' +
+        '<div class="card"><div class="card-head"><div class="card-title">Configuration</div><button class="btn btn-xs btn-ghost" data-act="clone">' + ic('copy') + 'Clone</button></div><div id="runConfig"></div></div>' +
+      '</div>' +
+      '<div class="card"><div class="card-head"><div><div class="card-title">Sample from best checkpoint</div><div class="card-sub">Preview · n-gram stand-in until the inference backend is wired up</div></div><button class="btn btn-xs btn-ghost" data-act="resample">' + ic('refresh') + 'Resample</button></div><div class="sample-out" id="runSample"></div></div>' +
+      '<div class="card"><div class="card-head"><div><div class="card-title">Logs</div><div class="card-sub">train.py stdout</div></div></div><div class="console" id="runConsole"></div></div>';
+    renderRunConfig(r);
+    renderRunSample(r);
+    updateRunLive(r, true);
+  }
+  function renderRunActions(r){
+    const a = [];
+    if(r.status === 'running') a.push('<button class="btn btn-sm" data-act="pause">' + ic('pause') + 'Pause</button>');
+    if(r.status === 'paused' || r.status === 'stopped') a.push('<button class="btn btn-sm btn-run" data-act="resume">' + ic('play') + 'Resume</button>');
+    if(r.status === 'running' || r.status === 'paused') a.push('<button class="btn btn-sm btn-danger" data-act="stop">' + ic('stop') + 'Stop</button>');
+    if(r.status === 'queued') a.push('<button class="btn btn-sm btn-danger" data-act="cancel">' + ic('x') + 'Cancel</button>');
+    a.push('<button class="btn btn-sm btn-ghost" data-act="clone">' + ic('copy') + 'Clone</button>');
+    setHTML($('#runActions'), a.join(''));
+  }
+  $('#runDetail').addEventListener('click', e => {
+    const b = e.target.closest('[data-act]');
+    if(!b) return;
+    const r = runById(S.selectedRun);
+    if(!r) return;
+    const act = b.dataset.act;
+    if(act === 'pause'){ r.status = 'paused'; pushLog(r, 'warn', 'paused at iter ' + r.iter); }
+    else if(act === 'resume'){ r.status = 'queued'; pushLog(r, 'info', 'resuming from out/' + r.name + '/ckpt.pt'); }
+    else if(act === 'stop'){ if(!confirm('Stop ' + r.name + '? The best checkpoint is kept.')) return; r.status = 'stopped'; pushLog(r, 'warn', 'stopped at iter ' + r.iter); }
+    else if(act === 'cancel'){ r.status = 'stopped'; pushLog(r, 'warn', 'cancelled while queued'); }
+    else if(act === 'clone'){ openNewRunModal(r); return; }
+    else if(act === 'resample'){ S.sampleSeed++; renderRunSample(r); return; }
+    scheduleQueue();
+    renderRuns(); updateCounts(); renderMachinePill();
+  });
+  function updateRunLive(r, first){
+    renderRunActions(r);
+    const tps = tokPerSec(r), done = r.iter / r.maxIters;
+    const eta = r.status === 'running' ? fmtDuration((r.maxIters - r.iter) * r.tpi / tps) : r.status === 'queued' ? 'waiting for CPU' : r.status;
+    setHTML($('#runProgress'), '<div class="rp-top"><span>Iter <b>' + fmtInt(r.iter) + '</b> / ' + fmtInt(r.maxIters) + '</span><span>Tokens seen <b>' + fmtCompact(r.iter * r.tpi) + '</b></span><span><b>' + pct(done) + '</b></span><span>Wall-clock total <b>' + fmtDuration(r.maxIters * r.tpi / tps) + '</b></span><span>ETA <b>' + esc(eta) + '</b></span></div>' + progressBar(done, '', r.color));
+    const it = r.iter, i = Math.round(it / spc(r)), b = bestVal(r), ep = epochsAt(r, it);
+    const lastEval = Math.floor(it / r.evalInterval) * r.evalInterval;
+    $('#runKpis').innerHTML =
+      kpi('Train loss', it ? trainLoss(r, it, i).toFixed(3) : Math.log(r.vocab).toFixed(3), it ? 'bits/char ' + (trainLoss(r, it, i) / Math.LN2).toFixed(2) : 'initial ≈ ln(vocab)') +
+      kpi('Val loss', valLoss(r, lastEval).toFixed(3), b ? 'best ' + b.val.toFixed(3) + ' @ ' + fmtInt(b.it) : 'no checkpoint yet') +
+      kpi('Epochs', ep.toFixed(1), ep > 2 + 20 * r.dropout ? '<span class="up">▲ memorising — val gap ' + (valLoss(r, lastEval) - (baseLoss(r, lastEval) - 0.6 * overfit(r, lastEval))).toFixed(2) + '</span>' : 'of ' + fmtCompact(r.trainTokens) + ' train tokens') +
+      kpi('Throughput', fmtCompact(tps * (r.status === 'running' ? 1 + noise(r.seedN + 3, i) * 0.1 : 1), 1) + ' tok/s', (tps / r.tpi).toFixed(2) + ' it/s · ' + (r.tpi / tps * 1000).toFixed(0) + ' ms/iter') +
+      kpi('RAM', ramGB(r).toFixed(2) + ' GB', 'weights + Adam + activations') +
+      kpi('Learning rate', lrAt(r, it).toExponential(2), 'peak ' + r.lr);
+    if(first || !$('#runDetail .chart:hover')) renderRunCharts(r);
+    renderCkpts(r);
+    renderConsole($('#runConsole'), r.logs, first);
+  }
+  function renderRunCharts(r){
+    const train = seriesUpTo(r, r.iter, (it, i) => [it, trainLoss(r, it, i)]);
+    const b = bestVal(r);
+    lineChart($('#chLoss'), {
+      series: [{ name: 'train', color: r.color, points: train, width: 1.5 }, { name: 'val', color: r.color, points: evalPoints(r), dashed: true, markers: true }],
+      xMax: r.maxIters, xFmt: v => fmtCompact(v), xTipFmt: v => 'iter ' + fmtInt(v), tipFmt: v => v.toFixed(4), xLabel: 'iteration',
+      vlines: b ? [{ x: b.it, color: '#53C378', label: '▲ best' }] : [], empty: r.status === 'queued' ? 'Queued — waiting for the CPU' : 'No data yet'
+    });
+    const plan = [], ps = Math.max(1, Math.round(r.maxIters / 200));
+    for(let it = 0; it <= r.maxIters; it += ps) plan.push([it, lrAt(r, it)]);
+    lineChart($('#chLr'), {
+      series: [{ name: 'planned', color: '#8a8279', points: plan, dashed: true, noTip: true, width: 1.2 }, { name: 'lr', color: r.color, points: seriesUpTo(r, r.iter, it => [it, lrAt(r, it)]), area: true }],
+      yMin: 0, yFmt: v => v === 0 ? '0' : v.toExponential(0), tipFmt: v => v.toExponential(2), xFmt: v => fmtCompact(v), xTipFmt: v => 'iter ' + fmtInt(v), xLabel: 'iteration'
+    });
+  }
+  function renderCkpts(r){
+    const cs = checkpoints(r).slice().reverse();
+    const size = fmtBytes(r.params * 4 * 3 + 1e4);
+    setHTML($('#runCkpts'), cs.length ? '<div class="table-wrap" style="max-height:260px;overflow-y:auto"><table class="table"><thead><tr><th>Iter</th><th class="num">Val loss</th><th class="num">Bits/char</th><th class="num">Epochs</th><th class="num">Size</th></tr></thead><tbody>' +
+      cs.map((c, i) => '<tr><td class="mono">' + fmtInt(c.it) + (i === 0 ? ' <span class="badge ok">best</span>' : ' <span class="faint">overwritten</span>') + '</td><td class="num">' + c.val.toFixed(4) + '</td><td class="num">' + (c.val / Math.LN2).toFixed(3) + '</td><td class="num">' + epochsAt(r, c.it).toFixed(1) + '</td><td class="num">' + size + '</td></tr>').join('') +
+      '</tbody></table></div>' : '<div class="empty" style="padding:22px">No checkpoint yet.</div>');
+  }
+  function renderRunConfig(r){
+    const grp = (t, rows) => '<div class="kv-group"><h4>' + t + '</h4><dl class="kv">' + rows.map(x => '<dt>' + x[0] + '</dt><dd title="' + esc(x[1]) + '">' + esc(x[1]) + '</dd>').join('') + '</dl></div>';
+    $('#runConfig').innerHTML = '<div class="kv-groups">' +
+      grp('Model', [['n_layer', r.layers], ['n_head', r.heads], ['n_embd', r.dModel], ['block_size', r.ctx], ['dropout', r.dropout], ['params', fmtParams(r.params)]]) +
+      grp('Optimisation', [['batch_size', r.batch], ['learning_rate', r.lr], ['min_lr', r.minLr], ['warmup_iters', r.warmup], ['max_iters', fmtInt(r.maxIters)], ['eval_interval', r.evalInterval]]) +
+      grp('Data', [['dataset', r.export], ['vocab_size', r.vocab], ['train tokens', fmtCompact(r.trainTokens)], ['tokens / iter', fmtInt(r.tpi)]]) +
+      grp('Machine', [['device', 'cpu'], ['threads', r.threads], ['dtype', r.dtype], ['seed', r.seed]]) +
+      '</div><div class="cli" style="margin-top:14px">' + esc(trainCli(r)) + '</div>';
+  }
+  function renderRunSample(r){
+    const el = $('#runSample');
+    const b = bestVal(r);
+    if(!b){ el.innerHTML = '<span class="faint">No checkpoint yet.</span>'; return; }
+    const prompt = 'Once upon a time';
+    const out = sampleText(b.val, prompt, 280, 0.8, r.seedN + S.sampleSeed);
+    el.innerHTML = out == null ? '<span class="faint">No clean_documents in the database to sample from.</span>' : '<span class="pr">' + esc(prompt) + '</span>' + esc(out);
+  }
+
+  /* ---------- New run modal ---------- */
+  function nextRunId(){ const n = RUNS.reduce((m, r) => Math.max(m, parseInt(r.id.split('_')[1], 10) || 0), 0) + 1; return 'run_' + String(n).padStart(2, '0'); }
+  function estimateRun(f){
+    const ex = exportInfo(f.export);
+    const c = Object.assign({}, f, { vocab: ex ? ex.vocab : 76 });
+    const params = paramCount(c), tpi = f.batch * f.ctx, total = tpi * f.maxIters, tps = tokPerSec(c);
+    const epochs = ex && ex.train ? total / ex.train : null;
+    const W = [];
+    if(!ex) W.push(['err', 'No export named “' + f.export + '” — run 04_export.py first.']);
+    if(!f.name.trim()) W.push(['err', 'Run name is required.']);
+    else if(!/^[\w.-]+$/.test(f.name.trim())) W.push(['err', 'Run name is used as a folder: letters, digits, "_", "-", "." only.']);
+    if(RUNS.some(r => r.name === f.name.trim())) W.push(['err', 'A run named “' + f.name.trim() + '” already exists.']);
+    if(!(f.layers > 0 && f.dModel > 0 && f.heads > 0 && f.ctx > 0 && f.batch > 0 && f.maxIters > 0 && f.lr > 0)) W.push(['err', 'All model and optimisation values must be positive.']);
+    else if(f.dModel % f.heads) W.push(['err', 'n_embd (' + f.dModel + ') must be divisible by n_head (' + f.heads + ').']);
+    if(!(f.dropout >= 0 && f.dropout < 1)) W.push(['err', 'Dropout must be in [0, 1).']);
+    if(epochs != null && epochs > 20) W.push(['warn', epochs.toFixed(0) + ' epochs over the data — expect heavy memorisation. Add data, dropout, or fewer iters.']);
+    if(epochs != null && epochs < 1) W.push(['info', 'Less than one pass over the training data.']);
+    if(params > 2e7) W.push(['warn', fmtParams(params) + ' params is heavy for a CPU — consider “micro”.']);
+    const ram = ramGB(c);
+    if(CPU.memGB && ram > CPU.memGB * 0.7) W.push(['warn', 'Needs ~' + ram.toFixed(1) + ' GB RAM; reduce batch_size or block_size.']);
+    const secs = total / tps;
+    if(secs > 24 * 3600) W.push(['warn', 'Estimated ' + fmtDuration(secs) + ' of training on this CPU.']);
+    if(f.warmup >= f.maxIters) W.push(['err', 'warmup_iters must be smaller than max_iters.']);
+    if(RUNS.some(r => r.status === 'running')) W.push(['info', 'Another run is training — this one will queue.']);
+    return { params, tpi, total, tps, epochs, secs, ram, W, trainTokens: ex ? ex.train : 0 };
+  }
+  function openNewRunModal(base){
+    const exs = exportNames();
+    const f = Object.assign({ name: 'run-' + nextRunId().split('_')[1], export: exs[0] || 'stories-v1', seed: 1337, dropout: 0.1, batch: 32, lr: 1e-3, minLr: 1e-4, warmup: 100, maxIters: 3000, evalInterval: 250, threads: Math.min(CPU.threads, 8), dtype: 'float32' }, PRESETS.micro);
+    if(base) ['export', 'seed', 'layers', 'dModel', 'heads', 'ctx', 'dropout', 'batch', 'lr', 'minLr', 'warmup', 'maxIters', 'evalInterval', 'threads', 'dtype'].forEach(k => { f[k] = base[k]; });
+    if(base) f.name = base.name + '-2';
+    const num = (k, label, step) => '<div class="fld"><label for="nr_' + k + '">' + label + '</label><input id="nr_' + k + '" data-f="' + k + '" type="number" step="' + (step || 'any') + '"></div>';
+    const sel = (k, label, opts, isNum) => '<div class="fld"><label for="nr_' + k + '">' + label + '</label><select id="nr_' + k + '" data-f="' + k + '"' + (isNum ? ' data-num="1"' : '') + '>' + opts.map(o => '<option value="' + esc(o) + '">' + esc(o) + '</option>').join('') + '</select></div>';
+    const threadOpts = [];
+    for(let t = 1; t <= CPU.threads; t *= 2) threadOpts.push(t);
+    if(threadOpts[threadOpts.length - 1] !== CPU.threads) threadOpts.push(CPU.threads);
+    if(!threadOpts.includes(f.threads)) f.threads = threadOpts[threadOpts.length - 1];
+    const body = document.createElement('div');
+    body.className = 'nr-layout';
+    body.innerHTML = '<div>' +
+      '<div class="form-section first">Run</div><div class="form-grid"><div class="fld span-2"><label for="nr_name">Run name (out_dir)</label><input id="nr_name" data-f="name" type="text"></div>' + sel('export', 'Dataset (export)', exs.length ? exs : ['stories-v1']) + num('seed', 'Seed', 1) + '</div>' +
+      '<div class="form-section">Model · GPT, character-level<div class="chips" id="presetChips">' + Object.keys(PRESETS).map(k => '<span class="chip" data-preset="' + k + '">' + k + '</span>').join('') + '</div></div>' +
+      '<div class="form-grid">' + num('layers', 'n_layer', 1) + num('heads', 'n_head', 1) + num('dModel', 'n_embd', 32) + num('ctx', 'block_size', 32) + num('dropout', 'dropout', 0.05) + '</div>' +
+      '<div class="form-section">Optimisation · AdamW + cosine</div><div class="form-grid">' + num('batch', 'batch_size', 1) + num('lr', 'learning_rate') + num('minLr', 'min_lr') + num('warmup', 'warmup_iters', 10) + num('maxIters', 'max_iters', 100) + num('evalInterval', 'eval_interval', 50) + '</div>' +
+      '<div class="form-section">This machine</div><div class="form-grid">' + sel('threads', 'CPU threads', threadOpts, true) + sel('dtype', 'dtype', ['float32', 'bfloat16']) + '</div>' +
+      '</div><aside class="nr-est" id="nrEst"></aside>';
+    const setVals = () => body.querySelectorAll('[data-f]').forEach(el => { el.value = f[el.dataset.f]; });
+    const read = () => body.querySelectorAll('[data-f]').forEach(el => { f[el.dataset.f] = (el.type === 'number' || el.dataset.num) ? parseFloat(el.value) : el.value; });
+    let est = null;
+    const refresh = () => {
+      read();
+      const p = matchPreset(f);
+      body.querySelectorAll('#presetChips .chip').forEach(c => c.classList.toggle('active', c.dataset.preset === p));
+      est = estimateRun(f);
+      renderEstimate(body.querySelector('#nrEst'), f, est);
+      const btn = $('#modalFoot [data-primary]');
+      if(btn) btn.disabled = est.W.some(w => w[0] === 'err');
+    };
+    body.addEventListener('input', refresh);
+    body.addEventListener('change', refresh);
+    body.addEventListener('click', e => { const pc = e.target.closest('[data-preset]'); if(pc){ read(); Object.assign(f, PRESETS[pc.dataset.preset]); setVals(); refresh(); } });
+    openModal(base ? 'New run · from ' + base.name : 'New training run', body, [
+      { label: 'Cancel', cls: 'btn-ghost', run: closeModal },
+      { label: 'Start training', cls: 'btn-primary', primary: true, icon: 'play', run: () => { refresh(); if(est.W.some(w => w[0] === 'err')){ toast('Fix the errors first.', 'err'); return; } launchRun(f); } }
+    ], false, 'Runs train.py locally on the CPU (device=cpu).');
+    setVals();
+    refresh();
+  }
+  function renderEstimate(el, f, e){
+    el.innerHTML =
+      '<div class="est-kicker">Parameters</div><div class="est-big">' + fmtParams(e.params) + '</div><div class="est-sub">' + f.layers + ' layers × ' + f.dModel + ' wide</div>' +
+      '<div class="est-row"><span>Tokens / iteration</span><b>' + fmtInt(e.tpi) + '</b></div>' +
+      '<div class="est-row"><span>Tokens total</span><b>' + fmtCompact(e.total) + '</b></div>' +
+      '<div class="est-row"><span>Epochs over train.bin</span><b>' + (e.epochs == null ? '—' : e.epochs.toFixed(1)) + '</b></div>' +
+      '<div class="est-row"><span>Speed on ' + Math.min(f.threads, CPU.threads) + ' threads</span><b>' + fmtCompact(e.tps) + ' tok/s</b></div>' +
+      '<div class="est-row"><span>Time per iteration</span><b>' + (e.tpi / e.tps * 1000).toFixed(0) + ' ms</b></div>' +
+      '<div class="est-row"><span>Est. training time</span><b>' + fmtDuration(e.secs) + '</b></div>' +
+      '<div class="est-row" style="border:none"><span>Peak RAM</span><b>' + e.ram.toFixed(2) + ' GB</b></div>' +
+      '<div class="tips-hint" style="margin-top:4px">Rough estimate: ~9 GFLOP/s per thread (fp32), 6·N FLOPs per token.</div>' +
+      e.W.map(w => '<div class="warn-item ' + w[0] + '">' + ic(w[0] === 'info' ? 'info' : 'alert') + '<span>' + esc(w[1]) + '</span></div>').join('');
+  }
+  function launchRun(f){
+    const r = mkRun(Object.assign({}, f, { id: nextRunId(), name: f.name.trim(), status: 'queued', iter: 0 }));
+    RUNS.unshift(r);
+    seedLogs(r);
+    scheduleQueue();
+    S.selectedRun = r.id;
+    closeModal();
+    toast(r.name + (r.status === 'running' ? ' started.' : ' queued — the CPU is busy.'), 'ok');
+    setTab('runs');
+  }
+
+  /* ======================================================================
+     EVALUATIONS
+     ====================================================================== */
+  function renderEvals(){ renderEvalSide(); renderCompare(); renderPlayground(); renderIdeas(); }
+  function renderEvalSide(){
+    const rs = RUNS.filter(r => r.iter > 0);
+    $('#evalRunList').innerHTML = rs.map(r => '<label class="check-row"><input type="checkbox" data-er="' + esc(r.id) + '"' + (S.evalRuns.has(r.id) ? ' checked' : '') + '><span class="run-dot ' + r.status + '" style="background:' + r.color + '"></span><span class="grow">' + esc(r.name) + '</span><span class="mini">' + fmtParams(r.params) + '</span></label>').join('') || '<div class="tips-hint">No runs with checkpoints yet.</div>';
+  }
+  $('#evalRunList').addEventListener('change', e => { const id = e.target.dataset.er; if(!id) return; if(e.target.checked) S.evalRuns.add(id); else S.evalRuns.delete(id); renderCompare(); });
+  function renderCompare(){
+    const el = $('#evalCompare'), rs = RUNS.filter(r => S.evalRuns.has(r.id) && r.iter > 0);
+    let h = '<div class="card-head"><div><div class="card-title">Validation loss</div><div class="card-sub">Lower is better. Bits/char = loss ÷ ln 2. Gap = latest val − best val (positive = overfitting since the best checkpoint).</div></div></div>';
+    if(!rs.length){ el.innerHTML = h + '<div class="empty">Select runs in the left panel.</div>'; return; }
+    const bests = rs.map(r => bestVal(r)), worst = Math.max.apply(null, bests.map(b => b ? b.val : 0)), bestAll = Math.min.apply(null, bests.map(b => b ? b.val : Infinity));
+    h += '<div class="table-wrap"><table class="table"><thead><tr><th>Run</th><th class="num">Params</th><th class="num">Iters</th><th class="num">Epochs</th><th class="num">Best val loss</th><th class="num">Bits/char</th><th class="num">Perplexity</th><th class="num">Gap</th></tr></thead><tbody>' +
+      rs.map((r, i) => {
+        const b = bests[i], last = valLoss(r, Math.floor(r.iter / r.evalInterval) * r.evalInterval), gap = b ? last - b.val : 0;
+        return '<tr><td><span class="run-dot" style="background:' + r.color + ';margin-right:8px"></span><b>' + esc(r.name) + '</b>' + (b && b.val === bestAll ? ' <span class="badge ok">best</span>' : '') + '</td><td class="num">' + fmtParams(r.params) + '</td><td class="num">' + fmtInt(r.iter) + '</td><td class="num">' + epochsAt(r, r.iter).toFixed(1) + '</td>' +
+          '<td class="num"><div class="bar-cell"><span class="bar" style="width:' + (b ? Math.round(b.val / worst * 90) : 0) + 'px;background:' + r.color + '"></span>' + (b ? b.val.toFixed(4) : '—') + '</div></td><td class="num">' + (b ? (b.val / Math.LN2).toFixed(3) : '—') + '</td><td class="num">' + (b ? Math.exp(b.val).toFixed(2) : '—') + '</td>' +
+          '<td class="num" style="color:' + (gap > 0.05 ? 'var(--danger)' : 'var(--text-muted)') + '">' + (gap > 0 ? '+' : '') + gap.toFixed(3) + '</td></tr>';
+      }).join('') + '</tbody></table></div><div class="chart" id="chCompare" style="margin-top:14px"></div>';
+    el.innerHTML = h;
+    lineChart($('#chCompare'), {
+      series: rs.map(r => ({ name: r.name, color: r.color, points: evalPoints(r).filter(p => p[0] > 0).map(p => [p[0] * r.tpi, p[1]]), markers: true })),
+      xFmt: v => fmtCompact(v), xTipFmt: v => fmtCompact(v, 2) + ' tokens seen', tipFmt: v => v.toFixed(4), xLabel: 'tokens seen', height: 200
+    });
+  }
+  function renderPlayground(){
+    const el = $('#evalPlay'), cfg = S.play;
+    if(!runById(cfg.runId) || !bestVal(runById(cfg.runId))){ const r0 = RUNS.find(r => bestVal(r)); cfg.runId = r0 ? r0.id : null; }
+    el.innerHTML = '<div class="card-head"><div><div class="card-title">Playground</div><div class="card-sub">Preview only: output comes from a character n-gram model over your clean_documents, sharpened to match the checkpoint’s val loss. Swap in real sampling once train.py’s sample.py is hooked up.</div></div><button class="btn btn-sm btn-primary" id="btnGen">' + ic('spark') + 'Generate</button></div>' +
+      '<div class="sentence-line lg" id="playSentence"></div><input class="prompt-input" id="playPrompt" aria-label="Prompt" value="' + esc(cfg.prompt) + '"><div class="sample-out" id="playOut"><span class="faint">Press Generate.</span></div>';
+    renderSentence($('#playSentence'), () => ['Sample', { key: 'len', kind: 'select', options: [100, 300, 600].map(v => ({ value: v, label: v + ' chars' })) }, 'from', { key: 'runId', kind: 'select', options: () => RUNS.filter(r => bestVal(r)).map(r => ({ value: r.id, label: r.name })) }, 'at temperature', { key: 'temp', kind: 'select', options: [0.5, 0.8, 1.0, 1.3] }], cfg, () => {});
+    $('#playPrompt').addEventListener('input', e => { cfg.prompt = e.target.value; });
+    $('#playPrompt').addEventListener('keydown', e => { if(e.key === 'Enter') generate(); });
+    $('#btnGen').addEventListener('click', generate);
+    if(S.playOut) $('#playOut').innerHTML = S.playOut;
+  }
+  function generate(){
+    const r = runById(S.play.runId), b = r && bestVal(r);
+    if(!b){ toast('Pick a run that has a checkpoint.', 'warn'); return; }
+    S.sampleSeed++;
+    const out = sampleText(b.val, S.play.prompt, S.play.len, S.play.temp, r.seedN + S.sampleSeed);
+    S.playOut = out == null ? '<span class="faint">No clean_documents to sample from — run the pipelines.</span>' : '<span class="pr">' + esc(S.play.prompt) + '</span>' + esc(out);
+    $('#playOut').innerHTML = S.playOut;
+  }
+  function renderIdeas(){
+    $('#evalIdeas').innerHTML = '<div class="card-head"><div><div class="card-title">Benchmarks · not decided yet</div><div class="card-sub">Val loss above is the only metric for now. Cheap options when you want more:</div></div></div>' +
+      '<ul class="idea-list"><li>An <code>eval_prompts</code> table in the database, scored by per-character loss of the expected continuation.</li>' +
+      '<li>A tiny cloze set: blank out the last word of held-out sentences and count exact matches.</li>' +
+      '<li>Manual 1–5 ratings of Playground samples, stored alongside the run.</li></ul>';
+  }
+
+  /* ======================================================================
+     Live loop
+     ====================================================================== */
+  setInterval(() => {
+    const pipe = tickPipelines();
+    let statusChanged = false, ticked = false;
+    RUNS.forEach(r => { if(r.status === 'running'){ advanceRun(r); ticked = true; if(r.status !== 'running') statusChanged = true; } });
+    if(scheduleQueue()) statusChanged = true;
+    renderMachinePill();
+    updateCounts();
+    if(S.tab === 'data' && db){
+      if(pipe.changed){ renderPipeList(); if(S.dataSub === 'pipelines'){ updatePipeCards(); renderConsole($('#pipeConsole'), PLOGS); } }
+      if(pipe.finished){
+        renderTableList(); renderDataKpis(); renderDbCard();
+        if(S.dataSub === 'pipelines') renderFlowStrip(); else { renderTableChips(); renderTableGrid(); }
+      }
+    } else if(S.tab === 'runs' && (ticked || statusChanged)){
+      renderRunList(); renderMachineBox();
+      const r = runById(S.selectedRun);
+      if(r){ if(r.id + ':' + r.status !== S.detailSig) renderRunDetail(); else if(r.status === 'running') updateRunLive(r); }
+    }
+    if(pipe.finished && !activePipe && !pipeQueue.length) toast('Pipelines finished.', 'ok');
+  }, 500);
+
+  /* ======================================================================
+     Modal, command palette, wiring
+     ====================================================================== */
+  function openModal(title, bodyEl, buttons, small, footNote){
+    closePopovers();
+    $('#modal').classList.toggle('sm', !!small);
+    $('#modalTitle').textContent = title;
+    const body = $('#modalBody');
+    body.innerHTML = '';
+    body.appendChild(bodyEl);
+    const foot = $('#modalFoot');
+    foot.innerHTML = footNote ? '<span class="foot-note">' + esc(footNote) + '</span>' : '';
+    buttons.forEach(b => {
+      const el = document.createElement('button');
+      el.className = 'btn ' + (b.cls || '');
+      el.innerHTML = (b.icon ? ic(b.icon) : '') + esc(b.label);
+      if(b.primary) el.dataset.primary = '1';
+      el.addEventListener('click', b.run);
+      foot.appendChild(el);
+    });
+    $('#modalOverlay').style.display = 'flex';
+    const first = body.querySelector('input,select');
+    if(first) setTimeout(() => first.focus(), 30);
+  }
+  function closeModal(){ $('#modalOverlay').style.display = 'none'; $('#modalBody').innerHTML = ''; }
+  $('#modalClose').addEventListener('click', closeModal);
+  $('#modalOverlay').addEventListener('mousedown', e => { if(e.target.id === 'modalOverlay') closeModal(); });
+
+  const COMMANDS = [
+    { label: 'Go to Data Manager', hint: 'Alt+1', icon: 'database', run: () => setTab('data') },
+    { label: 'Go to Training', hint: 'Alt+2', icon: 'activity', run: () => setTab('runs') },
+    { label: 'Go to Evaluations', hint: 'Alt+3', icon: 'gauge', run: () => setTab('evals') },
+    { label: 'Database: browse tables', hint: 'Data', icon: 'table', run: () => { setTab('data'); setDataSub('database'); } },
+    { label: 'Database: open .sqlite file…', hint: 'Data', icon: 'folder', run: () => $('#btnOpenDb').click() },
+    { label: 'Database: download .sqlite', hint: 'Data', icon: 'download', run: downloadDb },
+    { label: 'Database: reset to demo data', hint: 'Data', icon: 'refresh', run: resetDb },
+    { label: 'Pipelines: show', hint: 'Data', icon: 'code', run: () => { setTab('data'); setDataSub('pipelines'); } },
+    { label: 'Pipelines: run all', hint: 'Data', icon: 'play', run: runAllPipelines },
+    { label: 'Pipelines: add .py script…', hint: 'Data', icon: 'upload', run: () => $('#pyFileInput').click() },
+    { label: 'New training run', hint: 'Training', icon: 'plus', run: () => openNewRunModal() },
+    { label: 'Clone selected run', hint: 'Training', icon: 'copy', run: () => { const r = runById(S.selectedRun); if(r) openNewRunModal(r); } },
+    { label: 'Toggle light / dark theme', hint: 'View', icon: 'sun', run: () => $('#btnThemeToggle').click() }
+  ];
+  let cmdFiltered = COMMANDS.slice(), cmdActive = 0;
+  function openCmd(){ $('#cmdPaletteOverlay').style.display = 'flex'; const i = $('#cmdInput'); i.value = ''; filterCmd(''); i.focus(); }
+  function closeCmd(){ $('#cmdPaletteOverlay').style.display = 'none'; }
+  function filterCmd(v){ v = v.trim().toLowerCase(); cmdFiltered = COMMANDS.filter(c => !v || c.label.toLowerCase().includes(v) || c.hint.toLowerCase().includes(v)); cmdActive = 0; renderCmd(); }
+  function renderCmd(){
+    const list = $('#cmdList');
+    if(!cmdFiltered.length){ list.innerHTML = '<div class="cmd-empty">No matching commands.</div>'; return; }
+    list.innerHTML = cmdFiltered.map((c, i) => '<div class="cmd-item' + (i === cmdActive ? ' active' : '') + '" data-ci="' + i + '"><span class="cmd-item-main"><span class="cmd-icon">' + (ICONS[c.icon] || '') + '</span><span>' + esc(c.label) + '</span></span><span class="cmd-hint">' + esc(c.hint) + '</span></div>').join('');
+  }
+  $('#cmdList').addEventListener('mousedown', e => { const it = e.target.closest('[data-ci]'); if(it){ e.preventDefault(); const c = cmdFiltered[+it.dataset.ci]; closeCmd(); c.run(); } });
+  $('#cmdList').addEventListener('mousemove', e => { const it = e.target.closest('[data-ci]'); if(it && +it.dataset.ci !== cmdActive){ cmdActive = +it.dataset.ci; renderCmd(); } });
+  $('#cmdInput').addEventListener('input', e => filterCmd(e.target.value));
+  $('#cmdInput').addEventListener('keydown', e => {
+    if(e.key === 'ArrowDown'){ e.preventDefault(); cmdActive = Math.min(cmdFiltered.length - 1, cmdActive + 1); renderCmd(); }
+    else if(e.key === 'ArrowUp'){ e.preventDefault(); cmdActive = Math.max(0, cmdActive - 1); renderCmd(); }
+    else if(e.key === 'Enter'){ e.preventDefault(); const c = cmdFiltered[cmdActive]; if(c){ closeCmd(); c.run(); } }
+    else if(e.key === 'Escape'){ e.preventDefault(); closeCmd(); }
+  });
+  $('#cmdPaletteOverlay').addEventListener('mousedown', e => { if(e.target.id === 'cmdPaletteOverlay') closeCmd(); });
+  $('#btnCmdPalette').addEventListener('click', openCmd);
+
+  $$('.tab').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
+  $$('#dataSeg button').forEach(b => b.addEventListener('click', () => setDataSub(b.dataset.sub)));
+  $('#btnPrimary').addEventListener('click', () => { if(S.tab === 'data') runAllPipelines(); else if(S.tab === 'runs') openNewRunModal(); });
+  $('#btnNewRunSide').addEventListener('click', () => openNewRunModal());
+  $('#machinePill').addEventListener('click', () => setTab('runs'));
+  $('#projectName').addEventListener('change', e => { document.title = (e.target.value.trim() || 'Project') + ' — Pretrain Studio'; });
+  document.addEventListener('keydown', e => {
+    if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k'){ e.preventDefault(); openCmd(); return; }
+    if(e.altKey && ['1', '2', '3'].includes(e.key)){ e.preventDefault(); setTab(['data', 'runs', 'evals'][+e.key - 1]); return; }
+    if(e.key === 'Escape'){
+      if(openPop){ closePopovers(); return; }
+      if($('#modalOverlay').style.display === 'flex'){ closeModal(); return; }
+      if($('#cmdPaletteOverlay').style.display === 'flex') closeCmd();
+    }
+  });
+
+  function applyTheme(theme){
+    document.documentElement.setAttribute('data-theme', theme);
+    $('#btnThemeToggle .btn-ic').innerHTML = ICONS[theme === 'dark' ? 'sun' : 'moon'];
+    try{ localStorage.setItem('pretrain_studio_theme', theme); }catch(e){ /* storage unavailable */ }
+  }
+  let savedTheme = 'dark';
+  try{ savedTheme = localStorage.getItem('pretrain_studio_theme') || 'dark'; }catch(e){ /* ignore */ }
+  applyTheme(savedTheme);
+  $('#btnThemeToggle').addEventListener('click', () => applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'));
+
+  (async function boot(){
+    await initDb();
+    seedRuns();
+    RUNS.forEach(r => { if(r.iter > 0) S.evalRuns.add(r.id); });
+    setTab('data');
+    $('#statusRight').textContent = db ? 'SQLite ' + sqliteVersion + ' via sql.js (in-browser) · training simulated, accelerated clock' : 'SQLite unavailable · training simulated';
+    setStatus(db ? 'Loaded ' + dbName + ' (' + fmtBytes(dbSize) + ').' : 'SQLite could not be loaded.');
+  })();
+})();
+</script>
+</body>
+</html>
