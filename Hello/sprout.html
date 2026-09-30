@@ -1,0 +1,2543 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sprout — Resumable Data Binding</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet" />
+
+  <script>
+    (function () {
+      let theme = null;
+      try { theme = localStorage.getItem("sprout_theme"); } catch (error) {}
+      if (theme !== "light" && theme !== "dark") {
+        theme = window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      }
+      document.documentElement.dataset.theme = theme;
+      document.documentElement.style.colorScheme = theme;
+    })();
+  </script>
+
+  <style>
+    /* ======================================================================
+       1. Amber design tokens
+       ====================================================================== */
+    :root {
+      --bg: #F9F8F6;
+      --surface: #FFFFFF;
+      --surface-alt: #F3EFE9;
+      --surface-hover: #ECE7DE;
+      --surface-glass: rgba(255, 255, 255, 0.88);
+      --border: #E5DFD5;
+      --border-strong: #CEC5B7;
+      --border-focus: #D4622B;
+
+      --text: #191817;
+      --text-muted: #68625B;
+      --text-faint: #989187;
+
+      --accent: #D4622B;
+      --accent-hover: #BF5321;
+      --accent-tint: rgba(212, 98, 43, 0.09);
+      --accent-tint-hover: rgba(212, 98, 43, 0.16);
+      --accent-glow: rgba(212, 98, 43, 0.26);
+      --accent-contrast: #FFFFFF;
+
+      --success: #1E8E3E;  --success-dim: #EAF5ED;  --success-border: #A6D7B2;
+      --warning: #B77900;  --warning-dim: #FDF5E5;  --warning-border: #F7D488;
+      --danger:  #D93025;  --danger-dim:  #FCEAE8;  --danger-border:  #F5A9A4;
+      --info:    #2563EB;  --info-dim:    #EFF6FF;  --info-border:    #93C5FD;
+
+      --r-xs: 6px;  --r-sm: 8px;  --r-md: 12px;  --r-lg: 16px;  --r-pill: 9999px;
+
+      --shadow-xs: 0 1px 2px rgba(25, 24, 23, 0.04);
+      --shadow-sm: 0 1px 3px rgba(25, 24, 23, 0.06);
+      --shadow-md: 0 4px 14px rgba(25, 24, 23, 0.07), 0 16px 28px rgba(25, 24, 23, 0.04);
+
+      --font-serif: "Playfair Display", Georgia, serif;
+      --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --font-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+
+      --z-sticky: 1020;
+      --dur-fast: 140ms;  --dur-med: 260ms;
+      --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+      --topbar-h: 60px;
+      --sidebar-w: 248px;
+    }
+
+    [data-theme="dark"] {
+      --bg: #121211;
+      --surface: #1B1A19;
+      --surface-alt: #242220;
+      --surface-hover: #2C2926;
+      --surface-glass: rgba(27, 26, 25, 0.88);
+      --border: rgba(255, 255, 255, 0.10);
+      --border-strong: rgba(255, 255, 255, 0.18);
+      --border-focus: #F08E5A;
+
+      --text: #F5F3EF;
+      --text-muted: #A59D92;
+      --text-faint: #736C63;
+
+      --accent: #F08E5A;
+      --accent-hover: #F3A072;
+      --accent-tint: rgba(240, 142, 90, 0.15);
+      --accent-tint-hover: rgba(240, 142, 90, 0.24);
+      --accent-glow: rgba(240, 142, 90, 0.32);
+      --accent-contrast: #18110D;
+
+      --success: #53C378;  --success-dim: rgba(83, 195, 120, 0.14);  --success-border: rgba(83, 195, 120, 0.3);
+      --warning: #F2B957;  --warning-dim: rgba(242, 185, 87, 0.14);  --warning-border: rgba(242, 185, 87, 0.3);
+      --danger:  #F16E63;  --danger-dim:  rgba(241, 110, 99, 0.14);  --danger-border:  rgba(241, 110, 99, 0.3);
+      --info:    #6BA5FA;  --info-dim:    rgba(107, 165, 250, 0.14);  --info-border:    rgba(107, 165, 250, 0.3);
+
+      --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.4);
+      --shadow-md: 0 6px 18px rgba(0, 0, 0, 0.5);
+    }
+
+    /* ======================================================================
+       2. Base
+       ====================================================================== */
+    *, *::before, *::after { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: var(--font-sans);
+      font-size: 14px;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg);
+      -webkit-font-smoothing: antialiased;
+      transition: background-color var(--dur-med) var(--ease-out), color var(--dur-med) var(--ease-out);
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; text-underline-offset: 3px; }
+    :focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent-glow); }
+
+    code {
+      font-family: var(--font-mono);
+      font-size: 0.86em;
+      padding: 1px 6px;
+      border: 1px solid var(--border);
+      border-radius: var(--r-xs);
+      background: var(--surface-alt);
+      color: var(--text);
+      overflow-wrap: anywhere;
+    }
+
+    .li { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; line-height: 0; color: inherit; }
+    .li svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+    .li-sm svg { width: 14px; height: 14px; }
+
+    /* ======================================================================
+       3. Topbar & navigation
+       ====================================================================== */
+    .ds-topbar {
+      position: sticky;
+      top: 0;
+      z-index: var(--z-sticky);
+      height: var(--topbar-h);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 0 28px;
+      background: var(--surface-glass);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+    }
+    .brand-lockup {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--font-serif);
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .brand-lockup:hover { text-decoration: none; }
+    .brand-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+    .brand-sub { font-family: var(--font-sans); font-size: 13px; font-weight: 600; color: var(--text-muted); }
+    .ds-topbar-actions { display: flex; align-items: center; gap: 10px; }
+
+    .ds-layout { display: flex; align-items: flex-start; max-width: 1240px; margin: 0 auto; }
+
+    .ds-sidebar {
+      position: sticky;
+      top: var(--topbar-h);
+      flex: 0 0 var(--sidebar-w);
+      width: var(--sidebar-w);
+      height: calc(100vh - var(--topbar-h));
+      overflow-y: auto;
+      padding: 36px 16px 32px 24px;
+    }
+    .ds-sidebar-group + .ds-sidebar-group { margin-top: 22px; }
+    .ds-sidebar .ds-eyebrow { margin: 0 0 8px 10px; }
+    .ds-sidebar ul { display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 0; list-style: none; }
+    .ds-sidebar a {
+      display: grid;
+      grid-template-columns: 26px minmax(0, 1fr);
+      align-items: center;
+      gap: 4px;
+      padding: 7px 10px;
+      border: 1px solid transparent;
+      border-radius: var(--r-sm);
+      color: var(--text-muted);
+      font-size: 13px;
+      font-weight: 600;
+      transition: background var(--dur-fast), color var(--dur-fast), border-color var(--dur-fast);
+    }
+    .ds-sidebar a:hover { background: var(--surface-alt); color: var(--text); text-decoration: none; }
+    .ds-sidebar a.active { background: var(--accent-tint); border-color: var(--accent-tint-hover); color: var(--accent); }
+    .nav-index { font-family: var(--font-mono); font-size: 10px; color: var(--text-faint); }
+    .ds-sidebar a.active .nav-index { color: var(--accent); }
+
+    /* ======================================================================
+       4. Page structure
+       ====================================================================== */
+    .ds-main { flex: 1 1 auto; min-width: 0; max-width: 880px; padding: 44px 32px 140px; }
+
+    .ds-eyebrow {
+      margin: 0 0 8px;
+      font-size: 11.5px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+    .ds-intro { margin-bottom: 56px; }
+    .ds-intro h1 {
+      margin: 0 0 12px;
+      font-family: var(--font-serif);
+      font-size: 2.75rem;
+      line-height: 1.15;
+      letter-spacing: -0.02em;
+    }
+    .ds-intro p { margin: 0; max-width: 68ch; font-size: 16px; line-height: 1.65; color: var(--text-muted); }
+    .ds-intro-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 22px; }
+
+    .ds-section { margin-bottom: 64px; scroll-margin-top: calc(var(--topbar-h) + 20px); }
+    .sec-header { margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+    .sec-header h2 { display: flex; align-items: center; gap: 10px; margin: 0; font-size: 20px; font-weight: 700; }
+    .sec-header h2 .li { color: var(--accent); }
+    .sec-header p { margin: 4px 0 0; font-size: 13.5px; color: var(--text-muted); }
+
+    .prose p { margin: 0 0 14px; font-size: 14.5px; line-height: 1.7; }
+    .prose p:last-child { margin-bottom: 0; }
+
+    .stack { display: flex; flex-direction: column; gap: 18px; }
+
+    .canvas-card {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      padding: 26px;
+      border: 1px solid var(--border);
+      border-radius: var(--r-lg);
+      background: var(--surface);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .callout {
+      margin: 0;
+      padding: 12px 14px;
+      border-left: 2px solid var(--accent);
+      border-radius: 0 var(--r-xs) var(--r-xs) 0;
+      background: var(--accent-tint);
+      color: var(--text-muted);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    /* ======================================================================
+       5. Controls
+       ====================================================================== */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 9px 18px;
+      border: 1px solid transparent;
+      border-radius: var(--r-pill);
+      font-family: var(--font-sans);
+      font-size: 13.5px;
+      font-weight: 600;
+      line-height: 1;
+      white-space: nowrap;
+      text-decoration: none;
+      cursor: pointer;
+      user-select: none;
+      transition: all var(--dur-fast) var(--ease-out);
+    }
+    .btn:hover { text-decoration: none; }
+    .btn:active { transform: scale(0.97); }
+    .btn-primary { background: var(--accent); color: var(--accent-contrast); box-shadow: 0 1px 3px var(--accent-glow); }
+    .btn-primary:hover { background: var(--accent-hover); box-shadow: 0 4px 12px var(--accent-glow); }
+    .btn-secondary { background: var(--surface); color: var(--text); border-color: var(--border); box-shadow: var(--shadow-xs); }
+    .btn-secondary:hover { background: var(--surface-alt); border-color: var(--border-strong); }
+    .btn-ghost { background: transparent; color: var(--text-muted); }
+    .btn-ghost:hover { background: var(--surface-alt); color: var(--text); }
+    .btn-sm { padding: 6px 12px; font-size: 12px; gap: 6px; }
+
+    .amber-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+    .amber-field > label, .field-label { color: var(--text-muted); font-size: 12px; font-weight: 600; }
+    .amber-control, .amber-select {
+      width: 100%;
+      min-height: 42px;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--r-sm);
+      outline: none;
+      background: var(--surface);
+      color: var(--text);
+      font-family: var(--font-sans);
+      font-size: 13.5px;
+      transition: border-color var(--dur-fast), box-shadow var(--dur-fast);
+    }
+    .amber-control::placeholder { color: var(--text-faint); }
+    .amber-control:focus-visible, .amber-select:focus-visible { border-color: var(--border-focus); box-shadow: 0 0 0 3px var(--accent-glow); }
+
+    .stepper {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      width: fit-content;
+      padding: 4px 8px;
+      border: 1px solid var(--border);
+      border-radius: var(--r-pill);
+      background: var(--surface-alt);
+    }
+    .stepper button {
+      width: 30px;
+      height: 30px;
+      border: 1px solid var(--border);
+      border-radius: 50%;
+      background: var(--surface);
+      color: var(--text);
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .stepper button:hover { border-color: var(--accent); color: var(--accent); }
+    .stepper .val { min-width: 36px; font-family: var(--font-mono); font-size: 13.5px; font-weight: 700; text-align: center; }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      width: fit-content;
+      padding: 3px 10px;
+      border: 1px solid var(--border);
+      border-radius: var(--r-pill);
+      background: var(--surface-alt);
+      color: var(--text-muted);
+      font-size: 11.5px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .badge-accent { background: var(--accent-tint); border-color: var(--accent); color: var(--accent); }
+    .badge-success { background: var(--success-dim); border-color: var(--success-border); color: var(--success); }
+    .badge-warning { background: var(--warning-dim); border-color: var(--warning-border); color: var(--warning); }
+    .badge-info { background: var(--info-dim); border-color: var(--info-border); color: var(--info); }
+    .dot { display: inline-block; flex-shrink: 0; width: 7px; height: 7px; border-radius: 50%; background: var(--success); box-shadow: 0 0 0 3px var(--success-dim); }
+
+    /* ======================================================================
+       6. Code blocks
+       ====================================================================== */
+    .code-block-container { overflow: hidden; border: 1px solid #2B2824; border-radius: var(--r-md); background: #141312; }
+    .code-header-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 8px 14px;
+      border-bottom: 1px solid #2B2824;
+      background: #1B1A19;
+    }
+    .code-label { color: #A59D92; font-family: var(--font-mono); font-size: 11.5px; }
+    .copy-code-btn {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 9px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: var(--r-xs);
+      background: rgba(255, 255, 255, 0.08);
+      color: #fff;
+      font-family: var(--font-sans);
+      font-size: 11px;
+      cursor: pointer;
+    }
+    .copy-code-btn:hover { background: rgba(255, 255, 255, 0.14); }
+    .api-code-block {
+      margin: 0;
+      padding: 18px 20px;
+      overflow-x: auto;
+      background: #141312;
+      color: #ECE7DE;
+      font-family: var(--font-mono);
+      font-size: 12.5px;
+      line-height: 1.65;
+    }
+    .api-code-block code { padding: 0; border: 0; background: none; color: inherit; font-size: inherit; overflow-wrap: normal; }
+    .api-code-block .t { color: #F08E5A; }
+    .api-code-block .k { color: #F2B957; }
+    .api-code-block .s { color: #53C378; }
+
+    /* ======================================================================
+       7. Live demo, phases, tables, accordions
+       ====================================================================== */
+    .sprout-demo-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .sprout-demo-grid { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: end; gap: 20px; }
+    .sprout-greeting {
+      margin: 0;
+      padding: 14px 16px;
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      background: var(--surface-alt);
+      font-family: var(--font-serif);
+      font-size: 1.35rem;
+    }
+    .sprout-greeting strong { color: var(--accent); }
+
+    .phase-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+    .phase-card { gap: 10px; padding: 20px; }
+    .phase-card h3 { display: flex; align-items: center; gap: 10px; margin: 0; font-size: 15px; }
+    .phase-card p { margin: 0; color: var(--text-muted); font-size: 13px; line-height: 1.6; }
+    .phase-index {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: var(--accent-contrast);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .table-container { width: 100%; overflow-x: auto; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface); box-shadow: var(--shadow-xs); }
+    table.clean-table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; }
+    table.clean-table th {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface-alt);
+      color: var(--text-faint);
+      font-size: 11.5px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    table.clean-table td { padding: 14px 16px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    table.clean-table tr:last-child td { border-bottom: none; }
+    table.clean-table td:first-child { white-space: nowrap; }
+
+    .amber-accordion-list { display: flex; flex-direction: column; gap: 8px; }
+    .amber-accordion { overflow: hidden; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface); }
+    .amber-accordion summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 14px;
+      list-style: none;
+      cursor: pointer;
+    }
+    .amber-accordion summary::-webkit-details-marker { display: none; }
+    .amber-accordion summary > span:first-child { display: flex; flex-direction: column; gap: 2px; }
+    .amber-accordion summary strong { font-size: 13px; font-weight: 600; }
+    .amber-accordion summary small { color: var(--text-faint); font-size: 11.5px; }
+    .amber-accordion-chevron { color: var(--text-muted); font-size: 16px; transition: transform var(--dur-fast); }
+    .amber-accordion[open] .amber-accordion-chevron { transform: rotate(180deg); }
+    .amber-accordion-body {
+      padding: 12px 14px 14px;
+      border-top: 1px solid var(--border);
+      background: var(--surface-alt);
+      color: var(--text-muted);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    .amber-accordion-body p { margin: 0; }
+
+    .check-list { display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 0; list-style: none; }
+    .check-list li { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 10px; font-size: 13.5px; line-height: 1.6; }
+    .check-list .li { margin-top: 3px; color: var(--success); }
+
+    /* ======================================================================
+       8. Components rendered by Sprout examples
+       ====================================================================== */
+    .sprout-box {
+      display: grid;
+      gap: 14px;
+      padding: 18px;
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      background: var(--surface);
+      box-shadow: var(--shadow-xs);
+      font-size: 13.5px;
+    }
+    .sprout-box p { margin: 0; }
+    .sprout-box .row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+    .sprout-box button {
+      width: fit-content;
+      padding: 7px 14px;
+      border: 1px solid var(--border);
+      border-radius: var(--r-pill);
+      background: var(--surface);
+      color: var(--text);
+      font-family: var(--font-sans);
+      font-size: 12.5px;
+      font-weight: 600;
+      box-shadow: var(--shadow-xs);
+      cursor: pointer;
+      transition: all var(--dur-fast);
+    }
+    .sprout-box button:hover { border-color: var(--border-strong); background: var(--surface-alt); }
+    .sprout-box button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .sprout-box input:not([type="checkbox"]):not([type="radio"]), .sprout-box select {
+      width: 100%;
+      min-height: 40px;
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--r-sm);
+      outline: none;
+      background: var(--surface);
+      color: var(--text);
+      font-family: var(--font-sans);
+      font-size: 13.5px;
+    }
+    .sprout-box input:focus-visible, .sprout-box select:focus-visible { border-color: var(--border-focus); box-shadow: 0 0 0 3px var(--accent-glow); }
+    .sprout-box input.is-invalid { border-color: var(--danger); }
+    .sprout-box input[type="checkbox"], .sprout-box input[type="radio"] { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); }
+    .sprout-box label { display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: 13px; font-weight: 600; }
+    .sprout-box ul { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+    .sprout-box li {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: var(--r-sm);
+      background: var(--surface-alt);
+    }
+    .sprout-box li button { margin-left: auto; padding: 4px 10px; }
+    .sprout-box li.done span { color: var(--text-faint); text-decoration: line-through; }
+    .sprout-box .radio-row { display: flex; flex-wrap: wrap; gap: 16px; }
+    .sprout-box .status-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+    .sprout-box .status-badge { padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-alt); }
+    .sprout-box .status-badge.status-busy { border-color: var(--warning-border); background: var(--warning-dim); color: var(--warning); }
+    .sprout-box .status-badge.status-done { border-color: var(--success-border); background: var(--success-dim); color: var(--success); }
+    .sprout-box .hint { color: var(--text-faint); font-size: 12px; }
+    .sprout-box a { overflow-wrap: anywhere; }
+
+    /* ======================================================================
+       9. Playground
+       ====================================================================== */
+    .playground { gap: 0; padding: 0; overflow: hidden; }
+    .playground-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface-alt);
+    }
+    .playground-toolbar .amber-field { flex: 1 1 280px; max-width: 420px; }
+    .playground-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+    .playground-description { margin: 0; border-left-width: 2px; border-radius: 0; border-bottom: 1px solid var(--border); padding: 10px 18px; }
+    .playground-panes { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr); }
+    .lab-pane { display: flex; flex-direction: column; min-width: 0; }
+    .lab-pane + .lab-pane { border-left: 1px solid var(--border); }
+    .lab-pane-label {
+      padding: 8px 16px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text-faint);
+      font-size: 10.5px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    #playground-source {
+      flex: 1;
+      width: 100%;
+      min-height: 360px;
+      margin: 0;
+      padding: 16px;
+      border: 0;
+      border-radius: 0;
+      outline: none;
+      resize: vertical;
+      background: #141312;
+      color: #ECE7DE;
+      font-family: var(--font-mono);
+      font-size: 12.5px;
+      line-height: 1.65;
+      tab-size: 2;
+    }
+    #playground-source:focus-visible { box-shadow: inset 0 0 0 2px var(--accent-glow); }
+    #playground-output { flex: 1; min-height: 220px; padding: 18px; background: var(--bg); }
+    #playground-output:empty::before { content: "Press Run to render your markup here."; color: var(--text-faint); font-size: 12.5px; }
+    #playground-error {
+      margin: 0;
+      padding: 10px 18px;
+      border-top: 1px solid var(--danger-border);
+      background: var(--danger-dim);
+      color: var(--danger);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      white-space: pre-wrap;
+    }
+    #playground-error:empty { display: none; }
+
+    /* ======================================================================
+       10. Responsive & accessibility
+       ====================================================================== */
+    @media (max-width: 900px) {
+      .ds-layout { display: block; }
+      .ds-sidebar {
+        z-index: calc(var(--z-sticky) - 1);
+        display: flex;
+        gap: 6px;
+        width: auto;
+        height: auto;
+        padding: 8px 14px;
+        overflow-x: auto;
+        border-bottom: 1px solid var(--border);
+        background: var(--surface-glass);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+      }
+      .ds-sidebar-group { display: contents; }
+      .ds-sidebar .ds-eyebrow { display: none; }
+      .ds-sidebar ul { flex-direction: row; gap: 6px; }
+      .ds-sidebar a { grid-template-columns: auto auto; gap: 6px; padding: 6px 12px; border-radius: var(--r-pill); white-space: nowrap; }
+      .ds-section { scroll-margin-top: calc(var(--topbar-h) + 64px); }
+    }
+    @media (max-width: 760px) {
+      .ds-topbar { padding: 0 14px; gap: 10px; }
+      .brand-sub { display: none; }
+      .ds-main { padding: 28px 14px 96px; }
+      .ds-intro { margin-bottom: 40px; }
+      .ds-intro h1 { font-size: clamp(1.9rem, 8vw, 2.4rem); }
+      .ds-intro p { font-size: 14.5px; }
+      .canvas-card { padding: 16px; }
+      .playground { padding: 0; }
+      .phase-grid, .sprout-demo-grid { grid-template-columns: minmax(0, 1fr); }
+      .playground-panes { grid-template-columns: minmax(0, 1fr); }
+      .lab-pane + .lab-pane { border-left: 0; border-top: 1px solid var(--border); }
+      #playground-source { min-height: 280px; }
+      table.clean-table { min-width: 560px; }
+      .api-code-block { padding: 14px; font-size: 11px; }
+    }
+    @media (pointer: coarse) and (max-width: 900px) {
+      .btn, .sprout-box button, .stepper button { min-height: 44px; min-width: 44px; }
+      .amber-control, .amber-select, .sprout-box input:not([type="checkbox"]):not([type="radio"]) { min-height: 44px; font-size: 16px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+    }
+    @media (forced-colors: active) {
+      :focus-visible { outline: 2px solid Highlight; outline-offset: 2px; box-shadow: none; }
+    }
+  </style>
+</head>
+
+<body>
+  <header class="ds-topbar">
+    <a href="#top" class="brand-lockup">
+      <span>Sprout</span>
+      <span class="brand-dot" aria-hidden="true"></span>
+      <span class="brand-sub">Resumable data binding</span>
+    </a>
+    <div class="ds-topbar-actions">
+      <a class="btn btn-secondary btn-sm" href="#playground">
+        <span class="li" aria-hidden="true"><svg viewBox="0 0 24 24"><polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/></svg></span>
+        <span>Playground</span>
+      </a>
+      <button class="btn btn-secondary btn-sm" id="theme-toggle" type="button" aria-label="Switch to dark theme">
+        <span class="li icon-moon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg></span>
+        <span class="li icon-sun" aria-hidden="true" hidden><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg></span>
+        <span class="theme-label">Dark</span>
+      </button>
+    </div>
+  </header>
+
+  <div class="ds-layout">
+    <nav class="ds-sidebar" aria-label="Documentation">
+      <div class="ds-sidebar-group">
+        <p class="ds-eyebrow">Guide</p>
+        <ul>
+          <li><a href="#overview" class="active"><span class="nav-index">01</span>Overview</a></li>
+          <li><a href="#how-it-works"><span class="nav-index">02</span>How it works</a></li>
+          <li><a href="#directives"><span class="nav-index">03</span>Directives</a></li>
+          <li><a href="#api"><span class="nav-index">04</span>Public API</a></li>
+          <li><a href="#limitations"><span class="nav-index">05</span>Limitations &amp; trust</a></li>
+          <li><a href="#invoke"><span class="nav-index">06</span>AI tool invocation</a></li>
+        </ul>
+      </div>
+      <div class="ds-sidebar-group">
+        <p class="ds-eyebrow">Try it</p>
+        <ul>
+          <li><a href="#playground"><span class="nav-index">07</span>Playground</a></li>
+        </ul>
+      </div>
+    </nav>
+
+    <main class="ds-main" id="top">
+      <div class="ds-intro">
+        <p class="ds-eyebrow">Small markup · Live state</p>
+        <h1>Sprout</h1>
+        <p>
+          A data-first reactive templating language with exactly two attributes:
+          <code>data:</code> declares state, <code>bind:</code> binds it to the DOM.
+          The simplicity of
+          <a href="https://alpinejs.dev/" target="_blank" rel="noopener">Alpine.js</a>,
+          with the lazy, resumable interactivity model of
+          <a href="https://qwik.dev/" target="_blank" rel="noopener">Qwik</a>.
+        </p>
+        <div class="ds-intro-actions">
+          <a class="btn btn-primary" href="#playground">Open the playground</a>
+          <a class="btn btn-secondary" href="#directives">Read the directives</a>
+        </div>
+      </div>
+
+      <section class="ds-section" id="overview">
+        <div class="sec-header">
+          <h2>
+            <span class="li" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 20h10"/><path d="M10 20c5.5-2.5.8-6.4 3-10"/><path d="M9.5 9.4c1.1.8 1.8 2.2 2.3 3.7-2 .4-3.5.4-4.8-.3-1.2-.6-2.3-1.9-3-4.2 2.8-.5 4.4 0 5.5.8z"/><path d="M14.1 6a7 7 0 0 0-1.1 4c1.9-.1 3.3-.6 4.3-1.4 1-1 1.6-2.3 1.7-4.6-2.7.1-4 1-4.9 2z"/></svg></span>
+            01. Overview
+          </h2>
+          <p>Paint immediately, wire up on first touch.</p>
+        </div>
+
+        <div class="stack">
+          <div class="prose">
+            <p>
+              Declare state with <code>data:</code> and the template renders it
+              immediately &mdash; no hydration, no JS execution required just to
+              display values. Framework code (effects, event handlers) is only
+              wired up for a component the first time the user actually interacts
+              with it, so pages with hundreds of components stay cheap until
+              they're touched.
+            </p>
+          </div>
+
+          <div
+            class="canvas-card"
+            data:="{
+              count: 0,
+              name: 'World',
+              inc() {
+                this.count++;
+              },
+              dec() {
+                this.count--;
+              },
+              reset() {
+                this.count = 0;
+                this.name = 'World';
+              }
+            }"
+          >
+            <div class="sprout-demo-head">
+              <span class="badge badge-success"><span class="dot" aria-hidden="true"></span>Live demo</span>
+              <button class="btn btn-ghost btn-sm" type="button" bind:click="reset">Reset</button>
+            </div>
+
+            <div class="sprout-demo-grid">
+              <div class="amber-field">
+                <span class="field-label" id="demo-counter-label">Counter</span>
+                <div class="stepper" role="group" aria-labelledby="demo-counter-label">
+                  <button type="button" aria-label="Decrement" bind:click="dec">−</button>
+                  <span class="val" aria-live="polite" bind:text="count"></span>
+                  <button type="button" aria-label="Increment" bind:click="inc">+</button>
+                </div>
+              </div>
+              <div class="amber-field">
+                <label for="demo-name">Your name</label>
+                <input id="demo-name" class="amber-control" placeholder="Type your name" bind:value="name" />
+              </div>
+            </div>
+
+            <p class="sprout-greeting">Hello, <strong bind:text="name"></strong>!</p>
+          </div>
+
+          <div class="code-block-container">
+            <div class="code-header-bar">
+              <span class="code-label">counter.html</span>
+              <button class="copy-code-btn" type="button" data-copy="demo-source">
+                <span class="li li-sm" aria-hidden="true"><svg viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg></span>
+                <span>Copy</span>
+              </button>
+            </div>
+            <pre class="api-code-block" id="demo-source"><code><span class="t">&lt;div</span>
+  <span class="k">data:</span>=<span class="s">"{
+    count: 0,
+    name: 'World',
+    inc() { this.count++ },
+    dec() { this.count-- },
+    reset() { this.count = 0; this.name = 'World' }
+  }"</span>
+<span class="t">&gt;</span>
+  <span class="t">&lt;button</span> <span class="k">bind:click</span>=<span class="s">"dec"</span><span class="t">&gt;</span>-<span class="t">&lt;/button&gt;</span>
+  <span class="t">&lt;strong</span> <span class="k">bind:text</span>=<span class="s">"count"</span><span class="t">&gt;&lt;/strong&gt;</span>
+  <span class="t">&lt;button</span> <span class="k">bind:click</span>=<span class="s">"inc"</span><span class="t">&gt;</span>+<span class="t">&lt;/button&gt;</span>
+
+  <span class="t">&lt;input</span> <span class="k">bind:value</span>=<span class="s">"name"</span> <span class="t">/&gt;</span>
+  <span class="t">&lt;p&gt;</span>Hello, <span class="t">&lt;span</span> <span class="k">bind:text</span>=<span class="s">"name"</span><span class="t">&gt;&lt;/span&gt;</span>!<span class="t">&lt;/p&gt;</span>
+<span class="t">&lt;/div&gt;</span></code></pre>
+          </div>
+        </div>
+      </section>
+
+      <section class="ds-section" id="how-it-works">
+        <div class="sec-header">
+          <h2>
+            <span class="li" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></svg></span>
+            02. How it works
+          </h2>
+          <p>Every <code>data:</code> root goes through two phases.</p>
+        </div>
+
+        <div class="stack">
+          <div class="phase-grid">
+            <article class="canvas-card phase-card">
+              <h3><span class="phase-index">1</span>Paint</h3>
+              <p>
+                On load, <code>data:</code> is evaluated once and every
+                <code>bind:*</code> in the subtree is rendered from it. No
+                reactivity, no listeners: just the current values on screen.
+              </p>
+            </article>
+            <article class="canvas-card phase-card">
+              <h3><span class="phase-index">2</span>Resume</h3>
+              <p>
+                A delegated listener on <code>document</code> waits for any event
+                a component cares about. The first one inside a root makes its
+                data reactive and adopts the painted DOM in place, so the element
+                you clicked or typed into is never replaced.
+              </p>
+            </article>
+          </div>
+
+          <p class="callout">
+            Event methods can also be <code>async</code>. While the promise runs,
+            Sprout sets <code>pending</code> to <code>true</code>; the resolved value
+            goes to <code>data</code> and a rejection to <code>error</code>. Sprout
+            only writes the fields you declare in <code>data:</code>, and when calls
+            overlap only the most recent result is kept.
+          </p>
+        </div>
+      </section>
+
+      <section class="ds-section" id="directives">
+        <div class="sec-header">
+          <h2>
+            <span class="li" aria-hidden="true"><svg viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></span>
+            03. Directives
+          </h2>
+          <p>Two attributes; the value's type decides the behavior.</p>
+        </div>
+
+        <div class="stack">
+          <div class="prose">
+            <p>
+              <code>data:</code> declares state and <code>bind:&lt;name&gt;</code>
+              binds it to the DOM. There's no <code>bind:text</code>/<code>bind:show</code>/<code>bind:list</code>
+              to memorize &mdash; <code>&lt;name&gt;</code> is just a label (used
+              verbatim as an attribute or event name where relevant); the
+              <strong>type of the evaluated value</strong> decides what happens.
+              The type is checked the first time the expression runs and stays
+              fixed after that.
+            </p>
+          </div>
+
+          <div class="table-container">
+            <table class="clean-table">
+              <thead>
+                <tr>
+                  <th scope="col">Value type</th>
+                  <th scope="col">Behavior</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><span class="badge badge-accent">function</span></td>
+                  <td>Attach an event listener; <code>&lt;name&gt;</code> is the event name, e.g. <code>bind:click="save"</code>. Non-bubbling events such as <code>focus</code> work too.</td>
+                </tr>
+                <tr>
+                  <td><span class="badge badge-info">array</span></td>
+                  <td>Repeat this element once per item, exposing <code>item</code>/<code>index</code>; object items keep their identity automatically</td>
+                </tr>
+                <tr>
+                  <td><span class="badge badge-warning">boolean</span></td>
+                  <td>Toggle the <code>&lt;name&gt;</code> attribute: present when <code>true</code>, removed when <code>false</code>, e.g. <code>bind:hidden="!open"</code> or <code>bind:disabled="busy"</code>. The element stays in the DOM.</td>
+                </tr>
+                <tr>
+                  <td><span class="badge badge-success">object</span></td>
+                  <td>Class map: <code>{ className: boolean }</code> merged into <code>class</code>; keys that disappear are removed</td>
+                </tr>
+                <tr>
+                  <td><span class="badge">string / number / null</span></td>
+                  <td>Set <code>textContent</code> when <code>&lt;name&gt;</code> is <code>text</code>, otherwise set the <code>&lt;name&gt;</code> attribute</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <p class="callout">
+            On <code>input</code>, <code>select</code> and <code>textarea</code>, the
+            first <code>bind:&lt;name&gt;</code> is a two-way model that listens to
+            both <code>input</code> and <code>change</code>. Any further
+            <code>bind:*</code> on the same control follows the rules above, so
+            <code>bind:keydown="search"</code> or <code>bind:class</code> work
+            alongside the model. Attribute order doesn't matter for arrays: <code>bind:class="{ done: item.done }"</code> may come before
+            the list binding it depends on.
+          </p>
+        </div>
+      </section>
+
+      <section class="ds-section" id="api">
+        <div class="sec-header">
+          <h2>
+            <span class="li" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 3H7a2 2 0 0 0-2 2v5a2 2 0 0 1-2 2 2 2 0 0 1 2 2v5c0 1.1.9 2 2 2h1"/><path d="M16 21h1a2 2 0 0 0 2-2v-5c0-1.1.9-2 2-2a2 2 0 0 1-2-2V5a2 2 0 0 0-2-2h-1"/></svg></span>
+            04. Public API
+          </h2>
+          <p>Exposed on <code>window.Sprout</code> for dynamic markup and advanced use.</p>
+        </div>
+
+        <div class="stack">
+          <div class="prose">
+            <p>
+              Sprout auto-mounts <code>document</code> on load, so most pages
+              need none of this.
+            </p>
+          </div>
+
+          <div class="table-container">
+            <table class="clean-table">
+              <thead>
+                <tr>
+                  <th scope="col">Method</th>
+                  <th scope="col">What it does</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>Sprout.mount(container)</code></td>
+                  <td>Paints every <code>[data:]</code> root in <code>container</code> (including <code>container</code> itself) and arms it to resume on first interaction. Roots that are already mounted are skipped, and one broken root doesn't stop the others.</td>
+                </tr>
+                <tr>
+                  <td><code>Sprout.start()</code></td>
+                  <td>Equivalent to <code>Sprout.mount(document)</code>; called automatically once when the page loads.</td>
+                </tr>
+                <tr>
+                  <td><code>Sprout.reactive(object)</code></td>
+                  <td>Wraps an object in the same deep, memoized reactive proxy that backs every <code>data:</code> root. Useful for sharing state between a component and plain JS code.</td>
+                </tr>
+                <tr>
+                  <td><code>Sprout.effect(fn)</code></td>
+                  <td>Runs <code>fn</code> immediately and re-runs it (batched in a microtask) whenever a reactive property it read changes. Every <code>bind:*</code> binding is built on this primitive.</td>
+                </tr>
+                <tr>
+                  <td><code>Sprout.invoke(toolName, args, container)</code></td>
+                  <td>Resolves a (mocked) tool/AI call, validates the result as untrusted markup and mounts it into <code>container</code> (an element or selector). See <a href="#invoke">AI tool invocation</a>.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="ds-section" id="limitations">
+        <div class="sec-header">
+          <h2>
+            <span class="li" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg></span>
+            05. Limitations &amp; trust model
+          </h2>
+          <p>What Sprout deliberately doesn't do.</p>
+        </div>
+
+        <div class="amber-accordion-list">
+          <details class="amber-accordion" open>
+            <summary>
+              <span><strong>Expressions are code</strong><small>Treat templates like inline scripts</small></span>
+              <span class="amber-accordion-chevron" aria-hidden="true">⌄</span>
+            </summary>
+            <div class="amber-accordion-body">
+              <p>
+                Author-written expressions run through <code>Function()</code> +
+                <code>with</code>, not a sandboxed parser. Never mount markup built
+                from untrusted strings with <code>Sprout.mount</code>, and expect
+                a strict <code>script-src</code> CSP to need <code>'unsafe-eval'</code>.
+                As a safety net, bindings never set <code>on*</code>/<code>srcdoc</code>
+                attributes or <code>javascript:</code> URLs.
+              </p>
+            </div>
+          </details>
+
+          <details class="amber-accordion">
+            <summary>
+              <span><strong>Binding types are fixed</strong><small>Decided on the first run</small></span>
+              <span class="amber-accordion-chevron" aria-hidden="true">⌄</span>
+            </summary>
+            <div class="amber-accordion-body">
+              <p>
+                A <code>bind:&lt;name&gt;</code> attribute's behavior is decided by
+                its value's type the first time it runs &mdash; don't later turn a
+                list into a string. One element can carry only one list
+                binding; wrap it to nest lists.
+              </p>
+            </div>
+          </details>
+
+          <details class="amber-accordion">
+            <summary>
+              <span><strong>Booleans toggle, never unmount</strong><small>No conditional rendering</small></span>
+              <span class="amber-accordion-chevron" aria-hidden="true">⌄</span>
+            </summary>
+            <div class="amber-accordion-body">
+              <p>
+                A boolean only adds or removes the <code>&lt;name&gt;</code> attribute.
+                To show and hide content, toggle <code>hidden</code> with
+                <code>bind:hidden="!open"</code>; hidden elements keep their DOM
+                state and bindings. <code>bind:text</code> is the exception and
+                renders <code>"true"</code>/<code>"false"</code>.
+              </p>
+            </div>
+          </details>
+
+          <details class="amber-accordion">
+            <summary>
+              <span><strong>What is reactive</strong><small>Plain objects and arrays</small></span>
+              <span class="amber-accordion-chevron" aria-hidden="true">⌄</span>
+            </summary>
+            <div class="amber-accordion-body">
+              <p>
+                Plain objects and arrays are wrapped deeply and memoized, so
+                <code>push</code>, <code>splice</code>, index writes, new keys and
+                <code>delete</code> all trigger updates. <code>Date</code>,
+                <code>Map</code>, <code>Set</code> and class instances are stored
+                as-is; replace them to trigger an update. Inside a list,
+                <code>this</code> in a method is the row's scope: <code>item</code>
+                and <code>index</code> belong to the row, and every other property
+                reads and writes through to the root <code>data:</code> object.
+              </p>
+            </div>
+          </details>
+
+          <details class="amber-accordion">
+            <summary>
+              <span><strong>Lists</strong><small>Identity-keyed, no animation</small></span>
+              <span class="amber-accordion-chevron" aria-hidden="true">⌄</span>
+            </summary>
+            <div class="amber-accordion-body">
+              <p>
+                Rows are keyed by object identity (or index for primitive values).
+                DOM nodes and their effects are reused, and only rows whose
+                position changed are moved. There are no cross-list moves or
+                transitions.
+              </p>
+            </div>
+          </details>
+
+          <details class="amber-accordion">
+            <summary>
+              <span><strong>Handlers are references</strong><small>Never a call expression</small></span>
+              <span class="amber-accordion-chevron" aria-hidden="true">⌄</span>
+            </summary>
+            <div class="amber-accordion-body">
+              <p>
+                Deciding a binding's type means evaluating it, and evaluating a
+                call runs it. Write handlers as a method reference
+                (<code>bind:click="save"</code>) or a no-argument arrow function
+                (<code>bind:click="() =&gt; remove(item.id)"</code>).
+              </p>
+            </div>
+          </details>
+
+          <details class="amber-accordion">
+            <summary>
+              <span><strong>Scope</strong><small>A single-file learning project</small></span>
+              <span class="amber-accordion-chevron" aria-hidden="true">⌄</span>
+            </summary>
+            <div class="amber-accordion-body">
+              <p>
+                No SSR, no router, no dev tooling. Reach for a real framework once
+                the app outgrows a page or two.
+              </p>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <section class="ds-section" id="invoke">
+        <div class="sec-header">
+          <h2>
+            <span class="li" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg></span>
+            06. AI tool invocation
+          </h2>
+          <p>Mount tool output without trusting it.</p>
+        </div>
+
+        <div class="stack">
+          <div class="prose">
+            <p>
+              <code>Sprout.invoke(toolName, args, container)</code> is an optional
+              helper for tool-calling flows: it asks a tool for markup (here, a
+              mocked stand-in for a real AI call), validates it and mounts the
+              result into <code>container</code>.
+            </p>
+          </div>
+
+          <div class="code-block-container">
+            <div class="code-header-bar">
+              <span class="code-label">invoke.js</span>
+              <button class="copy-code-btn" type="button" data-copy="invoke-source">
+                <span class="li li-sm" aria-hidden="true"><svg viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg></span>
+                <span>Copy</span>
+              </button>
+            </div>
+            <pre class="api-code-block" id="invoke-source"><code><span class="k">await</span> Sprout.<span class="t">invoke</span>(<span class="s">"greeting-card"</span>, { name: <span class="s">"Ada"</span> }, document.<span class="t">getElementById</span>(<span class="s">"slot"</span>));</code></pre>
+          </div>
+
+          <div class="canvas-card">
+            <ul class="check-list">
+              <li>
+                <span class="li li-sm" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span>
+                <span><code>data:</code> must be JSON. It is parsed with <code>JSON.parse</code>, never evaluated, so tool output can't define functions.</span>
+              </li>
+              <li>
+                <span class="li li-sm" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span>
+                <span><code>bind:*</code> may only be a property path (<code>name</code>, <code>item.title</code>) rooted in that JSON state, <code>item</code>/<code>index</code>, or one of the tool's actions &mdash; no calls, operators or globals.</span>
+              </li>
+              <li>
+                <span class="li li-sm" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span>
+                <span>Behavior comes from <strong>actions</strong>: trusted functions the page author registers with the tool, merged into the component's state.</span>
+              </li>
+              <li>
+                <span class="li li-sm" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span>
+                <span>Removed before mounting: scripts, frames, styles, forms, templates and non-HTML (SVG/MathML) elements; <code>on*</code>/<code>style</code> attributes; <code>javascript:</code>, <code>vbscript:</code> and <code>data:</code> URLs.</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="ds-section" id="playground">
+        <div class="sec-header">
+          <h2>
+            <span class="li" aria-hidden="true"><svg viewBox="0 0 24 24"><polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/></svg></span>
+            07. Playground
+          </h2>
+          <p>Edit the markup and press <strong>Run</strong> to mount it.</p>
+        </div>
+
+        <div class="canvas-card playground">
+          <div class="playground-toolbar">
+            <div class="amber-field">
+              <label for="playground-example">Example</label>
+              <select id="playground-example" class="amber-select">
+                <option value="likes">Counter with method</option>
+                <option value="toggle">Boolean value: attribute toggles</option>
+                <option value="bind">String value: attribute binding</option>
+                <option value="list">Array value: repeat per item</option>
+                <option value="todos">Mixed types: list + boolean + object + checkbox</option>
+                <option value="class">Object value: class map (status badges)</option>
+                <option value="formcontrols">Automatic model: select &amp; radio inputs</option>
+                <option value="search">Model plus extra bindings on one input</option>
+                <option value="attrs">Attribute binding: disabled &amp; placeholder</option>
+                <option value="keyed">Automatic identity on reorder</option>
+                <option value="computed">Derived values via plain methods</option>
+                <option value="async">Async action: pending, data &amp; error</option>
+                <option value="invoke">Sprout.invoke: mock AI tool call</option>
+              </select>
+            </div>
+            <div class="playground-actions">
+              <button id="playground-run" class="btn btn-primary" type="button">Run</button>
+              <button id="playground-reset" class="btn btn-secondary" type="button">Reset code</button>
+            </div>
+          </div>
+
+          <p id="playground-description" class="callout playground-description"></p>
+
+          <div class="playground-panes">
+            <div class="lab-pane">
+              <label class="lab-pane-label" for="playground-source">Markup</label>
+              <textarea id="playground-source" spellcheck="false">
+<div class="sprout-box" data:="{ likes: 0, like() { this.likes++ } }">
+  <div class="row">
+    <button bind:click="like">👍 Like</button>
+    <span bind:text="likes"></span>
+  </div>
+</div>
+              </textarea>
+            </div>
+            <div class="lab-pane">
+              <span class="lab-pane-label" id="playground-preview-label">Preview</span>
+              <div id="playground-output" role="region" aria-labelledby="playground-preview-label" aria-live="polite"></div>
+            </div>
+          </div>
+
+          <div id="playground-error" role="alert"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script type="module">
+    /************************************************************
+     * Sprout reactive framework
+     * - data:        declares component state
+     * - bind:<name>  behavior follows the evaluated value's type:
+     *                  function -> event handler for "<name>"
+     *                  array    -> repeat this element per item (item, index)
+     *                  boolean  -> toggle the "<name>" attribute on/off
+     *                  object   -> class map ({ className: boolean })
+     *                  scalar   -> textContent (name === "text") or attribute
+     *                On input/select/textarea the first bind:* is a two-way model.
+     ************************************************************/
+
+    /**
+     * Reactivity core
+     */
+
+    const ITERATE = Symbol("iterate");
+    const targetMap = new WeakMap();
+    const reactiveCache = new WeakMap();
+    const proxyToRaw = new WeakMap();
+    const nodeEffects = new WeakMap();
+    const effectStack = [];
+    const effectQueue = new Set();
+
+    let flushScheduled = false;
+
+    function currentEffect() {
+      return effectStack.length > 0 ? effectStack[effectStack.length - 1] : null;
+    }
+
+    function hasOwn(target, key) {
+      return Object.prototype.hasOwnProperty.call(target, key);
+    }
+
+    function toRaw(value) {
+      return proxyToRaw.get(value) ?? value;
+    }
+
+    function isObservable(value) {
+      if (value === null || typeof value !== "object") return false;
+      if (proxyToRaw.has(value) || Array.isArray(value)) return true;
+
+      const proto = Object.getPrototypeOf(value);
+
+      return proto === Object.prototype || proto === null;
+    }
+
+    const reactiveHandlers = {
+      get(target, key, receiver) {
+        track(target, key);
+
+        const value = Reflect.get(target, key, receiver);
+
+        return isObservable(value) ? reactive(value) : value;
+      },
+
+      has(target, key) {
+        track(target, key);
+
+        return Reflect.has(target, key);
+      },
+
+      ownKeys(target) {
+        track(target, Array.isArray(target) ? "length" : ITERATE);
+
+        return Reflect.ownKeys(target);
+      },
+
+      set(target, key, value) {
+        const raw = toRaw(value);
+        const hadKey = hasOwn(target, key);
+        const oldValue = hadKey ? target[key] : undefined;
+        const oldLength = Array.isArray(target) ? target.length : 0;
+        // Receiver is ignored on purpose: writes to a list row's scope fall through to the root data.
+        const result = Reflect.set(target, key, raw);
+
+        if (!hadKey) trigger(target, ITERATE);
+        if (!hadKey || !Object.is(oldValue, raw)) trigger(target, key);
+        if (Array.isArray(target) && target.length !== oldLength) trigger(target, "length");
+
+        return result;
+      },
+
+      deleteProperty(target, key) {
+        const hadKey = hasOwn(target, key);
+        const result = Reflect.deleteProperty(target, key);
+
+        if (hadKey && result) {
+          trigger(target, key);
+          trigger(target, ITERATE);
+        }
+
+        return result;
+      }
+    };
+
+    function reactive(target) {
+      if (target === null || typeof target !== "object" || proxyToRaw.has(target)) {
+        return target;
+      }
+
+      let proxy = reactiveCache.get(target);
+
+      if (!proxy) {
+        proxy = new Proxy(target, reactiveHandlers);
+        reactiveCache.set(target, proxy);
+        proxyToRaw.set(proxy, target);
+      }
+
+      return proxy;
+    }
+
+    function effect(fn) {
+      const runner = () => {
+        if (runner.disposed) return;
+
+        cleanup(runner);
+        effectStack.push(runner);
+
+        try {
+          fn();
+        } catch (error) {
+          console.error("Sprout: error running effect.", error);
+        } finally {
+          effectStack.pop();
+        }
+      };
+
+      runner.deps = [];
+      runner.disposed = false;
+
+      runner();
+
+      return runner;
+    }
+
+    function untracked(fn) {
+      effectStack.push(null);
+
+      try {
+        return fn();
+      } finally {
+        effectStack.pop();
+      }
+    }
+
+    function stop(runner) {
+      runner.disposed = true;
+      cleanup(runner);
+    }
+
+    function cleanup(runner) {
+      for (const dep of runner.deps) {
+        dep.delete(runner);
+      }
+
+      runner.deps.length = 0;
+    }
+
+    function trackNodeEffect(el, runner) {
+      if (!el) return;
+
+      let effects = nodeEffects.get(el);
+
+      if (!effects) {
+        effects = [];
+        nodeEffects.set(el, effects);
+      }
+
+      effects.push(runner);
+    }
+
+    function disposeSubtree(root) {
+      walk(root, el => {
+        const effects = nodeEffects.get(el);
+
+        if (effects) {
+          for (const runner of effects) stop(runner);
+
+          nodeEffects.delete(el);
+        }
+
+        return true;
+      });
+    }
+
+    function track(target, key) {
+      const runner = currentEffect();
+
+      if (!runner) return;
+
+      let depsMap = targetMap.get(target);
+
+      if (!depsMap) {
+        depsMap = new Map();
+        targetMap.set(target, depsMap);
+      }
+
+      let dep = depsMap.get(key);
+
+      if (!dep) {
+        dep = new Set();
+        depsMap.set(key, dep);
+      }
+
+      if (!dep.has(runner)) {
+        dep.add(runner);
+        runner.deps.push(dep);
+      }
+    }
+
+    function trigger(target, key) {
+      const dep = targetMap.get(target)?.get(key);
+
+      if (!dep) return;
+
+      const running = currentEffect();
+
+      for (const runner of dep) {
+        if (runner !== running) schedule(runner);
+      }
+    }
+
+    function schedule(runner) {
+      effectQueue.add(runner);
+
+      if (!flushScheduled) {
+        flushScheduled = true;
+        queueMicrotask(flushEffects);
+      }
+    }
+
+    function flushEffects() {
+      flushScheduled = false;
+
+      for (const runner of effectQueue) {
+        effectQueue.delete(runner);
+        runner();
+      }
+    }
+
+    /**
+     * Runtime
+     */
+
+    const scopeMap = new WeakMap();
+    const pendingRoots = new WeakSet();
+    const pristineTemplates = new WeakMap();
+    const toolRoots = new WeakMap();
+    const asyncCalls = new WeakMap();
+    const delegatedEvents = new Set();
+
+    let nextListId = 0;
+    let resumingModelTarget = null;
+
+    function start() {
+      mount(document);
+    }
+
+    function mount(container) {
+      const names = new Set(["input", "change"]);
+      const seen = new Set();
+      const errors = [];
+
+      const collect = () => {
+        const roots = [...container.querySelectorAll("[data\\:]")];
+
+        if (container instanceof Element && container.matches("[data\\:]")) {
+          roots.unshift(container);
+        }
+
+        return roots.filter(root => !seen.has(root) && !pendingRoots.has(root) && !scopeMap.has(root));
+      };
+
+      // Painting can clone templates that contain further roots, so collect until nothing new appears.
+      for (let roots = collect(); roots.length > 0; roots = collect()) {
+        for (const root of roots) {
+          seen.add(root);
+
+          if (!root.isConnected) continue;
+
+          pendingRoots.add(root);
+
+          try {
+            paintSubtree(root, createRootData(root), names);
+          } catch (error) {
+            pendingRoots.delete(root);
+            errors.push(error);
+          }
+        }
+      }
+
+      for (const eventName of names) {
+        registerDelegatedEvent(eventName);
+      }
+
+      if (errors.length === 1) throw errors[0];
+      if (errors.length > 1) throw new AggregateError(errors, `${errors.length} Sprout components failed to mount.`);
+    }
+
+    function createRootData(root) {
+      const tool = toolRoots.get(root);
+
+      if (tool) {
+        return Object.assign(structuredClone(tool.state), tool.actions);
+      }
+
+      return evaluateData(root.getAttribute("data:") || "{}");
+    }
+
+    function readBindings(el, scope) {
+      const attrs = getBindingAttributes(el);
+      const model = isModelControl(el) && attrs.length > 0 ? attrs[0] : null;
+      const bindings = [];
+      let firstError = null;
+
+      for (const attr of model ? attrs.slice(1) : attrs) {
+        let value;
+
+        try {
+          value = evaluate(attr.value, scope);
+        } catch (error) {
+          // May reference item/index from a list binding later on the same element.
+          firstError ??= error;
+          continue;
+        }
+
+        const binding = {
+          name: attr.name.slice("bind:".length),
+          attrName: attr.name,
+          expression: attr.value,
+          value
+        };
+
+        if (Array.isArray(value)) {
+          return { model, list: binding, bindings: [] };
+        }
+
+        bindings.push(binding);
+      }
+
+      if (firstError) throw firstError;
+
+      return { model, list: null, bindings };
+    }
+
+    function paintSubtree(root, data, names) {
+      walk(root, el => {
+        if (el !== root && el.hasAttribute("data:")) {
+          return false;
+        }
+
+        const { model, list, bindings } = readBindings(el, data);
+
+        if (list) {
+          paintList(el, list.attrName, list.value, data, names);
+          return false;
+        }
+
+        if (model) {
+          setModelValue(el, evaluate(model.value, data));
+        }
+
+        for (const binding of bindings) {
+          if (typeof binding.value === "function") {
+            names.add(binding.name);
+          } else {
+            applyBinding(el, binding.name, binding.value, null);
+          }
+        }
+
+        return true;
+      });
+    }
+
+    function paintList(templateEl, attrName, items, data, names) {
+      const listId = String(nextListId++);
+      const template = templateEl.cloneNode(true);
+
+      pristineTemplates.set(templateEl, templateEl.cloneNode(true));
+      template.removeAttribute(attrName);
+
+      const fragment = document.createDocumentFragment();
+
+      items.forEach((item, index) => {
+        const clone = template.cloneNode(true);
+
+        paintSubtree(clone, createItemScope(data, item, index), names);
+        clone.setAttribute("data-sprout-clone", listId);
+        fragment.appendChild(clone);
+      });
+
+      templateEl.setAttribute("data-sprout-list", listId);
+      templateEl.hidden = true;
+      templateEl.before(fragment);
+    }
+
+    function resume(root) {
+      if (!pendingRoots.has(root)) return;
+
+      pendingRoots.delete(root);
+
+      try {
+        scopeMap.set(root, reactive(createRootData(root)));
+        walk(root, el => bindElement(root, el));
+      } catch (error) {
+        console.error("Sprout: error resuming component.", error);
+      }
+    }
+
+    function bindElement(root, el) {
+      if (el !== root && el.hasAttribute("data:")) {
+        return false;
+      }
+
+      if (el.hasAttribute("data-sprout-clone")) {
+        return false;
+      }
+
+      if (getBindingAttributes(el).length === 0) {
+        return true;
+      }
+
+      const scope = closestScope(el);
+      const { model, list, bindings } = untracked(() => readBindings(el, scope));
+
+      if (list) {
+        bindList(el, list.attrName, list.expression, scope);
+        return false;
+      }
+
+      if (model) {
+        bindModel(el, model.value, scope);
+      }
+
+      for (const binding of bindings) {
+        if (typeof binding.value === "function") {
+          registerDelegatedEvent(binding.name);
+          continue;
+        }
+
+        let previousClasses = null;
+
+        trackNodeEffect(el, effect(() => {
+          previousClasses = applyBinding(el, binding.name, evaluate(binding.expression, scope), previousClasses);
+        }));
+      }
+
+      return true;
+    }
+
+    function bindModel(el, expression, scope) {
+      trackNodeEffect(el, effect(() => {
+        const value = evaluate(expression, scope);
+
+        // The control the user is interacting with already shows a newer value than state.
+        if (el !== resumingModelTarget) {
+          setModelValue(el, value);
+        }
+      }));
+    }
+
+    function bindList(templateEl, attrName, expression, scope) {
+      const template = (pristineTemplates.get(templateEl) ?? templateEl).cloneNode(true);
+      const listId = templateEl.getAttribute("data-sprout-list");
+
+      template.removeAttribute(attrName);
+
+      let adoptable = listId === null
+        ? []
+        : [...templateEl.parentElement.children].filter(child => child.getAttribute("data-sprout-clone") === listId);
+
+      const marker = document.createComment("sprout-list");
+
+      templateEl.replaceWith(marker);
+
+      const host = marker.parentNode;
+      let entries = new Map();
+
+      const runner = effect(() => {
+        const items = evaluate(expression, scope) ?? [];
+        const nextEntries = new Map();
+        const nodes = [];
+        const created = [];
+
+        items.forEach((item, index) => {
+          let key = item !== null && typeof item === "object" ? item : index;
+
+          if (nextEntries.has(key)) key = Symbol("duplicate");
+
+          let entry = entries.get(key);
+
+          if (entry) {
+            entries.delete(key);
+            entry.itemScope.item = item;
+            entry.itemScope.index = index;
+          } else {
+            const adopted = adoptable.shift();
+            const node = adopted ?? template.cloneNode(true);
+            const itemScope = reactive(createItemScope(scope, item, index));
+
+            node.removeAttribute("data-sprout-clone");
+            scopeMap.set(node, itemScope);
+            untracked(() => walk(node, child => bindElement(node, child)));
+
+            if (!adopted) created.push(node);
+
+            entry = { node, itemScope };
+          }
+
+          nextEntries.set(key, entry);
+          nodes.push(entry.node);
+        });
+
+        for (const extra of adoptable) {
+          extra.remove();
+        }
+
+        adoptable = [];
+
+        for (const stale of entries.values()) {
+          disposeSubtree(stale.node);
+          stale.node.remove();
+        }
+
+        entries = nextEntries;
+
+        // Only move rows that are out of place, so focus and selection survive updates.
+        let reference = marker;
+
+        for (let i = nodes.length - 1; i >= 0; i--) {
+          if (nodes[i].nextSibling !== reference) {
+            marker.parentNode.insertBefore(nodes[i], reference);
+          }
+
+          reference = nodes[i];
+        }
+
+        untracked(() => {
+          for (const node of created) mount(node);
+        });
+      });
+
+      trackNodeEffect(host, runner);
+    }
+
+    function createItemScope(parentScope, item, index) {
+      const itemScope = { item, index };
+
+      Object.setPrototypeOf(itemScope, parentScope);
+
+      return itemScope;
+    }
+
+    function walk(el, callback) {
+      if (callback(el) === false) {
+        return;
+      }
+
+      for (const child of [...el.children]) {
+        walk(child, callback);
+      }
+    }
+
+    function closestScope(el) {
+      for (let node = el; node; node = node.parentElement) {
+        if (scopeMap.has(node)) {
+          return scopeMap.get(node);
+        }
+      }
+
+      throw new Error("Element is missing parent data:.");
+    }
+
+    const URL_ATTRIBUTES = new Set(["href", "src", "action", "formaction", "xlink:href", "poster", "background", "cite", "data", "ping"]);
+
+    function stripUrlNoise(value) {
+      // URL parsers ignore these characters, so "java\tscript:" must match too.
+      return String(value).replace(/[\u0000-\u0020\u007f-\u009f]/g, "");
+    }
+
+    function isScriptUrl(value) {
+      return /^(?:javascript|vbscript):/i.test(stripUrlNoise(value));
+    }
+
+    function setAttribute(el, name, value) {
+      if (value === false || value == null) {
+        el.removeAttribute(name);
+        return;
+      }
+
+      if (name.startsWith("on") || name === "srcdoc" || (URL_ATTRIBUTES.has(name) && isScriptUrl(value))) {
+        console.warn(`Sprout: refused to set "${name}" from a binding.`);
+        return;
+      }
+
+      el.setAttribute(name, value === true ? "" : value);
+    }
+
+    function applyBinding(el, name, value, previousClasses) {
+      if (value !== null && typeof value === "object") {
+        return applyClass(el, value, previousClasses);
+      }
+
+      if (name === "text") {
+        el.textContent = value ?? "";
+      } else {
+        setAttribute(el, name, value);
+      }
+
+      return null;
+    }
+
+    function applyClass(el, value, previousClasses) {
+      const names = Object.keys(value);
+
+      if (previousClasses) {
+        for (const name of previousClasses) {
+          if (!names.includes(name)) el.classList.remove(name);
+        }
+      }
+
+      for (const name of names) {
+        el.classList.toggle(name, Boolean(value[name]));
+      }
+
+      return names;
+    }
+
+    function setModelValue(el, value) {
+      if (el.type === "checkbox") {
+        el.checked = Boolean(value);
+      } else if (el.type === "radio") {
+        el.checked = el.value === String(value);
+      } else {
+        const next = value == null ? "" : String(value);
+
+        if (el.value !== next) el.value = next;
+      }
+    }
+
+    function isModelControl(el) {
+      return el.matches("input, select, textarea");
+    }
+
+    function getBindingAttributes(el) {
+      return [...el.attributes].filter(attr => attr.name.startsWith("bind:"));
+    }
+
+    function isModelAttribute(el, attrName) {
+      return isModelControl(el) && getBindingAttributes(el)[0]?.name === attrName;
+    }
+
+    function findModelTarget(target) {
+      const control = target.closest("input, select, textarea");
+
+      return control && getBindingAttributes(control).length > 0 ? control : null;
+    }
+
+    function readModelValue(el) {
+      return el.type === "checkbox" ? el.checked : el.value;
+    }
+
+    /**
+     * Qwik-style lazy event delegation
+     */
+
+    function registerDelegatedEvent(eventName) {
+      if (delegatedEvents.has(eventName)) return;
+
+      delegatedEvents.add(eventName);
+
+      const attrName = `bind:${eventName}`;
+      const selector = `[${CSS.escape(attrName)}]`;
+
+      // Capture phase so non-bubbling events (focus, blur, mouseenter) reach the document too.
+      document.addEventListener(eventName, event => handleDelegatedEvent(event, eventName, attrName, selector), true);
+    }
+
+    function findHandlerTarget(event, attrName, selector) {
+      const origin = event.target;
+
+      if (!event.bubbles) {
+        return origin.matches(selector) && !isModelAttribute(origin, attrName) ? origin : null;
+      }
+
+      let target = origin.closest(selector);
+
+      while (target && isModelAttribute(target, attrName)) {
+        target = target.parentElement?.closest(selector) ?? null;
+      }
+
+      return target;
+    }
+
+    function handleDelegatedEvent(event, eventName, attrName, selector) {
+      if (!(event.target instanceof Element)) return;
+
+      const modelTarget = findModelTarget(event.target);
+
+      resumingModelTarget = modelTarget;
+
+      try {
+        for (let root = event.target.closest("[data\\:]"); root; root = root.parentElement?.closest("[data\\:]") ?? null) {
+          if (pendingRoots.has(root)) resume(root);
+        }
+      } finally {
+        resumingModelTarget = null;
+      }
+
+      if (modelTarget && (eventName === "input" || eventName === "change")) {
+        try {
+          setValue(getBindingAttributes(modelTarget)[0].value, closestScope(modelTarget), readModelValue(modelTarget));
+        } catch (error) {
+          console.error(`Sprout: error handling "${eventName}".`, error);
+        }
+      }
+
+      const target = findHandlerTarget(event, attrName, selector);
+
+      if (!target) return;
+
+      let scope = null;
+
+      try {
+        scope = closestScope(target);
+
+        const result = evaluate(target.getAttribute(attrName), scope, { $event: event });
+
+        if (typeof result === "function") {
+          const returnValue = result.call(scope, event);
+
+          if (returnValue && typeof returnValue.then === "function") {
+            handleAsyncResult(scope, returnValue);
+          }
+        }
+      } catch (error) {
+        if (scope && "error" in scope) scope.error = error;
+        console.error(`Sprout: error handling "${eventName}".`, error);
+      }
+    }
+
+    function handleAsyncResult(scope, promise) {
+      const calls = asyncCalls.get(scope) ?? { count: 0, latest: null };
+      const token = {};
+
+      asyncCalls.set(scope, calls);
+      calls.count++;
+      calls.latest = token;
+
+      if ("pending" in scope) scope.pending = true;
+      if ("error" in scope) scope.error = null;
+
+      Promise.resolve(promise)
+        .then(value => {
+          if (calls.latest === token && "data" in scope) scope.data = value;
+        })
+        .catch(error => {
+          if (calls.latest === token && "error" in scope) scope.error = error;
+          console.error("Sprout: async event failed.", error);
+        })
+        .finally(() => {
+          calls.count--;
+
+          if ("pending" in scope) scope.pending = calls.count > 0;
+        });
+    }
+
+    /**
+     * Expression helpers
+     */
+
+    const MAX_CACHED_EXPRESSIONS = 500;
+    const evaluateCache = new Map();
+    const setValueCache = new Map();
+    const NO_EXTRAS = Object.freeze(Object.create(null));
+
+    function cachedFunction(cache, expression, create) {
+      let fn = cache.get(expression);
+
+      if (!fn) {
+        if (cache.size >= MAX_CACHED_EXPRESSIONS) cache.clear();
+
+        fn = create();
+        cache.set(expression, fn);
+      }
+
+      return fn;
+    }
+
+    function evaluateData(expression) {
+      return Function(`return (${expression})`)();
+    }
+
+    function evaluate(expression, scope, extras = NO_EXTRAS) {
+      const fn = cachedFunction(evaluateCache, expression, () => Function(
+        "scope",
+        "extras",
+        `
+          with(scope) {
+            with(extras) {
+              return (${expression});
+            }
+          }
+        `
+      ));
+
+      return fn(scope, extras === NO_EXTRAS ? extras : Object.assign(Object.create(null), extras));
+    }
+
+    function setValue(expression, scope, value) {
+      const fn = cachedFunction(setValueCache, expression, () => Function(
+        "scope",
+        "value",
+        `
+          with(scope) {
+            ${expression} = value;
+          }
+        `
+      ));
+
+      fn(scope, value);
+    }
+
+    /**
+     * Mock AI tool invocation
+     *
+     * Tool output is untrusted: data: must be JSON, bind:* must be a plain
+     * property path, and behavior comes only from the tool's registered actions.
+     */
+
+    const HTML_NS = "http://www.w3.org/1999/xhtml";
+    const BLOCKED_TAGS = new Set([
+      "script", "style", "link", "meta", "base", "iframe", "frame", "frameset", "object", "embed",
+      "applet", "template", "noscript", "noembed", "noframes", "xmp", "plaintext", "form"
+    ]);
+    const SAFE_PATH = /^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*$/;
+    const BLOCKED_PATH_SEGMENTS = new Set(["constructor", "prototype"]);
+
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, ch => `&#${ch.charCodeAt(0)};`);
+    }
+
+    const mockTools = {
+      "greeting-card": {
+        // Stands in for model output, so it goes through the same checks as a real response.
+        respond: args => `
+          <div class="sprout-box" data:="${escapeHtml(JSON.stringify({ name: String(args?.name ?? "friend"), likes: 0 }))}">
+            <p>Hi <strong bind:text="name"></strong>! Here's a card from a mock AI tool call.</p>
+            <div class="row">
+              <button bind:click="like">👍 Like this card</button>
+              <span bind:text="likes"></span>
+            </div>
+          </div>
+        `,
+        actions: {
+          like() {
+            this.likes++;
+          }
+        }
+      }
+    };
+
+    function parseToolState(text) {
+      try {
+        const state = JSON.parse(text, (key, value) => (key === "__proto__" ? undefined : value));
+
+        return state !== null && typeof state === "object" && !Array.isArray(state) ? state : null;
+      } catch {
+        return null;
+      }
+    }
+
+    function isSafeToolBinding(el, bindingName, expression, states, actionNames) {
+      if (bindingName.startsWith("on") || bindingName === "style" || bindingName === "srcdoc") return false;
+
+      const path = expression.trim();
+
+      if (!SAFE_PATH.test(path)) return false;
+
+      const segments = path.split(".");
+
+      if (segments.some(segment => BLOCKED_PATH_SEGMENTS.has(segment) || segment.startsWith("__"))) return false;
+
+      const state = states.get(el.closest("[data\\:]"));
+
+      if (!state) return false;
+
+      const [head] = segments;
+
+      return head === "item" || head === "index" || hasOwn(state, head) || actionNames.includes(head);
+    }
+
+    function sanitizeToolMarkup(html, actions) {
+      const doc = new DOMParser().parseFromString(html, "text/html");
+      const states = new Map();
+      const actionNames = Object.keys(actions);
+
+      for (const el of doc.body.querySelectorAll("*")) {
+        if (!el.isConnected) continue;
+
+        if (el.namespaceURI !== HTML_NS || BLOCKED_TAGS.has(el.localName)) {
+          el.remove();
+          continue;
+        }
+
+        if (el.hasAttribute("data:")) {
+          const state = parseToolState(el.getAttribute("data:"));
+
+          if (!state) {
+            el.remove();
+            continue;
+          }
+
+          states.set(el, state);
+          el.setAttribute("data:", "{}");
+        }
+
+        for (const attr of [...el.attributes]) {
+          const name = attr.name.toLowerCase();
+
+          if (name === "data:") continue;
+
+          if (name.startsWith("bind:")) {
+            if (!isSafeToolBinding(el, name.slice("bind:".length), attr.value, states, actionNames)) {
+              el.removeAttribute(attr.name);
+            }
+          } else if (
+            name.startsWith("on") ||
+            name === "style" ||
+            name === "srcdoc" ||
+            (URL_ATTRIBUTES.has(name) && /^(?:javascript|vbscript|data):/i.test(stripUrlNoise(attr.value)))
+          ) {
+            el.removeAttribute(attr.name);
+          }
+        }
+      }
+
+      return { nodes: [...doc.body.childNodes], states };
+    }
+
+    async function mockAiCall(tool, args) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      return tool.respond(args);
+    }
+
+    async function invoke(toolName, args = {}, container) {
+      const target = typeof container === "string" ? document.querySelector(container) : container;
+
+      if (!(target instanceof Element)) {
+        throw new Error("Sprout.invoke: a target container element (or selector) is required.");
+      }
+
+      const tool = hasOwn(mockTools, toolName) ? mockTools[toolName] : null;
+
+      if (!tool) {
+        throw new Error(`Sprout.invoke: no mock tool registered as "${toolName}".`);
+      }
+
+      const actions = tool.actions ?? {};
+      const { nodes, states } = sanitizeToolMarkup(await mockAiCall(tool, args), actions);
+
+      for (const [root, state] of states) {
+        toolRoots.set(root, { state, actions });
+      }
+
+      for (const child of target.children) {
+        disposeSubtree(child);
+      }
+
+      target.replaceChildren(...nodes);
+      mount(target);
+
+      return target;
+    }
+
+    /**
+     * Public API
+     */
+
+    window.Sprout = {
+      reactive,
+      effect,
+      start,
+      mount,
+      invoke
+    };
+
+    try {
+      start();
+    } catch (error) {
+      console.error("Sprout: some components failed to mount.", error);
+    }
+
+    /**
+     * Playground
+     */
+
+    const sourceEl = document.getElementById("playground-source");
+    const outputEl = document.getElementById("playground-output");
+    const errorEl = document.getElementById("playground-error");
+    const exampleEl = document.getElementById("playground-example");
+    const descriptionEl = document.getElementById("playground-description");
+    const initialSource = sourceEl.value.trim();
+
+    sourceEl.value = initialSource;
+
+    const examples = {
+      likes: initialSource,
+      toggle: `
+<div class="sprout-box" data:="{ open: false, toggle() { this.open = !this.open } }">
+  <button bind:click="toggle">Toggle details</button>
+  <p bind:hidden="!open">Now you see me!</p>
+  <details bind:open="open">
+    <summary>Details</summary>
+    Opened and closed by the same boolean.
+  </details>
+  <button bind:disabled="!open">Only enabled while open</button>
+</div>
+      `,
+      bind: `
+<div class="sprout-box" data:="{ url: 'https://example.com' }">
+  <input bind:value="url" />
+  <a bind:href="url" bind:text="url"></a>
+</div>
+      `,
+      list: `
+<div class="sprout-box" data:="{ todos: ['Bread', 'Milk', 'Eggs'], add() { this.todos.push('New item'); } }">
+  <button bind:click="add">Add item</button>
+  <ul>
+    <li bind:todos="todos" bind:text="index + 1 + '. ' + item"></li>
+  </ul>
+</div>
+      `,
+      todos: `
+<div class="sprout-box" data:="{
+  todos: [
+    { id: 1, text: 'Write docs', done: true },
+    { id: 2, text: 'Ship it', done: false }
+  ],
+  nextId: 3,
+  add() {
+    this.todos.push({ id: this.nextId++, text: 'New task', done: false });
+  },
+  remove(id) {
+    const index = this.todos.findIndex(t => t.id === id);
+    if (index !== -1) this.todos.splice(index, 1);
+  }
+}">
+  <button bind:click="add">Add task</button>
+  <p bind:hidden="todos.length > 0">Nothing left to do 🎉</p>
+  <ul>
+    <li bind:class="{ done: item.done }" bind:todos="todos">
+      <input type="checkbox" bind:checked="item.done" />
+      <span bind:text="item.text"></span>
+      <button bind:click="() => remove(item.id)" aria-label="Remove task">✕</button>
+    </li>
+  </ul>
+</div>
+      `,
+      class: `
+<div class="sprout-box" data:="{ status: 'idle', setStatus(s) { this.status = s } }">
+  <div class="status-buttons">
+    <button bind:click="() => setStatus('idle')">Idle</button>
+    <button bind:click="() => setStatus('busy')">Busy</button>
+    <button bind:click="() => setStatus('done')">Done</button>
+  </div>
+  <p class="status-badge" bind:class="{ 'status-busy': status === 'busy', 'status-done': status === 'done' }">
+    Status: <strong bind:text="status"></strong>
+  </p>
+</div>
+      `,
+      formcontrols: `
+<div class="sprout-box" data:="{ size: 'm', color: 'blue' }">
+  <label>
+    Size:
+    <select bind:value="size">
+      <option value="s">Small</option>
+      <option value="m">Medium</option>
+      <option value="l">Large</option>
+    </select>
+  </label>
+  <div class="radio-row">
+    <label><input type="radio" name="color" value="blue" bind:value="color" /> Blue</label>
+    <label><input type="radio" name="color" value="green" bind:value="color" /> Green</label>
+    <label><input type="radio" name="color" value="red" bind:value="color" /> Red</label>
+  </div>
+  <p>You picked a <strong bind:text="size"></strong> <strong bind:text="color"></strong> shirt.</p>
+</div>
+      `,
+      search: `
+<div class="sprout-box" data:="{
+  query: '',
+  submitted: '',
+  submit(event) {
+    if (event.key === 'Enter') this.submitted = this.query;
+  }
+}">
+  <label>
+    Search
+    <input
+      bind:value="query"
+      bind:keydown="submit"
+      bind:class="{ 'is-invalid': query.length > 12 }"
+      placeholder="Type and press Enter"
+    />
+  </label>
+  <p>Submitted: <strong bind:text="submitted || '—'"></strong></p>
+  <p class="hint" bind:text="query.length > 12 ? 'Keep it under 13 characters.' : ''"></p>
+</div>
+      `,
+      attrs: `
+<div class="sprout-box" data:="{ name: '', busy: false, submit() { this.busy = true; } }">
+  <label>
+    Name:
+    <input bind:value="name" placeholder="Type your name" />
+  </label>
+  <button bind:click="submit" bind:disabled="busy || name.trim() === ''">
+    Submit
+  </button>
+  <p bind:hidden="!busy">Submitting… (demo only, doesn't reset)</p>
+</div>
+      `,
+      keyed: `
+<div class="sprout-box" data:="{
+  people: [
+    { id: 1, name: 'Ana' },
+    { id: 2, name: 'Bob' },
+    { id: 3, name: 'Cy' }
+  ],
+  shuffle() { this.people = [...this.people].sort(() => Math.random() - 0.5); }
+}">
+  <button bind:click="shuffle">Shuffle</button>
+  <ul>
+    <li bind:people="people">
+      <input bind:value="item.name" />
+    </li>
+  </ul>
+  <p class="hint">Type in a box, then shuffle — object identity keeps each row's DOM node.</p>
+</div>
+      `,
+      computed: `
+<div class="sprout-box" data:="{
+  items: [ { price: 4 }, { price: 7 }, { price: 12 } ],
+  total() { return this.items.reduce((sum, i) => sum + i.price, 0); },
+  add() { this.items.push({ price: Math.ceil(Math.random() * 10) }); }
+}">
+  <button bind:click="add">Add random item ($1-10)</button>
+  <ul>
+    <li bind:items="items" bind:text="'$' + item.price"></li>
+  </ul>
+  <p>Total: $<span bind:text="total()"></span></p>
+</div>
+      `,
+      async: `
+<div class="sprout-box" data:="{
+  pending: false,
+  data: 'No request yet',
+  error: null,
+  async load() {
+    await new Promise(resolve => setTimeout(resolve, 700));
+    return 'Fresh data arrived';
+  }
+}">
+  <button bind:click="load" bind:disabled="pending">Load data</button>
+  <p bind:hidden="!pending">Loading...</p>
+  <p>Result: <strong bind:text="data"></strong></p>
+  <p bind:text="error ? error.message : ''"></p>
+</div>
+      `,
+      invoke: `
+<div class="sprout-box" data:="{
+  name: 'Ada',
+  status: 'idle',
+  error: null,
+  async summon() {
+    this.status = 'loading';
+    await Sprout.invoke('greeting-card', { name: this.name }, document.getElementById('invoke-slot'));
+    this.status = 'done';
+  }
+}">
+  <input bind:value="name" placeholder="Type a name" />
+  <button bind:click="summon">Ask AI for a greeting card</button>
+  <p bind:text="status === 'loading' ? 'Calling mock AI...' : ''"></p>
+  <p bind:text="error ? error.message : ''"></p>
+  <div id="invoke-slot"></div>
+</div>
+      `
+    };
+
+    const descriptions = {
+      likes: "A method mutates state directly; bind:click points at a function value and bind:text renders a number.",
+      toggle: "Booleans toggle the named attribute: bind:hidden, bind:open and bind:disabled all follow one boolean, and nothing is unmounted.",
+      bind: "The first bind:* on a form control keeps it in sync with state; bind:href and bind:text are plain attribute and text bindings.",
+      list: "bind:todos evaluates to an array, so the <li> repeats once per item with item and index in scope. push() updates the list in place.",
+      todos: "One box combining all four value types: array (list), boolean (bind:hidden empty state), object (class map) and an automatic checkbox model.",
+      class: "bind:class evaluates to a plain object; each truthy key becomes a class on the element.",
+      formcontrols: "The first bind:* on a select or radio input is automatically two-way, just like text inputs and checkboxes.",
+      search: "The first bind:* is the model; bind:keydown and bind:class on the same input still work as an event handler and a class map.",
+      attrs: "A boolean toggles an attribute like disabled or hidden; a string/number sets it and null removes it.",
+      keyed: "Rows keep their object identity, so shuffling moves the existing DOM nodes instead of recreating them.",
+      computed: "total() is a plain method called from bind:text — no special \"computed\" syntax needed, it re-runs reactively.",
+      async: "An async method drives pending, data and error — but only the fields you declare in data:.",
+      invoke: "Sprout.invoke() resolves a mocked AI call. Its JSON state and path-only bindings are checked before mounting, and the Like button runs a trusted action registered with the tool."
+    };
+
+    function updateDescription() {
+      descriptionEl.textContent = descriptions[exampleEl.value] ?? "";
+    }
+
+    function clearOutput() {
+      for (const child of outputEl.children) {
+        disposeSubtree(child);
+      }
+
+      outputEl.replaceChildren();
+    }
+
+    function formatError(error) {
+      return error instanceof AggregateError
+        ? error.errors.map(item => item.message).join("\n")
+        : error.message;
+    }
+
+    exampleEl.addEventListener("change", () => {
+      sourceEl.value = examples[exampleEl.value].trim();
+      updateDescription();
+    });
+
+    function run() {
+      errorEl.textContent = "";
+      clearOutput();
+
+      try {
+        outputEl.innerHTML = sourceEl.value;
+        mount(outputEl);
+      } catch (error) {
+        errorEl.textContent = formatError(error);
+      }
+    }
+
+    document.getElementById("playground-run").addEventListener("click", run);
+
+    document.getElementById("playground-reset").addEventListener("click", () => {
+      exampleEl.value = "likes";
+      sourceEl.value = initialSource;
+      errorEl.textContent = "";
+      clearOutput();
+      updateDescription();
+    });
+
+    updateDescription();
+
+    /**
+     * Copy buttons
+     */
+
+    document.addEventListener("click", async event => {
+      const button = event.target instanceof Element ? event.target.closest("[data-copy]") : null;
+
+      if (!button) return;
+
+      const label = button.querySelector("span:last-child");
+      const source = document.getElementById(button.dataset.copy);
+
+      try {
+        await navigator.clipboard.writeText(source.textContent);
+        label.textContent = "Copied";
+      } catch {
+        label.textContent = "Copy failed";
+      }
+
+      setTimeout(() => {
+        label.textContent = "Copy";
+      }, 1600);
+    });
+
+    /**
+     * Theme toggle
+     */
+
+    const themeButton = document.getElementById("theme-toggle");
+
+    function syncThemeButton() {
+      const dark = document.documentElement.dataset.theme === "dark";
+
+      themeButton.querySelector(".theme-label").textContent = dark ? "Light" : "Dark";
+      themeButton.querySelector(".icon-moon").hidden = dark;
+      themeButton.querySelector(".icon-sun").hidden = !dark;
+      themeButton.setAttribute("aria-label", dark ? "Switch to light theme" : "Switch to dark theme");
+    }
+
+    themeButton.addEventListener("click", () => {
+      const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+
+      document.documentElement.dataset.theme = next;
+      document.documentElement.style.colorScheme = next;
+
+      try {
+        localStorage.setItem("sprout_theme", next);
+      } catch {
+        // Storage can be unavailable (private mode, file:// sandboxes).
+      }
+
+      syncThemeButton();
+    });
+
+    syncThemeButton();
+
+    /**
+     * Sidebar scroll-spy
+     */
+
+    const navLinks = [...document.querySelectorAll(".ds-sidebar a")];
+
+    const sectionObserver = new IntersectionObserver(
+      entries => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+
+          const link = navLinks.find(a => a.hash === `#${entry.target.id}`);
+
+          if (!link) continue;
+
+          for (const a of navLinks) {
+            a.classList.remove("active");
+            a.removeAttribute("aria-current");
+          }
+
+          link.classList.add("active");
+          link.setAttribute("aria-current", "true");
+        }
+      },
+      { rootMargin: "-30% 0px -60% 0px" }
+    );
+
+    for (const section of document.querySelectorAll(".ds-section")) {
+      sectionObserver.observe(section);
+    }
+  </script>
+</body>
+</html>
