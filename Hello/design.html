@@ -18,54 +18,73 @@
 <!-- Typography preconnect -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Playfair+Display:ital,wght@0,600;0,700;1,500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,500&display=swap" rel="stylesheet">
 
 <style>
 /* ==========================================================================
    1. DESIGN TOKENS & SYSTEM VARIABLES
    ========================================================================== */
 :root {
-  --bg: #F9F8F6;
+  /* Light neutrals follow Apple's cool system greys (systemGray6/5/4/3), which pair with the black accent. */
+  --bg: #F5F5F7;
   --surface: #FFFFFF;
-  --surface-alt: #F3EFE9;
-  --surface-hover: #ECE7DE;
-  --surface-active: #E4DDD1;
-  --surface-glass: rgba(255, 255, 255, 0.88);
-  --border: #E5DFD5;
-  --border-strong: #CEC5B7;
-  --border-focus: #D4622B;
+  --surface-alt: #F2F2F7;
+  --surface-hover: #E5E5EA;
+  --surface-active: #D1D1D6;
+  --surface-glass: rgba(255, 255, 255, 0.86);
+  --border: #E5E5EA;
+  --border-strong: #C7C7CC;
+  --border-focus: #1D1D1F;
 
-  --text: #191817;
-  --text-muted: #68625B;
-  --text-faint: #989187;
+  /* Text and accent colors meet WCAG AA (4.5:1) on bg, surface, surface-alt and surface-hover, per Apple HIG Accessibility. */
+  --text: #1D1D1F;
+  --text-muted: #56565B;
+  --text-faint: #66666B;
   --text-inverse: #FFFFFF;
+  /* Placeholders stay ≥4.5:1 even on filled fields; control borders stay ≥3:1 (WCAG 1.4.11). */
+  --text-placeholder: #616166;
+  --control-border: #8C8C91;
+  /* Selected segment / tab thumb (iOS segmented control). */
+  --control-selected: #FFFFFF;
 
-  --accent: #D4622B;
-  --accent-hover: #BF5321;
-  --accent-tint: rgba(212, 98, 43, 0.09);
-  --accent-tint-hover: rgba(212, 98, 43, 0.16);
-  --accent-glow: rgba(212, 98, 43, 0.26);
+  /* Monochrome accent: near-black in light, near-white in dark (Apple's label-tinted style). */
+  --accent: #1D1D1F;
+  --accent-hover: #424245;
+  --accent-tint: rgba(29, 29, 31, 0.06);
+  --accent-tint-hover: rgba(29, 29, 31, 0.10);
+  --accent-glow: rgba(0, 0, 0, 0.18);
   --accent-contrast: #FFFFFF;
+  --focus-ring: var(--accent);
 
-  --success: #1E8E3E;  --success-dim: #EAF5ED;  --success-border: #A6D7B2;
-  --warning: #B77900;  --warning-dim: #FDF5E5;  --warning-border: #F7D488;
-  --danger:  #D93025;  --danger-dim:  #FCEAE8;  --danger-border:  #F5A9A4;
+  /* HIG-style text fields: borderless, filled with iOS tertiarySystemFill. */
+  --field-fill: rgba(118, 118, 128, 0.12);
+  --field-fill-hover: rgba(118, 118, 128, 0.18);
+  /* iOS inset-grouped forms: systemGroupedBackground, cell surface and the iOS separator. */
+  --grouped-bg: #F2F2F7;
+  --grouped-cell: #FFFFFF;
+  --separator: rgba(60, 60, 67, 0.22);
+
+  --success: #1A7D37;  --success-dim: #EAF5ED;  --success-border: #A6D7B2;
+  --warning: #956300;  --warning-dim: #FDF5E5;  --warning-border: #F7D488;
+  --danger:  #CD2D23;  --danger-dim:  #FCEAE8;  --danger-border:  #F5A9A4;
   --info:    #2563EB;  --info-dim:    #EFF6FF;  --info-border:    #93C5FD;
 
   --r-xs: 6px;  --r-sm: 8px;  --r-md: 12px;  --r-lg: 16px;  --r-xl: 24px;  --r-pill: 9999px;
 
-  --shadow-xs: 0 1px 2px rgba(25, 24, 23, 0.04);
-  --shadow-sm: 0 1px 3px rgba(25, 24, 23, 0.06);
-  --shadow-md: 0 4px 14px rgba(25, 24, 23, 0.07), 0 16px 28px rgba(25, 24, 23, 0.04);
-  --shadow-lg: 0 12px 36px rgba(25, 24, 23, 0.10), 0 28px 64px rgba(25, 24, 23, 0.06);
-  --shadow-xl: 0 20px 48px rgba(25, 24, 23, 0.14);
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.07), 0 16px 28px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 12px 36px rgba(0, 0, 0, 0.10), 0 28px 64px rgba(0, 0, 0, 0.06);
+  --shadow-xl: 0 20px 48px rgba(0, 0, 0, 0.14);
 
   --font-serif: "Playfair Display", Georgia, serif;
-  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-mono: "JetBrains Mono", monospace;
+  --font-sans: -apple-system, BlinkMacSystemFont, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
 
   --z-dropdown: 1000;  --z-sticky: 1020;  --z-modal: 1050;  --z-toast: 1080;
   --dur-fast: 140ms;  --dur-med: 260ms;  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  /* Apple-style deceleration curve used for sliding thumbs, panels and disclosures. */
+  --ease-ios: cubic-bezier(0.32, 0.72, 0, 1);
   /* Touch-target minimums; reset to 0 at the lg breakpoint. Breakpoints (min-width): xs 351 · sm 391 · md 641 · lg 901 · xl 1281. */
   --tap-target: 44px;  --tap-target-row: 48px;
 }
@@ -79,23 +98,32 @@
   --surface-glass: rgba(27, 26, 25, 0.88);
   --border: rgba(255, 255, 255, 0.10);
   --border-strong: rgba(255, 255, 255, 0.18);
-  --border-focus: #F08E5A;
+  --border-focus: #F5F3EF;
 
   --text: #F5F3EF;
   --text-muted: #A59D92;
-  --text-faint: #736C63;
+  --text-faint: #90887E;
   --text-inverse: #191817;
+  --text-placeholder: #A49D94;
+  --control-border: #6E6C68;
+  --control-selected: #45413C;
 
-  --accent: #F08E5A;
-  --accent-hover: #F3A072;
-  --accent-tint: rgba(240, 142, 90, 0.15);
-  --accent-tint-hover: rgba(240, 142, 90, 0.24);
-  --accent-glow: rgba(240, 142, 90, 0.32);
-  --accent-contrast: #18110D;
+  --accent: #F5F3EF;
+  --accent-hover: #FFFFFF;
+  --accent-tint: rgba(245, 243, 239, 0.10);
+  --accent-tint-hover: rgba(245, 243, 239, 0.16);
+  --accent-glow: rgba(0, 0, 0, 0.45);
+  --accent-contrast: #121211;
+
+  --field-fill: rgba(165, 157, 146, 0.14);
+  --field-fill-hover: rgba(165, 157, 146, 0.20);
+  --grouped-bg: #121211;
+  --grouped-cell: #242220;
+  --separator: rgba(255, 255, 255, 0.10);
 
   --success: #53C378;  --success-dim: rgba(83, 195, 120, 0.14);  --success-border: rgba(83, 195, 120, 0.3);
   --warning: #F2B957;  --warning-dim: rgba(242, 185, 87, 0.14);  --warning-border: rgba(242, 185, 87, 0.3);
-  --danger:  #F16E63;  --danger-dim:  rgba(241, 110, 99, 0.14);  --danger-border:  rgba(241, 110, 99, 0.3);
+  --danger:  #F37A70;  --danger-dim:  rgba(243, 122, 112, 0.14);  --danger-border:  rgba(243, 122, 112, 0.3);
   --info:    #6BA5FA;  --info-dim:    rgba(107, 165, 250, 0.14);  --info-border:    rgba(107, 165, 250, 0.3);
 
   --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
@@ -115,11 +143,16 @@ body {
   background-color: var(--bg);
   color: var(--text);
   line-height: 1.5;
-  font-size: 14px;
+  font-size: 0.875rem;
   transition: background-color var(--dur-med) var(--ease-out), color var(--dur-med) var(--ease-out);
   -webkit-font-smoothing: antialiased;
 }
-:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent-glow); }
+/* Solid, high-contrast keyboard focus ring (HIG: keyboard focus indicator). */
+:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+/* iOS/iPadOS Safari: adopt the Dynamic Type body size so rem-based text follows the user's text-size setting. */
+@supports (-webkit-touch-callout: none) {
+  html { font: -apple-system-body; }
+}
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 }
@@ -187,23 +220,23 @@ body {
   min-height: var(--tap-target);
   padding: 7px 8px 7px 34px;
   border-radius: var(--r-pill);
-  border: 1px solid var(--border);
-  background: var(--surface-alt);
+  border: 1px solid transparent;
+  background: var(--field-fill);
   font-family: inherit;
-  font-size: 12.5px;
+  font-size: 0.7812rem;
   color: var(--text);
   outline: none;
-  transition: all var(--dur-fast);
+  transition: background-color var(--dur-fast);
 }
+.ds-search-nav input:hover { background: var(--field-fill-hover); }
 .ds-search-nav input:focus {
-  background: var(--surface);
-  border-color: var(--border-focus);
-  box-shadow: 0 0 0 3px var(--accent-glow);
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 0;
 }
 .ds-search-nav .search-icon { position: absolute; left: 11px; color: var(--text-faint); }
 .ds-search-nav .kbd-badge { position: absolute; right: 10px; display: none; }
 
-.ds-nav-links { display: none; align-items: center; gap: 16px; font-size: 13px; font-weight: 600; }
+.ds-nav-links { display: none; align-items: center; gap: 16px; font-size: 0.8125rem; font-weight: 600; }
 .ds-nav-links a { color: var(--text-muted); text-decoration: none; white-space: nowrap; transition: color var(--dur-fast); }
 .ds-nav-links a:hover { color: var(--accent); }
 .ds-topbar-actions { display: flex; align-items: center; gap: 4px; }
@@ -214,7 +247,7 @@ body {
 .ds-main { max-width: 1100px; margin: 0 auto; padding: 28px 12px max(88px, calc(72px + env(safe-area-inset-bottom))); }
 .ds-intro { margin-bottom: 38px; }
 .ds-eyebrow {
-  font-size: 11.5px;
+  font-size: 0.7188rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -229,9 +262,9 @@ body {
   margin-bottom: 12px;
   overflow-wrap: anywhere;
 }
-.ds-intro p { font-size: 14px; color: var(--text-muted); line-height: 1.6; max-width: 70ch; }
+.ds-intro p { font-size: 0.875rem; color: var(--text-muted); line-height: 1.6; max-width: 70ch; }
 .ds-intro-actions { display: grid; grid-template-columns: minmax(0,1fr); gap: 9px; margin-top: 20px; }
-.ds-intro-actions .btn { width: 100%; min-height: 44px; padding-left: 12px; padding-right: 12px; font-size: 12px; white-space: normal; }
+.ds-intro-actions .btn { width: 100%; min-height: 44px; padding-left: 12px; padding-right: 12px; font-size: 0.75rem; white-space: normal; }
 
 .ds-section { margin-bottom: 46px; scroll-margin-top: 72px; }
 .sec-header {
@@ -246,7 +279,7 @@ body {
 }
 .sec-header h2 { font-size: clamp(17px, 4.8vw, 20px); line-height: 1.28; font-weight: 700; color: var(--text); display: flex; align-items: flex-start; gap: 8px; }
 .sec-header h2 .li { margin-top: 1px; }
-.sec-header p { font-size: 12.5px; line-height: 1.5; color: var(--text-muted); margin-top: 4px; max-width: 70ch; }
+.sec-header p { font-size: 0.7812rem; line-height: 1.5; color: var(--text-muted); margin-top: 4px; max-width: 70ch; }
 
 .canvas-card {
   min-width: 0;
@@ -262,7 +295,7 @@ body {
 }
 .canvas-card.row-wrap { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 18px; }
 .canvas-subhead {
-  font-size: 11px;
+  font-size: 0.6875rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -276,12 +309,12 @@ body {
 .swatch-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(105px, 1fr)); gap: 12px; width: 100%; }
 .swatch-card { display: flex; flex-direction: column; align-items: center; text-align: center; }
 .swatch-color { width: 100%; height: 50px; border-radius: var(--r-sm); border: 1px solid var(--border); margin-bottom: 6px; }
-.swatch-name { font-size: 12px; font-weight: 600; color: var(--text); }
-.swatch-token { font-family: var(--font-mono); font-size: 10px; color: var(--text-faint); }
+.swatch-name { font-size: 0.75rem; font-weight: 600; color: var(--text); }
+.swatch-token { font-family: var(--font-mono); font-size: 0.6875rem; color: var(--text-faint); }
 
 .type-row { display: flex; flex-direction: column; align-items: flex-start; padding: 12px 0; border-bottom: 1px solid var(--border); gap: 4px; }
 .type-row:last-child { border-bottom: none; }
-.type-role { width: auto; flex-shrink: 0; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-faint); }
+.type-role { width: auto; flex-shrink: 0; font-size: 0.6875rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-faint); }
 
 .icon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(115px, 1fr)); gap: 10px; width: 100%; }
 .icon-cell {
@@ -294,7 +327,7 @@ body {
   align-items: center;
   gap: 8px;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 0.6875rem;
   color: var(--text-muted);
   appearance: none;
   width: 100%;
@@ -312,8 +345,8 @@ body {
 .amber-capsule-stack { display: flex; flex-direction: column; gap: 24px; width: 100%; }
 .amber-capsule-unit { display: flex; flex-direction: column; gap: 8px; width: 100%; }
 .amber-capsule-head { display: flex; flex-direction: column; align-items: flex-start; justify-content: space-between; gap: 2px; }
-.amber-capsule-title { font-size: 12.5px; font-weight: 600; color: var(--text); }
-.amber-capsule-subtext { font-size: 10.5px; color: var(--text-faint); }
+.amber-capsule-title { font-size: 0.7812rem; font-weight: 600; color: var(--text); }
+.amber-capsule-subtext { font-size: 0.6875rem; color: var(--text-faint); }
 .amber-capsule-slider {
   position: relative;
   width: 100%;
@@ -346,16 +379,17 @@ body {
   justify-content: space-between;
   padding: 0 12px;
   pointer-events: none;
-  font-size: 13.5px;
+  font-size: 0.8438rem;
   font-weight: 600;
   z-index: 2;
 }
-.amber-capsule-icon-box { display: flex; align-items: center; gap: 10px; color: var(--text); transition: color var(--dur-fast); }
-.amber-capsule-readout { font-family: var(--font-mono); font-size: 13px; color: var(--text); font-weight: 700; transition: color var(--dur-fast); }
-.amber-capsule-slider.invert-text .amber-capsule-icon-box,
-.amber-capsule-slider.invert-text .amber-capsule-readout { color: var(--accent-contrast); }
+.amber-capsule-icon-box { display: flex; align-items: center; gap: 10px; color: inherit; }
+.amber-capsule-readout { font-family: var(--font-mono); font-size: 0.8125rem; color: inherit; font-weight: 700; }
+/* White text with difference blending inverts per pixel, staying legible over both the monochrome fill and the track. */
+.amber-capsule-layer { color: #FFFFFF; mix-blend-mode: difference; }
+@media (forced-colors: active) { .amber-capsule-layer { color: CanvasText; mix-blend-mode: normal; } }
 .amber-capsule-slider.compact { height: 38px; }
-.amber-capsule-slider.compact .amber-capsule-layer { padding: 0 14px; font-size: 12px; }
+.amber-capsule-slider.compact .amber-capsule-layer { padding: 0 14px; font-size: 0.75rem; }
 
 /* ==========================================================================
    4. RADIOS & FORM PRIMITIVES
@@ -368,7 +402,7 @@ body {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  border: 1.5px solid var(--border);
+  border: 1.5px solid var(--control-border);
   background: var(--surface);
   display: grid;
   place-content: center;
@@ -378,19 +412,28 @@ body {
   transition: all var(--dur-fast);
 }
 .amber-radio:hover { border-color: var(--text-muted); }
-.amber-radio:focus-visible { box-shadow: 0 0 0 3px var(--accent-glow); }
 .amber-radio:checked { border-color: var(--accent); background: var(--accent); }
-.amber-radio::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: #fff; transform: scale(0); transition: transform 120ms ease; }
+.amber-radio::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--accent-contrast); transform: scale(0); transition: transform 120ms ease; }
 .amber-radio:checked::before { transform: scale(1); }
 .amber-radio-text { display: flex; flex-direction: column; gap: 2px; }
-.amber-radio-text strong { font-size: 13.5px; font-weight: 600; color: var(--text); }
-.amber-radio-text small { font-size: 12px; color: var(--text-muted); line-height: 1.4; }
+.amber-radio-text strong { font-size: 0.8438rem; font-weight: 600; color: var(--text); }
+.amber-radio-text small { font-size: 0.75rem; color: var(--text-muted); line-height: 1.4; }
 
-.amber-radio-list { border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface); overflow: hidden; display: flex; flex-direction: column; }
-.amber-radio-row { min-height: var(--tap-target-row); display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background var(--dur-fast); }
-.amber-radio-row:last-child { border-bottom: none; }
-.amber-radio-row:hover { background: var(--surface-alt); }
-.amber-radio-row.active { background: var(--accent-tint); }
+/* iOS checkmark selection list: inset-grouped rows, no radio circles, trailing checkmark on the selected row. */
+.amber-radio-list { border-radius: var(--r-md); background: var(--grouped-cell); overflow: hidden; display: flex; flex-direction: column; }
+.amber-radio-row { position: relative; min-height: max(44px, var(--tap-target-row)); display: flex; align-items: center; gap: 12px; padding: 11px 16px; cursor: pointer; transition: background-color var(--dur-fast); }
+.amber-radio-row + .amber-radio-row::before { content: ""; position: absolute; top: 0; left: 16px; right: 0; height: 1px; background: var(--separator); pointer-events: none; }
+.amber-radio-row:active { background: var(--accent-tint-hover); }
+@media (hover: hover) { .amber-radio-row:hover { background: var(--accent-tint); } }
+/* The native radio stays in the accessibility tree and tab order; only its circle is hidden. */
+.amber-radio-row > .amber-radio { position: absolute; width: 1px; height: 1px; margin: 0; opacity: 0; pointer-events: none; }
+.amber-radio-row:has(> .amber-radio:focus-visible) { background: var(--accent-tint-hover); outline: 2px solid var(--focus-ring); outline-offset: -2px; }
+.amber-radio-row .amber-radio-text { flex: 1 1 auto; min-width: 0; }
+.amber-radio-row .amber-radio-text strong { font-size: 1.0625rem; font-weight: 400; line-height: 1.3; }
+.amber-radio-row .amber-radio-text small { font-size: 0.8125rem; color: var(--text-muted); line-height: 1.35; }
+.amber-radio-check { flex: 0 0 22px; width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; color: var(--accent); opacity: 0; transition: opacity var(--dur-fast); }
+.amber-radio-check svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.amber-radio-row.active .amber-radio-check, .amber-radio-row:has(> .amber-radio:checked) .amber-radio-check { opacity: 1; }
 
 .amber-option-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; width: 100%; }
 .amber-option-card {
@@ -411,43 +454,12 @@ body {
 /* Keep a real, keyboard-accessible radio input, but make the full tier card its hit area. */
 .amber-option-card > .amber-radio { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; margin: 0; border: 0; border-radius: inherit; opacity: 0; cursor: pointer; }
 .amber-option-card:focus-within { outline: 2px solid var(--border-focus); outline-offset: 3px; }
-.amber-option-title { font-size: 14.5px; font-weight: 700; color: var(--text); }
-.amber-option-price { font-family: var(--font-mono); font-size: 13.5px; font-weight: 700; color: var(--accent); }
-.amber-option-price small { font-size: 11px; color: var(--text-muted); font-weight: 400; }
-.amber-option-desc { font-size: 12px; color: var(--text-muted); line-height: 1.45; }
+.amber-option-title { font-size: 0.9062rem; font-weight: 700; color: var(--text); }
+.amber-option-price { font-family: var(--font-mono); font-size: 0.8438rem; font-weight: 700; color: var(--accent); }
+.amber-option-price small { font-size: 0.6875rem; color: var(--text-muted); font-weight: 400; }
+.amber-option-desc { font-size: 0.75rem; color: var(--text-muted); line-height: 1.45; }
 
-.form-grid-3 { display: grid; grid-template-columns: minmax(0,1fr); gap: 12px; width: 100%; }
-.floating-group { position: relative; display: flex; align-items: center; }
-.floating-input {
-  width: 100%;
-  min-height: var(--tap-target);
-  padding: 20px 14px 6px;
-  border-radius: var(--r-sm);
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text);
-  font-family: inherit;
-  font-size: 14px;
-  outline: none;
-  transition: border-color var(--dur-fast), box-shadow var(--dur-fast);
-}
-.floating-input:focus { border-color: var(--border-focus); box-shadow: 0 0 0 3px var(--accent-glow); }
-.floating-label {
-  position: absolute;
-  top: 14px;
-  left: 14px;
-  font-size: 13px;
-  color: var(--text-faint);
-  pointer-events: none;
-  transition: all var(--dur-fast) var(--ease-out);
-}
-.floating-input:focus ~ .floating-label,
-.floating-input:not(:placeholder-shown) ~ .floating-label {
-  top: 5px;
-  font-size: 10.5px;
-  font-weight: 700;
-  color: var(--accent);
-}
+.form-grid-3 { display: grid; grid-template-columns: minmax(0,1fr); align-items: start; gap: 12px; width: 100%; }
 
 .search-wrapper { position: relative; display: flex; align-items: center; width: 100%; }
 .search-wrapper input {
@@ -455,21 +467,22 @@ body {
   min-height: var(--tap-target);
   padding: 10px 42px 10px 38px;
   border-radius: var(--r-pill);
-  border: 1px solid var(--border);
-  background: var(--surface);
+  border: 1px solid transparent;
+  background: var(--field-fill);
   color: var(--text);
   font-family: inherit;
-  font-size: 13px;
+  font-size: 0.8125rem;
   outline: none;
-  transition: all var(--dur-fast);
+  transition: background-color var(--dur-fast);
 }
-.search-wrapper input:focus { border-color: var(--border-focus); box-shadow: 0 0 0 3px var(--accent-glow); }
+.search-wrapper input:hover { background: var(--field-fill-hover); }
+.search-wrapper input:focus { outline: 2px solid var(--focus-ring); outline-offset: 0; }
 .search-wrapper .search-icon { position: absolute; left: 12px; color: var(--text-faint); pointer-events: none; }
 .search-wrapper .kbd-badge { position: absolute; right: 10px; }
 
 .kbd {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 0.6875rem;
   font-weight: 600;
   padding: 2px 6px;
   border-radius: 4px;
@@ -485,7 +498,7 @@ body {
   gap: 8px;
   min-height: var(--tap-target);
   font-family: var(--font-sans);
-  font-size: 13.5px;
+  font-size: 0.8438rem;
   font-weight: 600;
   line-height: 1;
   border-radius: var(--r-pill);
@@ -508,31 +521,34 @@ body {
 .btn-ghost:hover { background: var(--surface-alt); color: var(--text); }
 .btn-danger { background: var(--danger-dim); color: var(--danger); border-color: var(--danger-border); }
 .btn-danger:hover { background: var(--danger); color: #fff; }
-.btn-sm { padding: 6px 12px; font-size: 12px; gap: 5px; }
+.btn-sm { padding: 6px 12px; font-size: 0.75rem; gap: 5px; }
 
 .switch {
   position: relative;
-  width: 48px;
-  height: 28px;
+  width: 51px;
+  height: 31px;
   border-radius: var(--r-pill);
-  background: var(--border);
+  background: var(--border-strong);
   border: none;
   cursor: pointer;
   flex-shrink: 0;
-  transition: background-color var(--dur-fast);
+  transition: background-color 260ms var(--ease-ios);
 }
+/* iOS-style knob: springs across, and stretches toward the travel direction while pressed. */
 .switch::after {
   content: "";
   position: absolute;
-  top: 3px; left: 3px;
-  width: 22px; height: 22px;
-  border-radius: 50%;
+  top: 2px; left: 2px;
+  width: 27px; height: 27px;
+  border-radius: var(--r-pill);
   background: #fff;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
-  transition: transform var(--dur-fast) var(--ease-spring);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15), 0 1px 1px rgba(0, 0, 0, 0.16);
+  transition: transform 340ms var(--ease-spring), width 220ms var(--ease-ios), background-color 260ms var(--ease-ios);
 }
+.switch:active::after { width: 33px; }
 .switch[aria-checked="true"] { background: var(--accent); }
-.switch[aria-checked="true"]::after { transform: translateX(20px); }
+.switch[aria-checked="true"]::after { transform: translateX(20px); background: var(--accent-contrast); }
+.switch[aria-checked="true"]:active::after { transform: translateX(14px); }
 
 .stepper {
   display: inline-flex;
@@ -549,11 +565,11 @@ body {
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--text);
-  font-size: 15px;
+  font-size: 0.9375rem;
   font-weight: 700;
   cursor: pointer;
 }
-.stepper .val { font-family: var(--font-mono); font-size: 13.5px; font-weight: 700; min-width: 32px; text-align: center; }
+.stepper .val { font-family: var(--font-mono); font-size: 0.8438rem; font-weight: 700; min-width: 32px; text-align: center; }
 
 /* ==========================================================================
    6. ADMIN DATA STUDIO & SENTENCE BUILDER
@@ -574,7 +590,7 @@ body {
   user-select: none;
 }
 .phrase-pill:hover, .phrase-pill.active { background: var(--accent-tint-hover); border-style: solid; }
-.phrase-pill::after { content: "▾"; font-size: 11px; margin-left: 2px; opacity: 0.7; }
+.phrase-pill::after { content: "▾"; font-size: 0.6875rem; margin-left: 2px; opacity: 0.7; }
 .phrase-popover {
   position: absolute;
   top: calc(100% + 6px);
@@ -592,27 +608,27 @@ body {
   flex-direction: column;
 }
 .phrase-popover.open { display: flex; }
-.phrase-popover-item { appearance: none; width: 100%; min-height: var(--tap-target); display: flex; align-items: center; padding: 8px 14px; border: 0; background: transparent; font-family: inherit; font-size: 12.5px; font-weight: 500; line-height: inherit; text-align: left; white-space: normal; overflow-wrap: anywhere; color: var(--text); cursor: pointer; }
+.phrase-popover-item { appearance: none; width: 100%; min-height: var(--tap-target); display: flex; align-items: center; padding: 8px 14px; border: 0; background: transparent; font-family: inherit; font-size: 0.7812rem; font-weight: 500; line-height: inherit; text-align: left; white-space: normal; overflow-wrap: anywhere; color: var(--text); cursor: pointer; }
 .phrase-popover-item:hover { background: var(--surface-alt); }
 .phrase-popover-item.selected { font-weight: 700; color: var(--accent); background: var(--accent-tint); }
 
-.code-block-container { border-radius: var(--r-md); overflow: hidden; border: 1px solid #2B2824; background: #141312; }
-.code-header-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; background: #1B1A19; border-bottom: 1px solid #2B2824; }
+.code-block-container { border-radius: var(--r-md); overflow: hidden; border: 1px solid #2C2C2E; background: #161618; }
+.code-header-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; background: #1C1C1E; border-bottom: 1px solid #2C2C2E; }
 .code-tabs { display: flex; flex: 1 1 auto; max-width: 100%; flex-wrap: nowrap; gap: 4px; overflow-x: auto; scrollbar-width: thin; }
-.code-tab-btn { min-width: max-content; background: transparent; border: none; color: #A59D92; font-size: 12px; font-weight: 600; padding: 7px 9px; border-radius: var(--r-xs); cursor: pointer; }
-.code-tab-btn.active { background: rgba(255, 255, 255, 0.08); color: #F08E5A; }
-.api-code-block { background: #141312; color: #ECE7DE; padding: 14px; font-family: var(--font-mono); font-size: 10.5px; line-height: 1.65; overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0; }
+.code-tab-btn { min-width: max-content; min-height: var(--tap-target); background: transparent; border: none; color: #AEAEB2; font-size: 0.75rem; font-weight: 600; padding: 7px 9px; border-radius: var(--r-xs); cursor: pointer; }
+.code-tab-btn.active { background: rgba(255, 255, 255, 0.12); color: #FFFFFF; }
+.api-code-block { background: #161618; color: #E5E5EA; padding: 14px; font-family: var(--font-mono); font-size: 0.6875rem; line-height: 1.65; overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0; }
 .api-code-block .m { color: #F08E5A; font-weight: 700; }
 .api-code-block .p { color: #53C378; }
-.api-code-block .c { color: #736C63; font-style: italic; }
+.api-code-block .c { color: #8E8E93; font-style: italic; }
 .api-code-block .k { color: #F2B957; }
-.api-code-block .v { color: #ECE7DE; }
-.copy-code-btn { background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.14); color: #fff; border-radius: var(--r-xs); padding: 4px 9px; font-size: 11px; cursor: pointer; display: flex; align-items: center; gap: 5px; }
+.api-code-block .v { color: #E5E5EA; }
+.copy-code-btn { background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.14); color: #fff; border-radius: var(--r-xs); padding: 4px 9px; font-size: 0.6875rem; cursor: pointer; display: flex; align-items: center; gap: 5px; }
 
 .kpi-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md); padding: 20px; display: flex; flex-direction: column; gap: 8px; }
 .kpi-head { display: flex; align-items: center; justify-content: space-between; }
-.kpi-title { font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-faint); font-weight: 700; }
-.kpi-delta { font-size: 11.5px; font-weight: 700; padding: 2px 7px; border-radius: var(--r-pill); }
+.kpi-title { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-faint); font-weight: 700; }
+.kpi-delta { font-size: 0.7188rem; font-weight: 700; padding: 2px 7px; border-radius: var(--r-pill); }
 .kpi-delta.up { background: var(--success-dim); color: var(--success); }
 .kpi-delta.down { background: var(--danger-dim); color: var(--danger); }
 
@@ -625,25 +641,25 @@ body {
 .table-toolbar > button { align-self: stretch; min-height: max(40px, var(--tap-target)); }
 .table-search { max-width: none; min-width: 100%; width: 100%; }
 .table-scroller { overflow-x: auto; width: 100%; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
-table.clean-table { width: 100%; min-width: 720px; border-collapse: collapse; font-size: 13px; text-align: left; }
-table.clean-table th { padding: 12px; font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-faint); background: var(--surface-alt); border-bottom: 1px solid var(--border); user-select: none; }
+table.clean-table { width: 100%; min-width: 720px; border-collapse: collapse; font-size: 0.8125rem; text-align: left; }
+table.clean-table th { padding: 12px; font-size: 0.7188rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-faint); background: var(--surface-alt); border-bottom: 1px solid var(--border); user-select: none; }
 table.clean-table th.sortable { cursor: pointer; }
 table.clean-table th.sortable:hover { color: var(--text); }
-table.clean-table th .sort-icon { margin-left: 4px; font-size: 10px; opacity: 0.5; }
+table.clean-table th .sort-icon { margin-left: 4px; font-size: 0.6875rem; opacity: 0.5; }
 table.clean-table th.sorted-asc .sort-icon, table.clean-table th.sorted-desc .sort-icon, table.clean-table th[aria-sort="ascending"] .sort-icon, table.clean-table th[aria-sort="descending"] .sort-icon { opacity: 1; color: var(--accent); }
 table.clean-table td { padding: 12px; border-bottom: 1px solid var(--border); color: var(--text); }
 table.clean-table tr:last-child td { border-bottom: none; }
 table.clean-table tr:hover td { background: var(--surface-alt); }
 table.clean-table tr.selected td { background: var(--accent-tint); }
-.table-pagination { padding: 10px 12px; border-top: 1px solid var(--border); display: flex; flex-direction: column; align-items: stretch; justify-content: space-between; gap: 10px; background: var(--surface); font-size: 12.5px; color: var(--text-muted); }
+.table-pagination { padding: 10px 12px; border-top: 1px solid var(--border); display: flex; flex-direction: column; align-items: stretch; justify-content: space-between; gap: 10px; background: var(--surface); font-size: 0.7812rem; color: var(--text-muted); }
 .table-pagination-nav { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
 .amber-page-numbers { display: inline-flex; align-items: center; gap: 3px; }
-.amber-page-number { min-width: max(34px, var(--tap-target)); min-height: max(34px, var(--tap-target)); padding: 5px 9px; border: 1px solid transparent; border-radius: var(--r-pill); background: transparent; color: var(--text-muted); font-family: var(--font-sans); font-size: 11px; font-weight: 600; cursor: pointer; }
+.amber-page-number { min-width: max(34px, var(--tap-target)); min-height: max(34px, var(--tap-target)); padding: 5px 9px; border: 1px solid transparent; border-radius: var(--r-pill); background: transparent; color: var(--text-muted); font-family: var(--font-sans); font-size: 0.6875rem; font-weight: 600; cursor: pointer; }
 .amber-page-number:hover { background: var(--surface-alt); color: var(--text); }
 .amber-page-number[aria-current="page"] { border-color: var(--border); background: var(--surface); color: var(--accent); box-shadow: var(--shadow-xs); }
-.amber-mobile-table-hint { display: block; margin-top: -10px; color: var(--text-faint); font-size: 11px; line-height: 1.4; }
+.amber-mobile-table-hint { display: block; margin-top: -10px; color: var(--text-faint); font-size: 0.6875rem; line-height: 1.4; }
 
-.badge { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: var(--r-pill); font-size: 11.5px; font-weight: 600; background: var(--surface-alt); border: 1px solid var(--border); color: var(--text-muted); }
+.badge { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: var(--r-pill); font-size: 0.7188rem; font-weight: 600; background: var(--surface-alt); border: 1px solid var(--border); color: var(--text-muted); }
 .badge-success { background: var(--success-dim); border-color: var(--success-border); color: var(--success); }
 .badge-warning { background: var(--warning-dim); border-color: var(--warning-border); color: var(--warning); }
 .badge-danger { background: var(--danger-dim); border-color: var(--danger-border); color: var(--danger); }
@@ -661,25 +677,25 @@ table.clean-table tr.selected td { background: var(--accent-tint); }
 .modal-overlay.open { display: flex; }
 .modal-window { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg) var(--r-lg) var(--r-md) var(--r-md); max-width: none; width: 100%; max-height: calc(100vh - 16px); max-height: calc(100dvh - 16px); box-shadow: var(--shadow-xl); overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; }
 .modal-header { padding: 14px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.modal-title { font-size: 16px; font-weight: 700; color: var(--text); }
+.modal-title { font-size: 1rem; font-weight: 700; color: var(--text); }
 .modal-close-btn { background: transparent; border: none; cursor: pointer; color: var(--text-muted); display: flex; }
-.modal-body { padding: 16px; font-size: 13.5px; line-height: 1.6; max-height: 70vh; overflow-y: auto; }
+.modal-body { padding: 16px; font-size: 0.8438rem; line-height: 1.6; max-height: 70vh; overflow-y: auto; }
 .modal-footer { padding: 12px 16px; border-top: 1px solid var(--border); background: var(--surface-alt); display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 10px; }
 
 .cmd-palette-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(5px); z-index: var(--z-modal); display: none; align-items: flex-start; justify-content: center; padding: max(10px, env(safe-area-inset-top)) 10px 10px; }
 .cmd-palette-backdrop.open { display: flex; }
 .cmd-palette-window { width: 100%; max-width: 580px; max-height: calc(100vh - 20px); max-height: calc(100dvh - 20px); display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md); box-shadow: var(--shadow-xl); overflow: hidden; }
 .cmd-search-bar { display: flex; align-items: center; gap: 12px; padding: 12px; border-bottom: 1px solid var(--border); }
-.cmd-input { width: 100%; border: none; background: transparent; font-family: inherit; font-size: 15px; color: var(--text); outline: none; }
+.cmd-input { width: 100%; border: none; background: transparent; font-family: inherit; font-size: 0.9375rem; color: var(--text); outline: none; }
 .cmd-results { min-height: 0; max-height: min(55vh, 360px); overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 8px; }
-.cmd-group-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-faint); padding: 8px 12px 4px; }
-.cmd-item { appearance: none; width: 100%; display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border: 0; border-radius: var(--r-sm); background: transparent; font-family: inherit; line-height: inherit; text-align: left; cursor: pointer; color: var(--text); font-size: 13.5px; }
+.cmd-group-title { font-size: 0.6875rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-faint); padding: 8px 12px 4px; }
+.cmd-item { appearance: none; width: 100%; display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border: 0; border-radius: var(--r-sm); background: transparent; font-family: inherit; line-height: inherit; text-align: left; cursor: pointer; color: var(--text); font-size: 0.8438rem; }
 .cmd-item:hover, .cmd-item.selected { background: var(--accent-tint); color: var(--accent); }
 .cmd-item-left { display: flex; align-items: center; gap: 10px; }
-.cmd-footer { padding: 10px 16px; border-top: 1px solid var(--border); background: var(--surface-alt); display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; font-size: 11.5px; color: var(--text-muted); }
+.cmd-footer { padding: 10px 16px; border-top: 1px solid var(--border); background: var(--surface-alt); display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; font-size: 0.7188rem; color: var(--text-muted); }
 
 .toast-stack { position: fixed; bottom: max(10px, env(safe-area-inset-bottom)); left: 10px; right: 10px; display: flex; flex-direction: column-reverse; gap: 10px; z-index: var(--z-toast); pointer-events: none; }
-.toast-msg { width: 100%; max-width: 100%; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-lg); padding: 12px 14px; border-radius: var(--r-md); font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 10px; pointer-events: auto; transition: opacity 180ms ease, transform 180ms ease; }
+.toast-msg { width: 100%; max-width: 100%; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-lg); padding: 12px 14px; border-radius: var(--r-md); font-size: 0.8125rem; font-weight: 600; display: flex; align-items: center; gap: 10px; pointer-events: auto; transition: opacity 180ms ease, transform 180ms ease; }
 
 .kinetic-canvas-container { width: 100%; max-width: 440px; height: auto; min-height: 190px; display: flex; align-items: center; justify-content: center; margin: 0 auto; }
 @keyframes orbitCW { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
@@ -722,54 +738,69 @@ table.clean-table td.table-empty { text-align: center; padding: 30px 16px; color
 .amber-component-grid { display: grid; grid-template-columns: minmax(0,1fr); align-items: start; gap: 12px; }
 .amber-component-card { min-width: 0; gap: 13px; }
 .amber-component-card > .canvas-subhead { margin-bottom: -7px; }
-.amber-component-note { margin: 0; color: var(--text-muted); font-size: 12.5px; line-height: 1.5; }
-.amber-component-footnote { color: var(--text-faint); font-size: 11.5px; line-height: 1.45; }
+.amber-component-note { margin: 0; color: var(--text-muted); font-size: 0.7812rem; line-height: 1.5; }
+.amber-component-footnote { color: var(--text-faint); font-size: 0.7188rem; line-height: 1.45; }
 
 .amber-tabs { width: 100%; }
 .amber-tab-list { display: flex; align-items: center; gap: 4px; padding: 4px; border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--surface-alt); overflow-x: auto; }
-.amber-tab { appearance: none; flex: 0 0 auto; min-height: var(--tap-target); border: 0; border-radius: var(--r-pill); padding: 7px 12px; background: transparent; color: var(--text-muted); font-family: var(--font-sans); font-size: 12px; font-weight: 600; cursor: pointer; transition: background var(--dur-fast), color var(--dur-fast), box-shadow var(--dur-fast); }
+.amber-tab { appearance: none; flex: 0 0 auto; min-height: var(--tap-target); border: 0; border-radius: var(--r-pill); padding: 7px 12px; background: transparent; color: var(--text-muted); font-family: var(--font-sans); font-size: 0.75rem; font-weight: 600; cursor: pointer; transition: background var(--dur-fast), color var(--dur-fast), box-shadow var(--dur-fast); }
 .amber-tab:hover { color: var(--text); }
-.amber-tab.is-active { background: var(--surface); color: var(--accent); box-shadow: var(--shadow-xs); }
-.amber-tab-panel { padding: 14px 2px 2px; color: var(--text-muted); font-size: 12.5px; line-height: 1.55; }
+.amber-tab.is-active { background: var(--control-selected); color: var(--accent); box-shadow: var(--shadow-xs); }
+.amber-tab-panel { padding: 14px 2px 2px; color: var(--text-muted); font-size: 0.7812rem; line-height: 1.55; }
 .amber-tab-panel[hidden] { display: none; }
-.amber-panel-heading { display: flex; flex-direction: column; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 7px; color: var(--text); font-size: 13px; }
+/* Panel content eases in each time it is revealed (display:none → block restarts the animation). */
+.amber-tab-panel:not([hidden]) { animation: amberPanelIn var(--dur-med) var(--ease-ios) both; }
+@keyframes amberPanelIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+/* Sliding selection thumb shared by tabs, segmented controls and code tabs (iOS segmented-control motion). */
+.has-thumb { position: relative; isolation: isolate; }
+.has-thumb > :not(.amber-seg-thumb) { position: relative; z-index: 1; }
+.amber-seg-thumb { position: absolute; top: 0; left: 0; z-index: 0; width: 0; height: 0; border-radius: var(--r-pill); background: var(--control-selected); box-shadow: var(--shadow-xs); pointer-events: none; opacity: 0; }
+.has-thumb.is-thumb-ready > .amber-seg-thumb { opacity: 1; transition: transform 320ms var(--ease-ios), width 320ms var(--ease-ios), height 320ms var(--ease-ios); }
+.has-thumb.is-thumb-ready > .amber-tab.is-active, .has-thumb.is-thumb-ready > .amber-segment.is-selected { background: transparent; box-shadow: none; }
+.code-tabs > .amber-seg-thumb { border-radius: var(--r-xs); background: rgba(255, 255, 255, 0.12); box-shadow: none; }
+.has-thumb.is-thumb-ready > .code-tab-btn.active { background: transparent; }
+.amber-tab, .amber-segment, .code-tab-btn { transition: color 200ms var(--ease-ios); }
+.amber-panel-heading { display: flex; flex-direction: column; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 7px; color: var(--text); font-size: 0.8125rem; }
 .amber-run-row { display: grid; grid-template-columns: 10px minmax(0,1fr) auto; align-items: center; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--border); }
 .amber-run-row:last-child { border-bottom: 0; }
-.amber-run-row strong { color: var(--text); font-size: 11.5px; }
+.amber-run-row strong { color: var(--text); font-size: 0.7188rem; }
 
 .amber-accordion-list { display: flex; flex-direction: column; gap: 8px; }
 .amber-accordion { border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface); overflow: hidden; }
-.amber-accordion summary { list-style: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; cursor: pointer; }
+.amber-accordion summary { list-style: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; cursor: pointer; transition: background-color var(--dur-fast); }
+@media (hover: hover) { .amber-accordion summary:hover { background: var(--accent-tint); } }
 .amber-accordion summary::-webkit-details-marker { display: none; }
 .amber-accordion summary > span:first-child { display: flex; flex-direction: column; gap: 2px; }
-.amber-accordion summary strong { color: var(--text); font-size: 12.5px; font-weight: 600; }
-.amber-accordion summary small { color: var(--text-faint); font-size: 11px; }
-.amber-accordion-chevron { color: var(--text-muted); font-size: 16px; transition: transform var(--dur-fast); }
-.amber-accordion[open] .amber-accordion-chevron { transform: rotate(180deg); }
-.amber-accordion-body { padding: 11px 14px 13px; border-top: 1px solid var(--border); color: var(--text-muted); font-size: 12px; line-height: 1.55; background: var(--surface-alt); }
+.amber-accordion summary strong { color: var(--text); font-size: 0.7812rem; font-weight: 600; }
+.amber-accordion summary small { color: var(--text-faint); font-size: 0.6875rem; }
+.amber-accordion-chevron { display: inline-block; color: var(--text-muted); font-size: 1rem; transition: transform 320ms var(--ease-ios); }
+/* .is-closing rotates the chevron back immediately while the height collapse is still running. */
+.amber-accordion[open]:not(.is-closing) .amber-accordion-chevron { transform: rotate(180deg); }
+.amber-accordion-body { padding: 11px 14px 13px; border-top: 1px solid var(--border); color: var(--text-muted); font-size: 0.75rem; line-height: 1.55; background: var(--surface-alt); }
 
 .amber-actions-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .amber-menu-wrap { position: relative; }
 .amber-menu { position: absolute; z-index: var(--z-dropdown); top: calc(100% + 6px); left: 0; min-width: 205px; padding: 6px; display: flex; flex-direction: column; gap: 2px; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface); box-shadow: var(--shadow-lg); }
 .amber-menu[hidden] { display: none; }
-.amber-menu-item { appearance: none; border: 0; width: 100%; min-height: var(--tap-target); display: flex; align-items: center; gap: 9px; padding: 8px 10px; border-radius: var(--r-sm); background: transparent; color: var(--text); font-family: var(--font-sans); font-size: 12.5px; text-align: left; cursor: pointer; }
+.amber-menu-item { appearance: none; border: 0; width: 100%; min-height: var(--tap-target); display: flex; align-items: center; gap: 9px; padding: 8px 10px; border-radius: var(--r-sm); background: transparent; color: var(--text); font-family: var(--font-sans); font-size: 0.7812rem; text-align: left; cursor: pointer; }
 .amber-menu-item:hover, .amber-menu-item:focus-visible { background: var(--surface-alt); color: var(--accent); }
 .amber-menu-caret { color: var(--text-faint); margin-left: 2px; }
 .amber-tooltip-wrap { position: relative; display: inline-flex; }
-.amber-help-mark { width: 15px; height: 15px; border: 1px solid currentColor; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; line-height: 1; }
-.amber-tooltip { display: none; position: absolute; z-index: var(--z-dropdown); left: 50%; bottom: calc(100% + 8px); width: min(240px, calc(100vw - 40px)); transform: translateX(-50%); padding: 9px 11px; border: 1px solid var(--border-strong); border-radius: var(--r-sm); background: var(--surface); box-shadow: var(--shadow-md); color: var(--text-muted); font-size: 11.5px; line-height: 1.45; }
+.amber-help-mark { width: 15px; height: 15px; border: 1px solid currentColor; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.6875rem; line-height: 1; }
+.amber-tooltip { display: none; position: absolute; z-index: var(--z-dropdown); left: 50%; bottom: calc(100% + 8px); width: min(240px, calc(100vw - 40px)); transform: translateX(-50%); padding: 9px 11px; border: 1px solid var(--border-strong); border-radius: var(--r-sm); background: var(--surface); box-shadow: var(--shadow-md); color: var(--text-muted); font-size: 0.7188rem; line-height: 1.45; }
 .amber-tooltip-wrap:hover .amber-tooltip, .amber-tooltip-wrap:focus-within .amber-tooltip { display: block; }
 
 .amber-segmented { display: inline-flex; align-items: center; gap: 3px; padding: 4px; border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--surface-alt); max-width: 100%; }
-.amber-segment { appearance: none; min-height: var(--tap-target); border: 0; border-radius: var(--r-pill); padding: 7px 13px; background: transparent; color: var(--text-muted); font-family: var(--font-sans); font-size: 12px; font-weight: 600; cursor: pointer; transition: all var(--dur-fast); }
+.amber-segment { appearance: none; min-height: var(--tap-target); border: 0; border-radius: var(--r-pill); padding: 7px 13px; background: transparent; color: var(--text-muted); font-family: var(--font-sans); font-size: 0.75rem; font-weight: 600; cursor: pointer; transition: all var(--dur-fast); }
 .amber-segment:hover { color: var(--text); }
-.amber-segment.is-selected { background: var(--surface); color: var(--accent); box-shadow: var(--shadow-xs); }
+.amber-segment.is-selected { background: var(--control-selected); color: var(--accent); box-shadow: var(--shadow-xs); }
 .amber-density-preview { border: 1px solid var(--border); border-radius: var(--r-md); overflow: hidden; background: var(--surface); }
-.amber-density-row { min-height: 42px; padding: 9px 12px; display: flex; align-items: center; justify-content: space-between; gap: 10px; border-bottom: 1px solid var(--border); color: var(--text); font-size: 12.5px; }
+.amber-density-row { min-height: 42px; padding: 9px 12px; display: flex; align-items: center; justify-content: space-between; gap: 10px; border-bottom: 1px solid var(--border); color: var(--text); font-size: 0.7812rem; }
 .amber-density-row:last-child { border-bottom: 0; }
 .amber-density-preview.is-compact .amber-density-row { min-height: 32px; padding-top: 5px; padding-bottom: 5px; }
 
-.amber-progress-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--text); font-size: 13px; }
+.amber-progress-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--text); font-size: 0.8125rem; }
 .amber-progress-track { width: 100%; height: 9px; overflow: hidden; border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--surface-alt); }
 .amber-progress-fill { display: block; height: 100%; border-radius: inherit; background: var(--accent); transition: width var(--dur-med) var(--ease-out); }
 .amber-progress-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
@@ -779,8 +810,8 @@ table.clean-table td.table-empty { text-align: center; padding: 30px 16px; color
 .amber-check-row { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; }
 .amber-checkbox { width: 16px; height: 16px; margin-top: 2px; flex: 0 0 auto; accent-color: var(--accent); }
 .amber-check-row > span { display: flex; flex-direction: column; gap: 2px; }
-.amber-check-row strong { color: var(--text); font-size: 12.5px; font-weight: 600; }
-.amber-check-row small { color: var(--text-muted); font-size: 11.5px; line-height: 1.45; }
+.amber-check-row strong { color: var(--text); font-size: 0.7812rem; font-weight: 600; }
+.amber-check-row small { color: var(--text-muted); font-size: 0.7188rem; line-height: 1.45; }
 
 
 /* Responsive patterns and mobile-first behavior: additive Amber-token styles. */
@@ -793,23 +824,23 @@ table.clean-table td.table-empty { text-align: center; padding: 30px 16px; color
 .amber-mobile-nav-dialog::backdrop { background: rgba(18, 18, 17, 0.46); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
 .amber-mobile-nav-surface { width: 100%; min-height: 100%; display: flex; flex-direction: column; gap: 18px; padding: max(20px, env(safe-area-inset-top)) 14px max(18px, env(safe-area-inset-bottom)); border-right: 1px solid var(--border); background: var(--surface); box-shadow: var(--shadow-xl); overflow-y: auto; overscroll-behavior: contain; }
 .amber-mobile-nav-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
-.amber-mobile-nav-heading .ds-eyebrow { display: block; margin-bottom: 3px; font-size: 10px; }
-.amber-mobile-nav-heading h2 { font-family: var(--font-serif); font-size: 24px; line-height: 1.15; }
-.amber-mobile-nav-close { width: max(40px, var(--tap-target)); height: max(40px, var(--tap-target)); flex: 0 0 max(40px, var(--tap-target)); border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--surface); color: var(--text-muted); font-size: 24px; line-height: 1; cursor: pointer; }
+.amber-mobile-nav-heading .ds-eyebrow { display: block; margin-bottom: 3px; font-size: 0.6875rem; }
+.amber-mobile-nav-heading h2 { font-family: var(--font-serif); font-size: 1.5rem; line-height: 1.15; }
+.amber-mobile-nav-close { width: max(40px, var(--tap-target)); height: max(40px, var(--tap-target)); flex: 0 0 max(40px, var(--tap-target)); border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--surface); color: var(--text-muted); font-size: 1.5rem; line-height: 1; cursor: pointer; }
 .amber-mobile-nav-links { display: flex; flex-direction: column; gap: 4px; }
-.amber-mobile-nav-links a { min-height: 48px; display: grid; grid-template-columns: 30px minmax(0,1fr); align-items: center; gap: 10px; padding: 7px 10px; border: 1px solid transparent; border-radius: var(--r-sm); color: var(--text); text-decoration: none; font-size: 13px; font-weight: 600; }
+.amber-mobile-nav-links a { min-height: 48px; display: grid; grid-template-columns: 30px minmax(0,1fr); align-items: center; gap: 10px; padding: 7px 10px; border: 1px solid transparent; border-radius: var(--r-sm); color: var(--text); text-decoration: none; font-size: 0.8125rem; font-weight: 600; }
 .amber-mobile-nav-links a:hover, .amber-mobile-nav-links a:focus-visible { border-color: var(--border); background: var(--surface-alt); color: var(--accent); }
-.amber-nav-index { color: var(--text-faint); font-family: var(--font-mono); font-size: 10px; }
+.amber-nav-index { color: var(--text-faint); font-family: var(--font-mono); font-size: 0.6875rem; }
 .amber-nav-copy { display: flex; flex-direction: column; gap: 1px; }
-.amber-nav-copy small { color: var(--text-faint); font-size: 10.5px; font-weight: 500; }
+.amber-nav-copy small { color: var(--text-faint); font-size: 0.6875rem; font-weight: 500; }
 .amber-mobile-nav-footer { margin-top: auto; padding-top: 14px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px; }
 .amber-mobile-nav-footer .btn { width: 100%; justify-content: space-between; }
-.amber-mobile-nav-footer p { color: var(--text-faint); font-size: 11px; }
+.amber-mobile-nav-footer p { color: var(--text-faint); font-size: 0.6875rem; }
 html.amber-mobile-nav-open { overflow: hidden; }
 
 .amber-breadcrumbs { min-width: 0; overflow-x: auto; scrollbar-width: thin; }
 .amber-breadcrumbs ol { display: flex; align-items: center; flex-wrap: nowrap; width: max-content; min-width: 100%; gap: 7px; list-style: none; }
-.amber-breadcrumbs li { min-width: 0; white-space: nowrap; color: var(--text-faint); font-size: 12px; }
+.amber-breadcrumbs li { min-width: 0; white-space: nowrap; color: var(--text-faint); font-size: 0.75rem; }
 .amber-breadcrumbs li + li::before { content: "/"; margin-right: 7px; color: var(--border-strong); }
 .amber-breadcrumbs a { color: var(--text-muted); text-decoration: none; }
 .amber-breadcrumbs a:hover { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
@@ -817,49 +848,63 @@ html.amber-mobile-nav-open { overflow: hidden; }
 .amber-workflow-wizard { display: flex; flex-direction: column; gap: 14px; padding: 12px; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface-alt); }
 .amber-stepper { display: grid; grid-template-columns: minmax(0,1fr); gap: 8px; padding: 0; list-style: none; }
 .amber-stepper li { position: relative; z-index: 0; min-width: 0; min-height: 32px; display: flex; flex-direction: row; align-items: center; gap: 10px; text-align: left; }
-.amber-stepper li::after { content: ""; position: absolute; z-index: -1; top: 29px; bottom: -9px; left: 14px; right: auto; width: 1px; background: var(--border-strong); }
+/* Connector track with an accent fill that grows when the step completes (vertical on phones, horizontal ≥641px). */
+.amber-stepper li::after { content: ""; position: absolute; z-index: -1; top: 29px; bottom: -9px; left: 14px; right: auto; width: 1px; background-color: var(--border-strong); background-image: linear-gradient(var(--accent), var(--accent)); background-repeat: no-repeat; background-position: 0 0; background-size: 100% 0; transition: background-size 420ms var(--ease-ios); }
 .amber-stepper li:last-child::after { display: none; }
-.amber-step-number { width: 30px; height: 30px; flex: 0 0 30px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--border-strong); border-radius: 50%; background: var(--surface); color: var(--text-muted); font-family: var(--font-mono); font-size: 11px; font-weight: 600; }
+.amber-step-number { position: relative; width: 30px; height: 30px; flex: 0 0 30px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--border-strong); border-radius: 50%; background: var(--surface); color: var(--text-muted); font-family: var(--font-mono); font-size: 0.6875rem; font-weight: 600; transition: background-color 280ms var(--ease-ios), border-color 280ms var(--ease-ios), color 280ms var(--ease-ios), box-shadow 280ms var(--ease-ios); }
 .amber-stepper li.is-current .amber-step-number, .amber-stepper li.is-complete .amber-step-number { border-color: var(--accent); background: var(--accent); color: var(--accent-contrast); }
-.amber-stepper li.is-complete::after { background: var(--accent); }
-.amber-step-label { max-width: 100%; overflow-wrap: anywhere; color: var(--text-muted); font-size: 11.5px; font-weight: 600; }
+.amber-stepper li.is-current .amber-step-number { box-shadow: 0 0 0 4px var(--accent-tint-hover); animation: amberStepPop 420ms var(--ease-ios) both; }
+/* Completed steps swap the number for a checkmark; the number stays in the DOM for assistive tech. */
+.amber-stepper li.is-complete .amber-step-number { font-size: 0; }
+.amber-stepper li.is-complete .amber-step-number::before { content: "✓"; content: "✓" / ""; font-family: var(--font-sans); font-size: 0.8125rem; font-weight: 700; animation: amberCheckIn 360ms var(--ease-ios) both; }
+.amber-stepper li.is-complete::after { background-size: 100% 100%; }
+@keyframes amberStepPop { 0% { transform: scale(0.82); } 55% { transform: scale(1.08); } 100% { transform: scale(1); } }
+@keyframes amberCheckIn { from { opacity: 0; transform: scale(0.4) rotate(-20deg); } to { opacity: 1; transform: none; } }
+.amber-step-label { max-width: 100%; overflow-wrap: anywhere; color: var(--text-muted); font-size: 0.7188rem; font-weight: 600; transition: color 280ms var(--ease-ios); }
 .amber-stepper li.is-current .amber-step-label { color: var(--accent); }
-.amber-wizard-panels { min-height: 0; padding: 12px; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface); }
-.amber-wizard-panel h4 { margin-bottom: 4px; color: var(--text); font-size: 13px; }
-.amber-wizard-panel p { color: var(--text-muted); font-size: 12px; line-height: 1.5; }
+.amber-wizard-panels { min-height: 0; padding: 12px; overflow: hidden; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface); }
+/* Panels slide in from the direction of travel; data-direction is set by stepAmberWizard(). */
+.amber-workflow-wizard { --step-dx: 18px; }
+.amber-workflow-wizard[data-direction="back"] { --step-dx: -18px; }
+.amber-workflow-wizard[data-direction] .amber-wizard-panel:not([hidden]) { animation: amberStepPanelIn 360ms var(--ease-ios) both; }
+@keyframes amberStepPanelIn { from { opacity: 0; transform: translateX(var(--step-dx)); } to { opacity: 1; transform: none; } }
+.amber-wizard-panel h4 { margin-bottom: 4px; color: var(--text); font-size: 0.8125rem; }
+.amber-wizard-panel p { color: var(--text-muted); font-size: 0.75rem; line-height: 1.5; }
 .amber-wizard-actions { display: flex; justify-content: space-between; gap: 8px; }
 .amber-wizard-actions .btn:disabled { opacity: 0.48; cursor: not-allowed; transform: none; }
 .amber-wizard-actions .btn { min-height: max(38px, var(--tap-target)); }
 
 .amber-control-grid { display: grid; grid-template-columns: minmax(0,1fr); gap: 12px; width: 100%; }
 .amber-field { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
-.amber-field > label { color: var(--text-muted); font-size: 12px; font-weight: 600; }
-.amber-control { display: block; width: 100%; min-width: 0; min-height: max(42px, var(--tap-target)); padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--r-sm); outline: none; background: var(--surface); color: var(--text); font-family: var(--font-sans); font-size: 16px; line-height: 1.4; transition: border-color var(--dur-fast), box-shadow var(--dur-fast), background var(--dur-fast); }
-.amber-control::placeholder { color: var(--text-faint); }
-.amber-control:focus-visible { border-color: var(--border-focus); box-shadow: 0 0 0 3px var(--accent-glow); }
-.amber-control[aria-invalid="true"], .amber-control.is-invalid { border-color: var(--danger); }
-.amber-control.is-valid { border-color: var(--success); }
-.amber-field > small { color: var(--text-faint); font-size: 11px; line-height: 1.45; }
+.amber-field > label { color: var(--text-muted); font-size: 0.75rem; font-weight: 600; }
+.amber-control { display: block; width: 100%; min-width: 0; min-height: max(42px, var(--tap-target)); padding: 10px 12px; border: 1px solid transparent; border-radius: var(--r-sm); outline: none; background: var(--field-fill); color: var(--text); font-family: var(--font-sans); font-size: 1rem; line-height: 1.4; transition: background-color var(--dur-fast); }
+.amber-control::placeholder, .ds-search-nav input::placeholder, .search-wrapper input::placeholder, .cmd-input::placeholder { color: var(--text-placeholder); opacity: 1; }
+.amber-control:hover { background: var(--field-fill-hover); }
+.amber-control:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 0; }
+.amber-control[aria-invalid="true"], .amber-control.is-invalid { background: var(--danger-dim); }
+.amber-control[aria-invalid="true"]:focus-visible, .amber-control.is-invalid:focus-visible { outline-color: var(--danger); }
+.amber-control.is-valid { background: var(--success-dim); }
+.amber-field > small { color: var(--text-faint); font-size: 0.6875rem; line-height: 1.45; }
 .amber-field-error, .amber-field > .amber-field-error { color: var(--danger); font-weight: 600; }
 .amber-field-error[hidden] { display: none; }
-.amber-window-preview { min-width: 0; display: flex; flex-direction: column; align-items: flex-start; justify-content: space-between; gap: 10px; padding: 11px 12px; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-alt); color: var(--text-muted); font-size: 12px; }
+.amber-window-preview { min-width: 0; display: flex; flex-direction: column; align-items: flex-start; justify-content: space-between; gap: 10px; padding: 11px 12px; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-alt); color: var(--text-muted); font-size: 0.75rem; }
 .amber-demo-form { display: flex; flex-direction: column; gap: 12px; }
 .amber-validation-actions { display: flex; flex-direction: column; align-items: flex-start; flex-wrap: wrap; gap: 10px; }
 .amber-validation-actions p { min-width: 0; }
 
 .amber-upload-area { width: 100%; }
-.amber-file-input:focus-visible + .amber-upload-drop { outline: 3px solid var(--accent-glow); outline-offset: 3px; border-color: var(--border-focus); }
+.amber-file-input:focus-visible + .amber-upload-drop { outline: 2px solid var(--focus-ring); outline-offset: 2px; border-color: var(--border-focus); }
 .amber-upload-drop { min-height: 120px; display: flex; align-items: flex-start; justify-content: center; gap: 8px; padding: 16px 10px; border: 1px dashed var(--border-strong); border-radius: var(--r-md); background: var(--surface-alt); color: var(--text-muted); cursor: pointer; text-align: left; transition: background var(--dur-fast), border-color var(--dur-fast), transform var(--dur-fast); }
 .amber-upload-drop:hover, .amber-upload-drop.is-dragging { border-color: var(--accent); background: var(--accent-tint); }
 .amber-upload-drop.is-dragging { transform: scale(0.995); }
 .amber-upload-icon { width: 36px; height: 36px; flex: 0 0 36px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface); color: var(--accent); }
 .amber-upload-drop > span:last-child { display: flex; flex-direction: column; gap: 4px; }
-.amber-upload-drop strong { color: var(--text); font-size: 12.5px; }
-.amber-upload-drop small { color: var(--text-faint); font-size: 11px; line-height: 1.45; }
+.amber-upload-drop strong { color: var(--text); font-size: 0.7812rem; }
+.amber-upload-drop small { color: var(--text-faint); font-size: 0.6875rem; line-height: 1.45; }
 .amber-upload-list { display: flex; flex-direction: column; gap: 6px; list-style: none; }
-.amber-upload-file { min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface); color: var(--text-muted); font-size: 11.5px; }
+.amber-upload-file { min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface); color: var(--text-muted); font-size: 0.7188rem; }
 .amber-upload-file-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
-.amber-upload-file-size { flex: 0 0 auto; color: var(--text-faint); font-family: var(--font-mono); font-size: 10px; }
+.amber-upload-file-size { flex: 0 0 auto; color: var(--text-faint); font-family: var(--font-mono); font-size: 0.6875rem; }
 
 .amber-loading-demo { min-height: 102px; padding: 14px; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface); }
 .amber-skeleton-stack { display: flex; flex-direction: column; gap: 10px; }
@@ -871,37 +916,37 @@ html.amber-mobile-nav-open { overflow: hidden; }
 @keyframes amberSkeletonSweep { from { background-position: 100% 0; } to { background-position: -100% 0; } }
 .amber-loaded-preview { min-height: 72px; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 4px; }
 .amber-loaded-preview[hidden] { display: none; }
-.amber-loaded-preview strong { color: var(--text); font-size: 13px; }
-.amber-loaded-preview small { color: var(--text-faint); font-size: 11px; }
+.amber-loaded-preview strong { color: var(--text); font-size: 0.8125rem; }
+.amber-loaded-preview small { color: var(--text-faint); font-size: 0.6875rem; }
 .amber-feedback-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .amber-feedback-actions .btn:disabled { opacity: 0.55; cursor: wait; transform: none; }
 .amber-empty-state { display: flex; flex-direction: column; align-items: center; gap: 7px; padding: 16px; border: 1px dashed var(--border-strong); border-radius: var(--r-md); background: var(--surface-alt); text-align: center; }
 .amber-empty-state[hidden] { display: none; }
 .amber-empty-icon { width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--border); border-radius: 50%; background: var(--surface); color: var(--text-faint); }
-.amber-empty-state > strong { color: var(--text); font-size: 12.5px; }
-.amber-empty-state > p { max-width: 34ch; color: var(--text-muted); font-size: 11.5px; line-height: 1.45; }
+.amber-empty-state > strong { color: var(--text); font-size: 0.7812rem; }
+.amber-empty-state > p { max-width: 34ch; color: var(--text-muted); font-size: 0.7188rem; line-height: 1.45; }
 .amber-empty-state > .btn { margin-top: 2px; }
 .amber-inline-spinner { display: inline-block; width: 13px; height: 13px; border: 2px solid var(--border-strong); border-top-color: var(--accent); border-radius: 50%; vertical-align: -2px; animation: spinIcon 0.75s linear infinite; }
 
 .amber-assignee-card { min-width: 0; display: flex; flex-direction: column; align-items: flex-start; justify-content: space-between; gap: 14px; padding: 14px; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface-alt); }
 .amber-assignee-copy, .amber-person-copy { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
-.amber-assignee-copy strong, .amber-person-copy strong { color: var(--text); font-size: 12.5px; }
-.amber-assignee-copy small, .amber-person-copy small { color: var(--text-faint); font-size: 11px; }
+.amber-assignee-copy strong, .amber-person-copy strong { color: var(--text); font-size: 0.7812rem; }
+.amber-assignee-copy small, .amber-person-copy small { color: var(--text-faint); font-size: 0.6875rem; }
 .amber-avatar-group { flex: 0 0 auto; display: flex; align-items: center; padding-left: 8px; list-style: none; }
 .amber-avatar-group li { position: relative; margin-left: -8px; }
-.amber-avatar { width: 36px; height: 36px; flex: 0 0 36px; display: inline-flex; align-items: center; justify-content: center; border: 2px solid var(--surface); border-radius: 50%; color: var(--text); font-size: 10px; font-weight: 700; }
+.amber-avatar { width: 36px; height: 36px; flex: 0 0 36px; display: inline-flex; align-items: center; justify-content: center; border: 2px solid var(--surface); border-radius: 50%; color: var(--text); font-size: 0.6875rem; font-weight: 700; }
 .amber-avatar-accent { background: var(--accent-tint); color: var(--accent); }
 .amber-avatar-info { background: var(--info-dim); color: var(--info); }
 .amber-avatar-success { background: var(--success-dim); color: var(--success); }
 .amber-avatar-warning { background: var(--warning-dim); color: var(--warning); }
-.amber-avatar-overflow { background: var(--surface-active); color: var(--text-muted); }
+.amber-avatar-overflow { background: var(--surface-active); color: var(--text); }
 .amber-person-row { min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 12px; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface); }
 .amber-person-row > .badge { margin-left: auto; }
 
 .amber-chip-list { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 0; list-style: none; }
-.amber-chip { max-width: 100%; min-height: 30px; display: inline-flex; align-items: center; gap: 6px; padding: 3px 4px 3px 10px; border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--surface-alt); color: var(--text-muted); font-size: 11.5px; font-weight: 600; }
+.amber-chip { max-width: 100%; min-height: 30px; display: inline-flex; align-items: center; gap: 6px; padding: 3px 4px 3px 10px; border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--surface-alt); color: var(--text-muted); font-size: 0.7188rem; font-weight: 600; }
 .amber-chip > span { min-width: 0; overflow-wrap: anywhere; }
-.amber-chip button { width: max(23px, var(--tap-target)); height: max(23px, var(--tap-target)); flex: 0 0 max(23px, var(--tap-target)); display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 50%; background: transparent; color: var(--text-faint); font-size: 17px; line-height: 1; cursor: pointer; }
+.amber-chip button { width: max(23px, var(--tap-target)); height: max(23px, var(--tap-target)); flex: 0 0 max(23px, var(--tap-target)); display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 50%; background: transparent; color: var(--text-faint); font-size: 1.0625rem; line-height: 1; cursor: pointer; }
 .amber-chip button:hover { background: var(--surface-hover); color: var(--danger); }
 .amber-chip-form { display: flex; flex-direction: column; align-items: stretch; gap: 8px; }
 .amber-chip-form .amber-control { flex: 1 1 auto; }
@@ -911,7 +956,7 @@ html.amber-mobile-nav-open { overflow: hidden; }
 @media (min-width: 351px) {
   #exportTokensButton { display: inline-flex; }
   .ds-search-nav { max-width: 90px; }
-  .ds-intro-actions .btn { padding-left: 18px; padding-right: 18px; font-size: 13.5px; }
+  .ds-intro-actions .btn { padding-left: 18px; padding-right: 18px; font-size: 0.8438rem; }
   .amber-upload-drop { gap: 10px; padding-left: 12px; padding-right: 12px; }
 }
 @media (min-width: 391px) {
@@ -939,20 +984,20 @@ html.amber-mobile-nav-open { overflow: hidden; }
   .ds-main { padding: 44px 24px 140px; }
   .ds-intro { margin-bottom: 56px; }
   .ds-intro h1 { font-size: 2.75rem; line-height: 1.15; }
-  .ds-intro p { font-size: 16px; }
+  .ds-intro p { font-size: 1rem; }
   .ds-intro-actions { display: flex; flex-wrap: wrap; gap: 12px; }
   .ds-intro-actions .btn { width: auto; min-height: var(--tap-target); white-space: nowrap; }
   .ds-section { margin-bottom: 72px; scroll-margin-top: 76px; }
   .sec-header { margin-bottom: 20px; }
-  .sec-header h2 { font-size: 20px; line-height: inherit; align-items: center; gap: 10px; }
+  .sec-header h2 { font-size: 1.25rem; line-height: inherit; align-items: center; gap: 10px; }
   .sec-header h2 .li { margin-top: 0; }
-  .sec-header p { font-size: 13.5px; }
+  .sec-header p { font-size: 0.8438rem; }
   .canvas-card { padding: 26px; gap: 24px; }
   .type-row { flex-direction: row; align-items: baseline; gap: 20px; }
   .type-role { width: 120px; }
   .amber-capsule-head { flex-direction: row; align-items: baseline; gap: 0; }
-  .amber-capsule-title { font-size: 13.5px; }
-  .amber-capsule-subtext { font-size: 11.5px; }
+  .amber-capsule-title { font-size: 0.8438rem; }
+  .amber-capsule-subtext { font-size: 0.7188rem; }
   .amber-capsule-layer { padding: 0 20px; }
   .radio-showcase-grid { grid-template-columns: 1fr 1fr; }
   .form-grid-3 { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
@@ -960,7 +1005,7 @@ html.amber-mobile-nav-open { overflow: hidden; }
   .code-header-bar { flex-wrap: nowrap; gap: 0; padding: 8px 14px; }
   .code-tabs { flex: initial; overflow-x: visible; }
   .code-tab-btn { padding: 4px 10px; }
-  .api-code-block { padding: 18px 20px; font-size: 12.5px; }
+  .api-code-block { padding: 18px 20px; font-size: 0.7812rem; }
   .table-toolbar { flex-direction: row; align-items: center; gap: 12px; padding: 12px 16px; }
   .table-toolbar-left { flex-wrap: nowrap; align-items: center; width: auto; }
   .table-toolbar > button { align-self: auto; min-height: var(--tap-target); }
@@ -994,11 +1039,12 @@ html.amber-mobile-nav-open { overflow: hidden; }
   .amber-workflow-wizard { padding: 14px; }
   .amber-stepper { grid-template-columns: repeat(3, minmax(0,1fr)); }
   .amber-stepper li { min-height: 0; flex-direction: column; gap: 6px; text-align: center; }
-  .amber-stepper li::after { top: 15px; bottom: auto; left: calc(50% + 18px); right: calc(-50% + 18px); width: auto; height: 1px; }
-  .amber-step-label { font-size: 10.5px; }
+  .amber-stepper li::after { top: 15px; bottom: auto; left: calc(50% + 18px); right: calc(-50% + 18px); width: auto; height: 1px; background-size: 0 100%; }
+  .amber-stepper li.is-complete::after { background-size: 100% 100%; }
+  .amber-step-label { font-size: 0.6875rem; }
   .amber-wizard-panels { min-height: 76px; }
   .amber-control-grid { grid-template-columns: repeat(2, minmax(0,1fr)); gap: 14px; }
-  .amber-control { font-size: 13.5px; }
+  .amber-control { font-size: 0.8438rem; }
   .amber-window-preview { flex-direction: row; align-items: center; }
   .amber-validation-actions { flex-direction: row; align-items: center; }
   .amber-upload-drop { min-height: 132px; align-items: center; gap: 14px; padding: 20px; }
@@ -1007,7 +1053,6 @@ html.amber-mobile-nav-open { overflow: hidden; }
   .amber-chip-form { align-items: center; }
 }
 @media (min-width: 901px) {
-  :root { --tap-target: 0px; --tap-target-row: 0px; }
   .ds-topbar { padding: 12px 28px; gap: 20px; }
   .ds-topbar-actions { gap: 10px; }
   .sec-header { flex-direction: row; align-items: flex-end; gap: 0; }
@@ -1016,6 +1061,10 @@ html.amber-mobile-nav-open { overflow: hidden; }
 }
 @media (min-width: 1281px) {
   .ds-nav-links { display: flex; }
+}
+/* Relax touch minimums only for wide screens driven by a precise pointer; touch devices (e.g. iPad) keep 44pt targets. */
+@media (min-width: 901px) and (hover: hover) and (pointer: fine) {
+  :root { --tap-target: 0px; --tap-target-row: 0px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .amber-skeleton { animation: none; }
@@ -1026,12 +1075,12 @@ html.amber-mobile-nav-open { overflow: hidden; }
 
 /* Searchable selection, audit history, and form-state patterns. */
 .amber-combo { min-width: 0; display: flex; flex-direction: column; gap: 5px; }
-.amber-combo > label { color: var(--text-muted); font-size: 12px; font-weight: 600; }
+.amber-combo > label { color: var(--text-muted); font-size: 0.75rem; font-weight: 600; }
 .amber-combo-anchor { position: relative; min-width: 0; }
 .amber-combo-anchor:focus-within { z-index: var(--z-dropdown); }
 .amber-combo-input-row { position: relative; }
-.amber-combo-input { width: 100%; padding-right: 42px; }
-.amber-combo-clear { position: absolute; top: 50%; right: 6px; width: 32px; height: 32px; min-height: var(--tap-target); transform: translateY(-50%); display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 50%; background: transparent; color: var(--text-faint); font-size: 20px; line-height: 1; cursor: pointer; }
+.amber-combo-input { width: 100%; padding-right: max(42px, calc(var(--tap-target) + 8px)); }
+.amber-combo-clear { position: absolute; top: 50%; right: 4px; width: max(32px, var(--tap-target)); height: max(32px, var(--tap-target)); transform: translateY(-50%); display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 50%; background: transparent; color: var(--text-faint); font-size: 1.25rem; line-height: 1; cursor: pointer; }
 .amber-combo-clear:hover { background: var(--surface-alt); color: var(--text); }
 .amber-combo-clear[hidden], .amber-combo-clear-all[hidden], .amber-combo-list[hidden], .amber-combo-empty[hidden] { display: none; }
 .amber-combo-list { position: absolute; z-index: var(--z-dropdown); top: calc(100% + 6px); left: 0; right: 0; max-height: min(260px, 42vh); display: flex; flex-direction: column; overflow-y: auto; overscroll-behavior: contain; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface); box-shadow: var(--shadow-lg); padding: 5px; }
@@ -1041,22 +1090,23 @@ html.amber-mobile-nav-open { overflow: hidden; }
 .amber-combo-option.is-active[aria-selected="true"] { background: var(--accent-tint-hover); }
 .amber-combo-option[hidden] { display: none; }
 .amber-combo-option-copy { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 2px; }
-.amber-combo-option-copy strong { color: var(--text); font-size: 12px; font-weight: 600; }
-.amber-combo-option-copy small { color: var(--text-faint); font-size: 10.5px; line-height: 1.35; }
-.amber-combo-option-check { width: 18px; flex: 0 0 18px; color: var(--accent); font-size: 14px; font-weight: 700; opacity: 0; text-align: center; }
+.amber-combo-option-copy strong { color: var(--text); font-size: 0.75rem; font-weight: 600; }
+.amber-combo-option-copy small { color: var(--text-faint); font-size: 0.6875rem; line-height: 1.35; }
+.amber-combo-option-check { width: 18px; flex: 0 0 18px; color: var(--accent); font-size: 0.875rem; font-weight: 700; opacity: 0; text-align: center; }
 .amber-combo-option[aria-selected="true"] .amber-combo-option-check { opacity: 1; }
-.amber-combo-empty { position: absolute; z-index: var(--z-dropdown); top: calc(100% + 6px); left: 0; right: 0; padding: 14px; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface); box-shadow: var(--shadow-md); color: var(--text-muted); font-size: 12px; }
-.amber-combo > small { color: var(--text-faint); font-size: 11px; line-height: 1.45; }
+.amber-combo-empty { position: absolute; z-index: var(--z-dropdown); top: calc(100% + 6px); left: 0; right: 0; padding: 14px; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface); box-shadow: var(--shadow-md); color: var(--text-muted); font-size: 0.75rem; }
+.amber-combo > small { color: var(--text-faint); font-size: 0.6875rem; line-height: 1.45; }
 .amber-combo-status { min-height: 17px; }
 .amber-multi-combo { margin-top: 4px; }
-.amber-multi-select-shell { min-height: 44px; display: flex; align-items: center; flex-wrap: wrap; gap: 5px; padding: 5px 7px; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface); transition: border-color var(--dur-fast), box-shadow var(--dur-fast); }
-.amber-multi-select-shell:focus-within { border-color: var(--border-focus); box-shadow: 0 0 0 3px var(--accent-glow); }
+.amber-multi-select-shell { min-height: 44px; display: flex; align-items: center; flex-wrap: wrap; gap: 5px; padding: 5px 7px; border: 1px solid transparent; border-radius: var(--r-sm); background: var(--field-fill); transition: background-color var(--dur-fast); }
+.amber-multi-select-shell:hover { background: var(--field-fill-hover); }
+.amber-multi-select-shell:focus-within { outline: 2px solid var(--focus-ring); outline-offset: 0; }
 .amber-combo-selected { min-width: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 5px; padding: 0; list-style: none; }
-.amber-combo-selected .amber-chip { max-width: 100%; min-height: 28px; padding-left: 9px; font-size: 10.5px; }
-.amber-combo-search { min-width: 110px; flex: 1 1 120px; min-height: 34px; padding: 5px 7px; border: 0; outline: 0; background: transparent; color: var(--text); font: 16px var(--font-sans); }
+.amber-combo-selected .amber-chip { max-width: 100%; min-height: 28px; padding-left: 9px; font-size: 0.6875rem; }
+.amber-combo-search { min-width: 110px; flex: 1 1 120px; min-height: 34px; padding: 5px 7px; border: 0; outline: 0; background: transparent; color: var(--text); font: 1rem var(--font-sans); }
 .amber-combo-search:focus-visible { box-shadow: none; }
-.amber-combo-search::placeholder { color: var(--text-faint); }
-.amber-combo-clear-all { min-height: max(36px, var(--tap-target)); flex: 0 0 auto; padding: 5px 8px; border: 0; border-radius: var(--r-xs); background: transparent; color: var(--accent); font-family: var(--font-sans); font-size: 11px; font-weight: 600; cursor: pointer; }
+.amber-combo-search::placeholder { color: var(--text-placeholder); opacity: 1; }
+.amber-combo-clear-all { min-height: max(36px, var(--tap-target)); flex: 0 0 auto; padding: 5px 8px; border: 0; border-radius: var(--r-xs); background: transparent; color: var(--accent); font-family: var(--font-sans); font-size: 0.6875rem; font-weight: 600; cursor: pointer; }
 .amber-combo-clear-all:hover { background: var(--accent-tint); }
 
 .amber-timeline { display: flex; flex-direction: column; gap: 0; padding: 2px 0 0; list-style: none; }
@@ -1071,27 +1121,27 @@ html.amber-mobile-nav-open { overflow: hidden; }
 .amber-marker-warning { color: var(--warning); border-color: var(--warning-border); background: var(--warning-dim); }
 .amber-timeline-content { min-width: 0; display: flex; flex-direction: column; gap: 5px; padding: 2px 0 0; }
 .amber-timeline-head { min-width: 0; display: flex; flex-direction: column; align-items: flex-start; justify-content: space-between; gap: 4px; }
-.amber-timeline-head > strong { min-width: 0; color: var(--text); font-size: 12px; }
-.amber-timeline-content > p { color: var(--text-muted); font-size: 11.5px; line-height: 1.45; }
-.amber-timeline-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; color: var(--text-faint); font-size: 10.5px; }
-.amber-timeline-meta .amber-avatar { width: 23px; height: 23px; flex-basis: 23px; border-width: 1px; font-size: 8px; }
+.amber-timeline-head > strong { min-width: 0; color: var(--text); font-size: 0.75rem; }
+.amber-timeline-content > p { color: var(--text-muted); font-size: 0.7188rem; line-height: 1.45; }
+.amber-timeline-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; color: var(--text-faint); font-size: 0.6875rem; }
+.amber-timeline-meta .amber-avatar { width: 23px; height: 23px; flex-basis: 23px; border-width: 1px; font-size: 0.6875rem; }
 .amber-timeline-meta time { margin-left: 0; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .amber-timeline-item[hidden] { display: none; }
 
 .amber-field-state-grid { display: grid; grid-template-columns: minmax(0,1fr); gap: 12px; }
-.amber-control:disabled { cursor: not-allowed; background: var(--surface-alt); color: var(--text-faint); opacity: 0.8; }
-.amber-control[readonly] { background: var(--surface-alt); }
+.amber-control:disabled { cursor: not-allowed; background: var(--field-fill); color: var(--text-faint); opacity: 0.6; }
+.amber-control[readonly] { background: var(--field-fill); color: var(--text-muted); }
 .amber-field-success, .amber-field > .amber-field-success { color: var(--success); font-weight: 600; }
 .amber-textarea { min-height: 140px; resize: vertical; line-height: 1.55; padding: 12px; }
 .amber-textarea-meta { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.amber-textarea-meta small { color: var(--text-faint); font-size: 11px; line-height: 1.4; }
-.amber-textarea-meta output { flex: 0 0 auto; color: var(--text-faint); font-family: var(--font-mono); font-size: 10.5px; font-variant-numeric: tabular-nums; }
+.amber-textarea-meta small { color: var(--text-faint); font-size: 0.6875rem; line-height: 1.4; }
+.amber-textarea-meta output { flex: 0 0 auto; color: var(--text-faint); font-family: var(--font-mono); font-size: 0.6875rem; font-variant-numeric: tabular-nums; }
 .amber-textarea-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
 .amber-textarea-actions .btn { min-height: max(38px, var(--tap-target)); }
 .amber-textarea-limit { margin-top: -4px; }
 
 @media (min-width: 641px) {
-  .amber-combo-search { font-size: 12.5px; }
+  .amber-combo-search { font-size: 0.7812rem; }
   .amber-combo-clear-all { min-height: max(32px, var(--tap-target)); }
   .amber-timeline-head { flex-direction: row; align-items: center; gap: 8px; }
   .amber-timeline-meta time { margin-left: auto; }
@@ -1111,18 +1161,18 @@ html.amber-mobile-nav-open { overflow: hidden; }
 .amber-sparkline-card { min-width: 0; gap: 9px; padding: 15px; }
 .amber-sparkline-card .kpi-head { align-items: flex-start; gap: 8px; }
 .amber-sparkline-card .kpi-title { line-height: 1.35; }
-.amber-sparkline-value { color: var(--text); font-size: 25px; font-weight: 700; letter-spacing: -0.035em; line-height: 1.1; font-variant-numeric: tabular-nums; }
-.amber-sparkline-value small { color: var(--text-muted); font-size: 11px; font-weight: 600; letter-spacing: 0; }
+.amber-sparkline-value { color: var(--text); font-size: 1.5625rem; font-weight: 700; letter-spacing: -0.035em; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.amber-sparkline-value small { color: var(--text-muted); font-size: 0.6875rem; font-weight: 600; letter-spacing: 0; }
 .amber-sparkline { width: 100%; height: 42px; display: block; overflow: visible; }
 .amber-sparkline path { fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
 .amber-sparkline-up path, .amber-sparkline-good path { stroke: var(--success); }
 .amber-sparkline-watch path { stroke: var(--warning); }
-.amber-sparkline-caption { color: var(--text-faint); font-size: 10.5px; line-height: 1.4; }
+.amber-sparkline-caption { color: var(--text-faint); font-size: 0.6875rem; line-height: 1.4; }
 
 .amber-chart-toolbar { display: flex; flex-direction: column; align-items: flex-start; justify-content: space-between; gap: 10px; }
 .amber-chart-toolbar > div:first-child { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
-.amber-chart-toolbar strong { color: var(--text); font-size: 13px; }
-.amber-chart-toolbar small { color: var(--text-faint); font-size: 11px; }
+.amber-chart-toolbar strong { color: var(--text); font-size: 0.8125rem; }
+.amber-chart-toolbar small { color: var(--text-faint); font-size: 0.6875rem; }
 .amber-chart-frame { width: 100%; min-width: 0; padding: 10px 4px 4px 0; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface); }
 .amber-trend-chart { width: 100%; height: auto; display: block; overflow: visible; }
 .amber-chart-grid line { stroke: var(--border); stroke-width: 1; stroke-dasharray: 3 5; }
@@ -1132,13 +1182,13 @@ html.amber-mobile-nav-open { overflow: hidden; }
 .amber-chart-area { fill: url(#amberTrendFill); }
 .amber-chart-line { fill: none; stroke: var(--accent); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
 .amber-chart-points circle { fill: var(--surface); stroke: var(--accent); stroke-width: 2.5; vector-effect: non-scaling-stroke; }
-.amber-chart-summary { padding: 10px 12px; border-left: 2px solid var(--accent); border-radius: 0 var(--r-xs) var(--r-xs) 0; background: var(--accent-tint); color: var(--text-muted); font-size: 11.5px; line-height: 1.45; }
+.amber-chart-summary { padding: 10px 12px; border-left: 2px solid var(--accent); border-radius: 0 var(--r-xs) var(--r-xs) 0; background: var(--accent-tint); color: var(--text-muted); font-size: 0.7188rem; line-height: 1.45; }
 .amber-chart-data { border-top: 1px solid var(--border); padding-top: 10px; }
-.amber-chart-data summary { width: fit-content; color: var(--accent); font-size: 11.5px; font-weight: 600; cursor: pointer; }
+.amber-chart-data summary { width: fit-content; color: var(--accent); font-size: 0.7188rem; font-weight: 600; cursor: pointer; }
 .amber-chart-table-wrap { margin-top: 8px; overflow-x: auto; }
-.amber-chart-data-table { width: 100%; border-collapse: collapse; color: var(--text-muted); font-size: 11.5px; text-align: left; }
+.amber-chart-data-table { width: 100%; border-collapse: collapse; color: var(--text-muted); font-size: 0.7188rem; text-align: left; }
 .amber-chart-data-table th, .amber-chart-data-table td { padding: 7px 9px; border-bottom: 1px solid var(--border); }
-.amber-chart-data-table thead th { color: var(--text-faint); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+.amber-chart-data-table thead th { color: var(--text-faint); font-size: 0.6875rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
 .amber-chart-data-table tbody th { color: var(--text); font-weight: 600; }
 .amber-chart-data-table tbody tr:last-child th, .amber-chart-data-table tbody tr:last-child td { border-bottom: 0; }
 
@@ -1159,8 +1209,8 @@ html.amber-mobile-nav-open { overflow: hidden; }
 .amber-alert[hidden] { display: none; }
 .amber-alert-icon { margin-top: 1px; color: var(--info); }
 .amber-alert-body { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 3px; }
-.amber-alert-body strong { font-size: 12.5px; }
-.amber-alert-body p { color: var(--text-muted); font-size: 12px; line-height: 1.45; }
+.amber-alert-body strong { font-size: 0.7812rem; }
+.amber-alert-body p { color: var(--text-muted); font-size: 0.75rem; line-height: 1.45; }
 .amber-alert-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
 .amber-alert-success { border-color: var(--success-border); background: var(--success-dim); }
 .amber-alert-success .amber-alert-icon { color: var(--success); }
@@ -1171,11 +1221,12 @@ html.amber-mobile-nav-open { overflow: hidden; }
 .amber-alert-dismiss { flex: 0 0 auto; width: 28px; height: 28px; min-width: var(--tap-target); min-height: var(--tap-target); display: inline-flex; align-items: center; justify-content: center; margin: -4px -4px 0 0; border: 0; border-radius: var(--r-xs); background: transparent; color: var(--text-muted); cursor: pointer; }
 .amber-alert-dismiss:hover { background: var(--surface-hover); color: var(--text); }
 
-.amber-input-group { min-width: 0; display: flex; align-items: stretch; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface); transition: border-color var(--dur-fast), box-shadow var(--dur-fast); }
-.amber-input-group:focus-within { border-color: var(--border-focus); box-shadow: 0 0 0 3px var(--accent-glow); }
+.amber-input-group { min-width: 0; display: flex; align-items: stretch; border: 1px solid transparent; border-radius: var(--r-sm); background: var(--field-fill); transition: background-color var(--dur-fast); }
+.amber-input-group:hover { background: var(--field-fill-hover); }
+.amber-input-group:focus-within { outline: 2px solid var(--focus-ring); outline-offset: 0; }
 .amber-input-group > .amber-control { flex: 1 1 auto; border: 0; border-radius: 0; background: transparent; }
-.amber-input-group > .amber-control:focus-visible { box-shadow: none; }
-.amber-input-addon { display: inline-flex; align-items: center; padding: 0 12px; background: var(--surface-alt); color: var(--text-muted); font-family: var(--font-mono); font-size: 12px; white-space: nowrap; }
+.amber-input-group > .amber-control:focus-visible { outline: none; }
+.amber-input-addon { display: inline-flex; align-items: center; padding: 0 12px; background: transparent; color: var(--text-muted); font-family: var(--font-mono); font-size: 0.75rem; white-space: nowrap; }
 .amber-input-addon:first-child { border-right: 1px solid var(--border); border-radius: var(--r-sm) 0 0 var(--r-sm); }
 .amber-input-addon:last-child { border-left: 1px solid var(--border); border-radius: 0 var(--r-sm) var(--r-sm) 0; }
 .amber-input-action { flex: 0 0 max(42px, var(--tap-target)); min-height: var(--tap-target); display: inline-flex; align-items: center; justify-content: center; border: 0; border-left: 1px solid var(--border); border-radius: 0 var(--r-sm) var(--r-sm) 0; background: transparent; color: var(--text-muted); cursor: pointer; }
@@ -1185,9 +1236,9 @@ html.amber-mobile-nav-open { overflow: hidden; }
 .amber-details { border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface); overflow: hidden; }
 .amber-details > div { display: grid; grid-template-columns: minmax(0,1fr); align-items: center; gap: 3px; padding: 10px 14px; border-bottom: 1px solid var(--border); }
 .amber-details > div:last-child { border-bottom: 0; }
-.amber-details dt { color: var(--text-faint); font-size: 11.5px; font-weight: 600; }
-.amber-details dd { min-width: 0; display: flex; align-items: center; gap: 8px; color: var(--text); font-size: 12.5px; overflow-wrap: anywhere; }
-.amber-details code { font-family: var(--font-mono); font-size: 11.5px; }
+.amber-details dt { color: var(--text-faint); font-size: 0.7188rem; font-weight: 600; }
+.amber-details dd { min-width: 0; display: flex; align-items: center; gap: 8px; color: var(--text); font-size: 0.7812rem; overflow-wrap: anywhere; }
+.amber-details code { font-family: var(--font-mono); font-size: 0.7188rem; }
 
 .amber-icon-btn { width: max(34px, var(--tap-target)); height: max(34px, var(--tap-target)); flex: 0 0 max(34px, var(--tap-target)); display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface); color: var(--text-muted); cursor: pointer; transition: background var(--dur-fast), color var(--dur-fast), border-color var(--dur-fast); }
 .amber-icon-btn:hover { background: var(--surface-alt); border-color: var(--border-strong); color: var(--text); }
@@ -1205,27 +1256,27 @@ html.amber-mobile-nav-open { overflow: hidden; }
 
 /* AI chat input: auto-growing prompt composer with slash commands and a one-line action status. */
 .amber-chat-stage { position: relative; min-height: 360px; display: flex; flex-direction: column; justify-content: flex-end; gap: 10px; padding: 12px; border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--surface-alt); }
-.amber-chat-status { align-self: center; max-width: 100%; display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--surface); box-shadow: var(--shadow-sm); color: var(--text-muted); font-size: 12.5px; }
+.amber-chat-status { align-self: center; max-width: 100%; display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--surface); box-shadow: var(--shadow-sm); color: var(--text-muted); font-size: 0.7812rem; }
 .amber-chat-status[hidden] { display: none; }
 .amber-chat-status > span:last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .amber-chat-status.is-ok .li { color: var(--success); }
 .amber-chat-status.is-warn .li { color: var(--warning); }
 .amber-chat-status.is-run { color: var(--text); }
-.amber-chat-composer { position: relative; padding: 8px 8px 8px 14px; border: 1px solid var(--border); border-radius: var(--r-xl); background: var(--surface); box-shadow: var(--shadow-md); transition: border-color var(--dur-fast), box-shadow var(--dur-fast); }
-.amber-chat-composer:focus-within { border-color: var(--border-focus); box-shadow: 0 0 0 3px var(--accent-glow), var(--shadow-md); }
+.amber-chat-composer { position: relative; padding: 8px 8px 8px 14px; border: 1px solid transparent; border-radius: var(--r-xl); background: var(--surface); box-shadow: var(--shadow-md); }
+.amber-chat-composer:focus-within { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 .amber-chat-context { display: flex; flex-wrap: wrap; gap: 6px; padding: 2px 0 4px; list-style: none; }
 .amber-chat-context:empty { display: none; }
-.amber-chat-context .amber-chip { min-height: 26px; font-size: 11px; }
-.amber-chat-prompt { display: block; width: 100%; max-height: 160px; padding: 6px 0; border: 0; outline: none; resize: none; background: transparent; color: var(--text); font: 16px/1.5 var(--font-sans); }
+.amber-chat-context .amber-chip { min-height: 26px; font-size: 0.6875rem; }
+.amber-chat-prompt { display: block; width: 100%; max-height: 160px; padding: 6px 0; border: 0; outline: none; resize: none; background: transparent; color: var(--text); font: 1rem/1.5 var(--font-sans); }
 .amber-chat-prompt:focus-visible { box-shadow: none; }
-.amber-chat-prompt::placeholder { color: var(--text-faint); }
+.amber-chat-prompt::placeholder { color: var(--text-placeholder); opacity: 1; }
 .amber-chat-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .amber-chat-tools { min-width: 0; display: flex; align-items: center; gap: 4px; }
-.amber-chat-tool { min-width: max(30px, var(--tap-target)); min-height: max(30px, var(--tap-target)); display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 0 10px; border: 1px solid var(--border); border-radius: var(--r-pill); background: transparent; color: var(--text-muted); font-family: var(--font-sans); font-size: 12px; font-weight: 600; white-space: nowrap; cursor: pointer; }
+.amber-chat-tool { min-width: max(30px, var(--tap-target)); min-height: max(30px, var(--tap-target)); display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 0 10px; border: 1px solid var(--border); border-radius: var(--r-pill); background: transparent; color: var(--text-muted); font-family: var(--font-sans); font-size: 0.75rem; font-weight: 600; white-space: nowrap; cursor: pointer; }
 .amber-chat-tool:hover { background: var(--surface-alt); color: var(--text); }
 .amber-chat-slash { font-family: var(--font-mono); font-weight: 700; color: var(--accent); }
 .amber-chat-tool-label, .amber-chat-hint { display: none; }
-.amber-chat-hint { color: var(--text-faint); font-size: 11px; white-space: nowrap; }
+.amber-chat-hint { color: var(--text-faint); font-size: 0.6875rem; white-space: nowrap; }
 .amber-chat-send-wrap { display: flex; align-items: center; gap: 10px; }
 .amber-chat-send { width: max(34px, var(--tap-target)); height: max(34px, var(--tap-target)); flex: 0 0 auto; display: grid; place-items: center; border: 0; border-radius: 50%; background: var(--accent); color: var(--accent-contrast); cursor: pointer; transition: background var(--dur-fast), transform var(--dur-fast); }
 .amber-chat-send:hover { background: var(--accent-hover); }
@@ -1235,21 +1286,131 @@ html.amber-mobile-nav-open { overflow: hidden; }
 .amber-chat-send.is-stop svg { fill: currentColor; }
 .amber-chat-menu { position: absolute; left: 0; right: 0; bottom: calc(100% + 8px); z-index: var(--z-dropdown); max-height: min(52vh, 250px); overflow-y: auto; overscroll-behavior: contain; padding: 6px; border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--surface); box-shadow: var(--shadow-lg); }
 .amber-chat-menu[hidden] { display: none; }
-.amber-chat-group { padding: 8px 10px 4px; color: var(--text-faint); font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+.amber-chat-group { padding: 8px 10px 4px; color: var(--text-faint); font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
 .amber-chat-item { min-height: max(40px, var(--tap-target)); display: flex; align-items: center; gap: 10px; padding: 6px 10px; border-radius: var(--r-sm); cursor: pointer; }
 .amber-chat-item.is-active { background: var(--accent-tint); }
 .amber-chat-item-icon { width: 28px; height: 28px; flex: 0 0 28px; display: grid; place-items: center; border-radius: var(--r-sm); background: var(--surface-alt); color: var(--accent); }
 .amber-chat-item.is-active .amber-chat-item-icon { background: var(--surface); }
 .amber-chat-item-copy { min-width: 0; flex: 1 1 auto; display: flex; flex-direction: column; }
-.amber-chat-item-copy strong { overflow: hidden; color: var(--text); font-family: var(--font-mono); font-size: 12.5px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.amber-chat-item-copy strong { overflow: hidden; color: var(--text); font-family: var(--font-mono); font-size: 0.7812rem; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
 .amber-chat-item-copy em { color: var(--text-faint); font-style: normal; font-weight: 500; }
 .amber-chat-item-copy mark { background: transparent; color: var(--accent); }
-.amber-chat-item-copy small { overflow: hidden; color: var(--text-muted); font-size: 11.5px; text-overflow: ellipsis; white-space: nowrap; }
-.amber-chat-empty { padding: 14px 10px; color: var(--text-muted); font-size: 12.5px; text-align: center; }
+.amber-chat-item-copy small { overflow: hidden; color: var(--text-muted); font-size: 0.7188rem; text-overflow: ellipsis; white-space: nowrap; }
+.amber-chat-empty { padding: 14px 10px; color: var(--text-muted); font-size: 0.7812rem; text-align: center; }
 @media (min-width: 641px) {
   .amber-chat-stage { min-height: 380px; padding: 20px; }
-  .amber-chat-prompt { font-size: 14px; }
+  .amber-chat-prompt { font-size: 0.875rem; }
   .amber-chat-tool-label, .amber-chat-hint { display: inline; }
+}
+
+/* ==========================================================================
+   iOS INSET-GROUPED FORM
+   Mirrors the HIG / SwiftUI Form pattern: section header, rows in one rounded
+   group separated by inset hairlines, label leading and value trailing, footer.
+   ========================================================================== */
+.amber-form { min-width: 0; display: flex; flex-direction: column; gap: 22px; padding: 14px 6px; border-radius: var(--r-lg); background: var(--grouped-bg); }
+.amber-form-section { min-width: 0; display: flex; flex-direction: column; }
+.amber-form-header { padding: 0 16px 7px; color: var(--text-muted); font-size: 0.8125rem; font-weight: 400; line-height: 1.3; letter-spacing: 0.01em; text-transform: uppercase; }
+.amber-form-footer { padding: 7px 16px 0; color: var(--text-muted); font-size: 0.8125rem; line-height: 1.4; }
+.amber-form-footer + .amber-form-footer { padding-top: 3px; }
+.amber-form-footer.amber-field-error, .amber-form-footer.amber-field-success { font-weight: 400; }
+.amber-form-footer.amber-field-error { color: var(--danger); }
+.amber-form-footer.amber-field-success { color: var(--success); }
+.amber-form-footer small, .amber-form-footer output { color: inherit; font-size: inherit; }
+.amber-form-group { min-width: 0; overflow: hidden; border-radius: var(--r-md); background: var(--grouped-cell); }
+.amber-form-row { position: relative; min-width: 0; min-height: 44px; display: flex; align-items: center; gap: 12px; padding: 0 16px; color: var(--text); font-size: 1.0625rem; line-height: 1.3; }
+.amber-form-row + .amber-form-row::before { content: ""; position: absolute; top: 0; left: 16px; right: 0; height: 1px; background: var(--separator); pointer-events: none; }
+.amber-form-label { flex: 0 0 auto; max-width: 48%; color: var(--text); font-size: 1.0625rem; transition: color var(--dur-fast); }
+/* iOS shows only the caret in an active field; a tinted row keeps focus perceivable with a monochrome accent. */
+.amber-form-row { transition: background-color var(--dur-fast); }
+.amber-form-row:focus-within { background: var(--accent-tint-hover); }
+
+.amber-form-row > .amber-control { flex: 1 1 0; width: auto; min-width: 0; min-height: 44px; padding: 11px 0; border: 0; border-radius: 0; background: transparent; color: var(--text); font-size: 1.0625rem; line-height: 1.3; text-align: left; caret-color: var(--accent); }
+.amber-form-label ~ .amber-control { text-align: right; }
+.amber-form-row > .amber-control:hover { background-color: transparent; }
+.amber-form-row > .amber-control:focus-visible { outline: none; }
+.amber-form-row > .amber-control[readonly] { color: var(--text-muted); }
+.amber-form-row > .amber-control:disabled, .amber-form-row:has(> .amber-control:disabled) .amber-form-label { color: var(--text-faint); opacity: 1; cursor: not-allowed; }
+.amber-form-row > .amber-control[aria-invalid="true"], .amber-form-row > .amber-control.is-invalid { color: var(--danger); }
+.amber-form-row:has(> .amber-control[aria-invalid="true"])::after, .amber-form-row:has(> .amber-control.is-invalid)::after,
+.amber-form-row:has(> .amber-control.is-valid)::after { flex: 0 0 20px; width: 20px; height: 20px; display: grid; place-items: center; border-radius: 50%; color: var(--surface); font-size: 0.75rem; font-weight: 800; line-height: 1; }
+.amber-form-row:has(> .amber-control[aria-invalid="true"])::after, .amber-form-row:has(> .amber-control.is-invalid)::after { content: "!"; content: "!" / ""; background: var(--danger); }
+.amber-form-row:has(> .amber-control.is-valid)::after { content: "✓"; content: "✓" / ""; background: var(--success); }
+
+/* Menu-style picker: trailing secondary value with an up/down chevron. */
+.amber-form-row > select.amber-control { flex: 0 1 auto; margin-left: auto; padding-right: 18px; -webkit-appearance: none; appearance: none; color: var(--text-muted); text-align-last: right; cursor: pointer; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 16' fill='none' stroke='%238E8E93' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m2 6 3-3 3 3M2 10l3 3 3-3'/%3E%3C/svg%3E") no-repeat right center / 9px 15px; }
+.amber-form-row > select.amber-control option { background: var(--surface); color: var(--text); }
+/* Compact date/time pickers render as tinted capsules, like UIDatePicker's compact style. */
+.amber-form-row > .amber-control[type="date"], .amber-form-row > .amber-control[type="time"] { flex: 0 1 auto; min-width: 0; min-height: 34px; margin-left: auto; padding: 6px 10px; border-radius: var(--r-sm); background: var(--field-fill); color: var(--text); text-align: center; }
+@media (min-width: 641px) {
+  .amber-form { padding: 16px 12px; }
+}
+.amber-form-row > .amber-textarea { align-self: stretch; min-height: 132px; padding: 11px 0; line-height: 1.45; resize: vertical; }
+.amber-form-affix { flex: 0 0 auto; color: var(--text-muted); font-size: 1.0625rem; white-space: nowrap; }
+.amber-form-affix:first-child { margin-right: -8px; }
+.amber-control + .amber-form-affix { margin-left: -4px; }
+.amber-form-row > .amber-input-action { flex: 0 0 44px; width: 44px; min-height: 44px; margin-right: -12px; border: 0; border-radius: 0; background: transparent; color: var(--accent); }
+.amber-form-row > .amber-input-action:hover { background: transparent; color: var(--accent-hover); }
+
+/* ==========================================================================
+   HIG ACCESSIBILITY ADAPTATIONS
+   Increase Contrast, Reduce Transparency and forced colors, per Apple HIG
+   Color, Accessibility and Materials guidance.
+   ========================================================================== */
+@media (prefers-contrast: more) {
+  :root {
+    --text-muted: #3A3A3C;
+    --text-faint: #48484A;
+    --text-placeholder: #3A3A3C;
+    --control-border: #48484A;
+    --border: #AEAEB2;
+    --border-strong: #636366;
+    --border-focus: #000000;
+    --accent: #000000;
+    --accent-hover: #2A2A2C;
+    --accent-tint: rgba(0, 0, 0, 0.08);
+    --accent-tint-hover: rgba(0, 0, 0, 0.14);
+    --field-fill: rgba(118, 118, 128, 0.20);
+    --field-fill-hover: rgba(118, 118, 128, 0.26);
+    --separator: rgba(60, 60, 67, 0.50);
+    --surface-glass: var(--surface);
+  }
+  :root[data-theme="dark"] {
+    --text-muted: #CFC8BE;
+    --text-faint: #B5ADA2;
+    --text-placeholder: #CFC8BE;
+    --control-border: #B5ADA2;
+    --border: rgba(255, 255, 255, 0.28);
+    --border-strong: #8A8279;
+    --border-focus: #FFFFFF;
+    --accent: #FFFFFF;
+    --accent-hover: #E6E4E0;
+    --accent-tint: rgba(255, 255, 255, 0.14);
+    --accent-tint-hover: rgba(255, 255, 255, 0.22);
+    --field-fill: rgba(165, 157, 146, 0.22);
+    --field-fill-hover: rgba(165, 157, 146, 0.28);
+    --separator: rgba(255, 255, 255, 0.30);
+    --surface-glass: var(--surface);
+  }
+  /* With Increase Contrast on, filled fields also gain a visible edge. */
+  .ds-search-nav input, .search-wrapper input, .amber-control,
+  .amber-multi-select-shell, .amber-input-group, .amber-chat-composer { border-color: var(--border-strong); }
+  :focus-visible { outline-width: 3px; }
+  .ds-topbar { backdrop-filter: none; -webkit-backdrop-filter: none; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  :root, :root[data-theme="dark"] { --surface-glass: var(--surface); }
+  .ds-topbar { backdrop-filter: none; -webkit-backdrop-filter: none; }
+  .modal-overlay, .cmd-palette-backdrop, .amber-mobile-nav-backdrop, .amber-mobile-nav-dialog::backdrop { backdrop-filter: none; -webkit-backdrop-filter: none; background: rgba(0, 0, 0, 0.62); }
+}
+@media (forced-colors: active) {
+  .ds-search-nav input, .search-wrapper input, .amber-control,
+  .amber-multi-select-shell, .amber-input-group, .amber-chat-composer { border-color: CanvasText; }
+  .amber-input-group > .amber-control { border: 0; }
+  .amber-multi-select-shell:focus-within, .amber-input-group:focus-within, .amber-chat-composer:focus-within { outline: 2px solid Highlight; }
+  .amber-form-group, .amber-radio-list { border: 1px solid CanvasText; }
+  .amber-form-row > .amber-control { border: 0; }
+  .amber-form-row:focus-within { outline: 2px solid Highlight; outline-offset: -2px; }
 }
 
 </style>
@@ -1261,7 +1422,7 @@ html.amber-mobile-nav-open { overflow: hidden; }
   <a href="#" class="brand-lockup">
     <span>Amber</span>
     <div class="brand-dot"></div>
-    <span style="font-family:var(--font-sans);font-weight:700;font-size:14px;color:var(--text-muted)">Component System</span>
+    <span style="font-family:var(--font-sans);font-weight:700;font-size:0.875rem;color:var(--text-muted)">Component System</span>
   </a>
 
   <div class="ds-search-nav" role="button" tabindex="0" aria-label="Open command palette" onclick="Amber.CommandPalette.open()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();Amber.CommandPalette.open();}" style="cursor:pointer">
@@ -1356,20 +1517,20 @@ html.amber-mobile-nav-open { overflow: hidden; }
         <span class="li" style="color:var(--accent)" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg></span>
         01. Foundations &amp; System Tokens
       </h2>
-      <p>Terracotta ember palette, dual-font editorial pairing, and 45+ zero-dependency 1.5px stroke Lucide vector icons.</p>
+      <p>Monochrome palette with black/white accent, dual-font editorial pairing, and 45+ zero-dependency 1.5px stroke Lucide vector icons.</p>
     </div>
 
     <div class="canvas-card">
       <div class="canvas-subhead">Core Color Swatches</div>
       <div class="swatch-grid">
-        <div class="swatch-card"><div class="swatch-color" style="background:var(--accent)"></div><span class="swatch-name">accent</span><span class="swatch-token">#D4622B</span></div>
-        <div class="swatch-card"><div class="swatch-color" style="background:var(--accent-tint)"></div><span class="swatch-name">accent-tint</span><span class="swatch-token">rgba 9%</span></div>
+        <div class="swatch-card"><div class="swatch-color" style="background:var(--accent)"></div><span class="swatch-name">accent</span><span class="swatch-token">#1D1D1F / #F5F3EF</span></div>
+        <div class="swatch-card"><div class="swatch-color" style="background:var(--accent-tint)"></div><span class="swatch-name">accent-tint</span><span class="swatch-token">rgba 6%</span></div>
         <div class="swatch-card"><div class="swatch-color" style="background:var(--surface)"></div><span class="swatch-name">surface</span><span class="swatch-token">cards</span></div>
-        <div class="swatch-card"><div class="swatch-color" style="background:var(--surface-alt)"></div><span class="swatch-name">surface-alt</span><span class="swatch-token">recessed</span></div>
-        <div class="swatch-card"><div class="swatch-color" style="background:var(--border)"></div><span class="swatch-name">border</span><span class="swatch-token">dividers</span></div>
-        <div class="swatch-card"><div class="swatch-color" style="background:var(--success)"></div><span class="swatch-name">success</span><span class="swatch-token">#1E8E3E</span></div>
-        <div class="swatch-card"><div class="swatch-color" style="background:var(--warning)"></div><span class="swatch-name">warning</span><span class="swatch-token">#B77900</span></div>
-        <div class="swatch-card"><div class="swatch-color" style="background:var(--danger)"></div><span class="swatch-name">danger</span><span class="swatch-token">#D93025</span></div>
+        <div class="swatch-card"><div class="swatch-color" style="background:var(--surface-alt)"></div><span class="swatch-name">surface-alt</span><span class="swatch-token">#F2F2F7 recessed</span></div>
+        <div class="swatch-card"><div class="swatch-color" style="background:var(--border)"></div><span class="swatch-name">border</span><span class="swatch-token">#E5E5EA dividers</span></div>
+        <div class="swatch-card"><div class="swatch-color" style="background:var(--success)"></div><span class="swatch-name">success</span><span class="swatch-token">#1A7D37</span></div>
+        <div class="swatch-card"><div class="swatch-color" style="background:var(--warning)"></div><span class="swatch-name">warning</span><span class="swatch-token">#956300</span></div>
+        <div class="swatch-card"><div class="swatch-color" style="background:var(--danger)"></div><span class="swatch-name">danger</span><span class="swatch-token">#CD2D23</span></div>
         <div class="swatch-card"><div class="swatch-color" style="background:var(--info)"></div><span class="swatch-name">info</span><span class="swatch-token">#2563EB</span></div>
       </div>
 
@@ -1385,11 +1546,11 @@ html.amber-mobile-nav-open { overflow: hidden; }
         </div>
         <div class="type-row">
           <span class="type-role">UI Language</span>
-          <span style="font-size:14px;color:var(--text-muted)">Inter carries form labels, dialogue buttons, and operational copy.</span>
+          <span style="font-size:0.875rem;color:var(--text-muted)">The system font (SF Pro on Apple devices) carries form labels, dialogue buttons, and operational copy.</span>
         </div>
         <div class="type-row">
           <span class="type-role">Machine Truth</span>
-          <span style="font-family:var(--font-mono);font-size:12.5px;color:var(--accent);background:var(--accent-tint);padding:2px 8px;border-radius:4px">cron: 0 9 * * 1-5 // partition: #db-0x8FA</span>
+          <span style="font-family:var(--font-mono);font-size:0.7812rem;color:var(--accent);background:var(--accent-tint);padding:2px 8px;border-radius:4px">cron: 0 9 * * 1-5 // partition: #db-0x8FA</span>
         </div>
       </div>
 
@@ -1495,29 +1656,38 @@ html.amber-mobile-nav-open { overflow: hidden; }
         </div>
 
         <div style="display:flex;flex-direction:column;gap:8px">
-          <div class="canvas-subhead">Bordered List Group Radios</div>
-          <div class="amber-radio-list">
-            <label class="amber-radio-row active">
-              <input type="radio" name="permissionRole" class="amber-radio" checked>
-              <span class="amber-radio-text">
-                <strong>System Administrator</strong>
-                <small>Full schema migration and partition root access.</small>
-              </span>
-            </label>
-            <label class="amber-radio-row">
-              <input type="radio" name="permissionRole" class="amber-radio">
-              <span class="amber-radio-text">
-                <strong>Coworker Member</strong>
-                <small>Chat access and proposed action sign-off gates.</small>
-              </span>
-            </label>
-            <label class="amber-radio-row">
-              <input type="radio" name="permissionRole" class="amber-radio">
-              <span class="amber-radio-text">
-                <strong>Read-Only Auditor</strong>
-                <small>Inspect telemetry logs without ledger write permissions.</small>
-              </span>
-            </label>
+          <div class="canvas-subhead">Checkmark Selection List</div>
+          <div class="amber-form">
+            <div class="amber-form-section">
+              <p class="amber-form-header" id="permissionRoleHeader">Permission role</p>
+              <div class="amber-radio-list" role="radiogroup" aria-labelledby="permissionRoleHeader">
+                <label class="amber-radio-row active">
+                  <input type="radio" name="permissionRole" class="amber-radio" checked>
+                  <span class="amber-radio-text">
+                    <strong>System Administrator</strong>
+                    <small>Full schema migration and partition root access.</small>
+                  </span>
+                  <span class="amber-radio-check" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></span>
+                </label>
+                <label class="amber-radio-row">
+                  <input type="radio" name="permissionRole" class="amber-radio">
+                  <span class="amber-radio-text">
+                    <strong>Coworker Member</strong>
+                    <small>Chat access and proposed action sign-off gates.</small>
+                  </span>
+                  <span class="amber-radio-check" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></span>
+                </label>
+                <label class="amber-radio-row">
+                  <input type="radio" name="permissionRole" class="amber-radio">
+                  <span class="amber-radio-text">
+                    <strong>Read-Only Auditor</strong>
+                    <small>Inspect telemetry logs without ledger write permissions.</small>
+                  </span>
+                  <span class="amber-radio-check" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></span>
+                </label>
+              </div>
+              <p class="amber-form-footer">The selected role is marked with a trailing checkmark.</p>
+            </div>
           </div>
         </div>
       </div>
@@ -1547,25 +1717,32 @@ html.amber-mobile-nav-open { overflow: hidden; }
   </section>
 
   <!-- SECTION 4: FORMS & INPUTS -->
-  <section class="ds-section" id="forms" data-keywords="forms inputs floating labels kbd search buttons switches stepper">
+  <section class="ds-section" id="forms" data-keywords="forms inputs ios grouped form rows kbd search buttons switches stepper">
     <div class="sec-header">
       <h2>
         <span class="li" style="color:var(--accent)" aria-hidden="true"><svg viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M12 8v8"/><path d="M8 12h8"/></svg></span>
         04. Forms &amp; Interactive Primitives
       </h2>
-      <p>Floating label inputs, search with KBD shortcuts, buttons, switches, and steppers.</p>
+      <p>iOS-style grouped form rows, search with KBD shortcuts, buttons, switches, and steppers.</p>
     </div>
 
     <div class="canvas-card">
       <div class="form-grid-3">
-        <div class="floating-group">
-          <input type="text" class="floating-input" id="fl1" placeholder=" ">
-          <label for="fl1" class="floating-label">Database Partition Name</label>
-        </div>
-
-        <div class="floating-group">
-          <input type="email" class="floating-input" id="fl2" placeholder=" " value="jane@company.com">
-          <label for="fl2" class="floating-label">Operator Email Address</label>
+        <div class="amber-form">
+          <div class="amber-form-section">
+            <p class="amber-form-header" id="operatorFormHeader">Operator</p>
+            <div class="amber-form-group" role="group" aria-labelledby="operatorFormHeader">
+              <div class="amber-form-row">
+                <label class="amber-form-label" for="fl1">Partition</label>
+                <input type="text" class="amber-control" id="fl1" placeholder="Database partition">
+              </div>
+              <div class="amber-form-row">
+                <label class="amber-form-label" for="fl2">Email</label>
+                <input type="email" class="amber-control" id="fl2" placeholder="name@company.com" value="jane@company.com" autocomplete="email">
+              </div>
+            </div>
+            <p class="amber-form-footer">Rows share one grouped container, separated by inset hairlines.</p>
+          </div>
         </div>
 
         <div class="search-wrapper">
@@ -1589,7 +1766,7 @@ html.amber-mobile-nav-open { overflow: hidden; }
         
         <div style="display:flex;align-items:center;gap:8px;margin-left:auto">
           <button class="switch" type="button" role="switch" aria-label="Auto-retry" aria-checked="true" onclick="toggleSwitch(this)"></button>
-          <span style="font-size:13px;font-weight:600">Auto-retry</span>
+          <span style="font-size:0.8125rem;font-weight:600">Auto-retry</span>
         </div>
 
         <div class="stepper">
@@ -1631,7 +1808,7 @@ html.amber-mobile-nav-open { overflow: hidden; }
           <span class="li li-sm"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>
           <span>cron: 0 9 * * 1-5</span>
         </span>
-        <span style="font-size:12px;color:var(--text-muted)">Live computed schedule</span>
+        <span style="font-size:0.75rem;color:var(--text-muted)">Live computed schedule</span>
       </div>
 
       <div class="canvas-subhead" style="margin-top:16px">Synchronized REST API Mutation Payload</div>
@@ -1707,7 +1884,7 @@ html.amber-mobile-nav-open { overflow: hidden; }
 
       <div class="shake-card-demo" id="shakeCardTest">
         <h3 style="font-family:var(--font-serif);font-size:1.3rem;margin-bottom:6px">Tactile Error Shake</h3>
-        <p style="font-size:12.5px;color:var(--text-muted);margin-bottom:14px">
+        <p style="font-size:0.7812rem;color:var(--text-muted);margin-bottom:14px">
           Uses spring displacement and forced DOM reflow (<code style="font-family:var(--font-mono);color:var(--accent)">void card.offsetWidth</code>) to ensure repeated error clicks always replay cleanly.
         </p>
         <button class="btn btn-danger btn-sm" onclick="triggerShakeDemo()">
@@ -1723,7 +1900,7 @@ html.amber-mobile-nav-open { overflow: hidden; }
         <span class="li" style="color:var(--accent)" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="5" rx="1.5"/><rect x="13" y="10" width="8" height="11" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/></svg></span>
         08. Additional Components &amp; Interaction Patterns
       </h2>
-      <p>More reusable patterns, composed with the same Amber surfaces, terracotta accents, and editorial rhythm.</p>
+      <p>More reusable patterns, composed with the same Amber surfaces, monochrome accents, and editorial rhythm.</p>
     </div>
 
     <div class="amber-component-grid">
@@ -1828,13 +2005,20 @@ html.amber-mobile-nav-open { overflow: hidden; }
           <label class="amber-check-row"><input class="amber-checkbox" type="checkbox" checked><span><strong>Email run summary</strong><small>Send a short report after each scheduled run.</small></span></label>
           <label class="amber-check-row"><input class="amber-checkbox" type="checkbox"><span><strong>Pause on repeated failures</strong><small>Require review after three consecutive failures.</small></span></label>
         </div>
-        <div class="amber-field">
-          <label for="componentRegion">Workspace region</label>
-          <select class="amber-control" id="componentRegion">
-            <option value="eu-central">Europe · Frankfurt</option>
-            <option value="eu-west">Europe · Dublin</option>
-            <option value="us-east">United States · Virginia</option>
-          </select>
+        <div class="amber-form">
+          <div class="amber-form-section">
+            <p class="amber-form-header" id="componentRegionHeader">Workspace</p>
+            <div class="amber-form-group" role="group" aria-labelledby="componentRegionHeader">
+              <div class="amber-form-row">
+                <label class="amber-form-label" for="componentRegion">Region</label>
+                <select class="amber-control" id="componentRegion">
+                  <option value="eu-central">Europe · Frankfurt</option>
+                  <option value="eu-west">Europe · Dublin</option>
+                  <option value="us-east">United States · Virginia</option>
+                </select>
+              </div>
+            </div>
+          </div>
         </div>
       </article>
     </div>
@@ -1891,17 +2075,21 @@ html.amber-mobile-nav-open { overflow: hidden; }
 
       <article class="canvas-card amber-component-card" aria-labelledby="responsiveDateTimeTitle">
         <div class="canvas-subhead" id="responsiveDateTimeTitle">Date &amp; Time Fields</div>
-        <p class="amber-component-note">Native date/time pickers, with full-width controls and labels that remain clear on small screens.</p>
-        <div class="amber-control-grid">
-          <div class="amber-field">
-            <label for="componentScheduleDate">Deployment date</label>
-            <input class="amber-control" id="componentScheduleDate" type="date" value="2026-10-01">
-            <small>Uses the workspace’s local calendar.</small>
-          </div>
-          <div class="amber-field">
-            <label for="componentScheduleTime">Start time</label>
-            <input class="amber-control" id="componentScheduleTime" type="time" value="09:00">
-            <small>Shown in the selected workspace timezone.</small>
+        <p class="amber-component-note">Compact date and time pickers inside an iOS-style grouped form.</p>
+        <div class="amber-form">
+          <div class="amber-form-section">
+            <p class="amber-form-header" id="componentScheduleHeader">Deployment schedule</p>
+            <div class="amber-form-group" role="group" aria-labelledby="componentScheduleHeader">
+              <div class="amber-form-row">
+                <label class="amber-form-label" for="componentScheduleDate">Date</label>
+                <input class="amber-control" id="componentScheduleDate" type="date" value="2026-10-01" aria-describedby="componentScheduleHelp">
+              </div>
+              <div class="amber-form-row">
+                <label class="amber-form-label" for="componentScheduleTime">Time</label>
+                <input class="amber-control" id="componentScheduleTime" type="time" value="09:00" aria-describedby="componentScheduleHelp">
+              </div>
+            </div>
+            <p class="amber-form-footer" id="componentScheduleHelp">Uses the workspace’s local calendar and timezone.</p>
           </div>
         </div>
         <div class="amber-window-preview"><span class="badge badge-accent">Planned window</span><span>Thursday · 09:00 AM</span></div>
@@ -1911,11 +2099,18 @@ html.amber-mobile-nav-open { overflow: hidden; }
         <div class="canvas-subhead" id="responsiveValidationTitle">Validation &amp; Field States</div>
         <p class="amber-component-note">Associated help and error copy, an announced validation result, and no data submission.</p>
         <form class="amber-demo-form" id="amberValidationForm" novalidate onsubmit="return validateAmberEmail(event)">
-          <div class="amber-field">
-            <label for="componentContactEmail">Operator email</label>
-            <input class="amber-control" id="componentContactEmail" type="email" required autocomplete="email" placeholder="name@company.com" aria-invalid="false" aria-describedby="componentEmailHelp componentEmailError" oninput="updateAmberEmailState(this)">
-            <small id="componentEmailHelp">We’ll use this address for run summaries. This demo does not send email.</small>
-            <small class="amber-field-error" id="componentEmailError" role="alert" hidden>Enter a valid email address to continue.</small>
+          <div class="amber-form">
+            <div class="amber-form-section">
+              <p class="amber-form-header" id="componentContactHeader">Contact</p>
+              <div class="amber-form-group" role="group" aria-labelledby="componentContactHeader">
+                <div class="amber-form-row">
+                  <label class="amber-form-label" for="componentContactEmail">Email</label>
+                  <input class="amber-control" id="componentContactEmail" type="email" required autocomplete="email" placeholder="name@company.com" aria-invalid="false" aria-describedby="componentEmailHelp componentEmailError" oninput="updateAmberEmailState(this)">
+                </div>
+              </div>
+              <p class="amber-form-footer" id="componentEmailHelp">We’ll use this address for run summaries. This demo does not send email.</p>
+              <p class="amber-form-footer amber-field-error" id="componentEmailError" role="alert" hidden>Enter a valid email address to continue.</p>
+            </div>
           </div>
           <div class="amber-validation-actions">
             <button class="btn btn-primary btn-sm" type="submit">Validate address</button>
@@ -2095,27 +2290,36 @@ html.amber-mobile-nav-open { overflow: hidden; }
 
       <article class="canvas-card amber-component-card" aria-labelledby="formStatesTitle">
         <div class="canvas-subhead" id="formStatesTitle">Form Field States</div>
-        <p class="amber-component-note">Disabled, read-only, success, and error examples share the same field geometry and Amber tokens.</p>
-        <div class="amber-field-state-grid">
-          <div class="amber-field">
-            <label for="stateDisabledField">Disabled</label>
-            <input class="amber-control" id="stateDisabledField" type="text" value="Managed by workspace" disabled>
-            <small>Unavailable in the current context.</small>
+        <p class="amber-component-note">Disabled, read-only, success, and error rows share the same grouped-row geometry and Amber tokens.</p>
+        <div class="amber-form">
+          <div class="amber-form-section">
+            <p class="amber-form-header" id="stateAvailabilityHeader">Availability</p>
+            <div class="amber-form-group" role="group" aria-labelledby="stateAvailabilityHeader">
+              <div class="amber-form-row">
+                <label class="amber-form-label" for="stateDisabledField">Disabled</label>
+                <input class="amber-control" id="stateDisabledField" type="text" value="Managed by workspace" disabled>
+              </div>
+              <div class="amber-form-row">
+                <label class="amber-form-label" for="stateReadonlyField">Read-only</label>
+                <input class="amber-control" id="stateReadonlyField" type="text" value="ws_eu_04A9" readonly aria-describedby="stateReadonlyHelp">
+              </div>
+            </div>
+            <p class="amber-form-footer" id="stateReadonlyHelp">Disabled values are unavailable here; read-only values can be copied but not edited.</p>
           </div>
-          <div class="amber-field">
-            <label for="stateReadonlyField">Read-only</label>
-            <input class="amber-control" id="stateReadonlyField" type="text" value="ws_eu_04A9" readonly aria-describedby="stateReadonlyHelp">
-            <small id="stateReadonlyHelp">Copyable, but not editable here.</small>
-          </div>
-          <div class="amber-field">
-            <label for="stateSuccessField">Success</label>
-            <input class="amber-control is-valid" id="stateSuccessField" type="email" value="ops@amber.test" aria-invalid="false" aria-describedby="stateSuccessHelp">
-            <small class="amber-field-success" id="stateSuccessHelp">Address format looks good.</small>
-          </div>
-          <div class="amber-field">
-            <label for="stateErrorField">Error</label>
-            <input class="amber-control is-invalid" id="stateErrorField" type="email" value="payments@" aria-invalid="true" aria-describedby="stateErrorHelp">
-            <small class="amber-field-error" id="stateErrorHelp">Enter a complete email address.</small>
+          <div class="amber-form-section">
+            <p class="amber-form-header" id="stateValidationHeader">Validation</p>
+            <div class="amber-form-group" role="group" aria-labelledby="stateValidationHeader">
+              <div class="amber-form-row">
+                <label class="amber-form-label" for="stateSuccessField">Success</label>
+                <input class="amber-control is-valid" id="stateSuccessField" type="email" value="ops@amber.test" aria-invalid="false" aria-describedby="stateSuccessHelp">
+              </div>
+              <div class="amber-form-row">
+                <label class="amber-form-label" for="stateErrorField">Error</label>
+                <input class="amber-control is-invalid" id="stateErrorField" type="email" value="payments@" aria-invalid="true" aria-describedby="stateErrorHelp">
+              </div>
+            </div>
+            <p class="amber-form-footer amber-field-success" id="stateSuccessHelp">Success: address format looks good.</p>
+            <p class="amber-form-footer amber-field-error" id="stateErrorHelp">Error: enter a complete email address.</p>
           </div>
         </div>
       </article>
@@ -2123,11 +2327,17 @@ html.amber-mobile-nav-open { overflow: hidden; }
       <article class="canvas-card amber-component-card" aria-labelledby="textareaComponentTitle">
         <div class="canvas-subhead" id="textareaComponentTitle">Text Area &amp; Character Count</div>
         <p class="amber-component-note">A responsive multiline field with a live visual count, limit feedback, and a comfortable mobile typing area.</p>
-        <div class="amber-field">
-          <label for="amberReleaseNote">Release note</label>
-          <textarea class="amber-control amber-textarea" id="amberReleaseNote" rows="4" maxlength="240" placeholder="Add context for the team…" aria-describedby="amberReleaseNoteHelp amberReleaseNoteCount" oninput="updateAmberTextareaCount(this)">The reconciliation schedule is ready for review by the Finance team.</textarea>
-          <div class="amber-textarea-meta"><small id="amberReleaseNoteHelp">Keep notes concise; up to 240 characters.</small><output id="amberReleaseNoteCount" for="amberReleaseNote" aria-live="off">0 / 240</output></div>
-          <p class="amber-field-error" id="amberReleaseNoteLimit" role="status" aria-live="polite" hidden>Character limit reached.</p>
+        <div class="amber-form">
+          <div class="amber-form-section">
+            <label class="amber-form-header" for="amberReleaseNote">Release note</label>
+            <div class="amber-form-group">
+              <div class="amber-form-row">
+                <textarea class="amber-control amber-textarea" id="amberReleaseNote" rows="4" maxlength="240" placeholder="Add context for the team…" aria-describedby="amberReleaseNoteHelp amberReleaseNoteCount" oninput="updateAmberTextareaCount(this)">The reconciliation schedule is ready for review by the Finance team.</textarea>
+              </div>
+            </div>
+            <div class="amber-form-footer amber-textarea-meta"><small id="amberReleaseNoteHelp">Keep notes concise; up to 240 characters.</small><output id="amberReleaseNoteCount" for="amberReleaseNote" aria-live="off">0 / 240</output></div>
+            <p class="amber-form-footer amber-field-error" id="amberReleaseNoteLimit" role="status" aria-live="polite" hidden>Character limit reached.</p>
+          </div>
         </div>
         <div class="amber-textarea-actions">
           <button class="btn btn-secondary btn-sm" type="button" onclick="clearAmberTextarea()">Clear note</button>
@@ -2268,30 +2478,38 @@ html.amber-mobile-nav-open { overflow: hidden; }
       <article class="canvas-card amber-component-card" aria-labelledby="inputGroupTitle">
         <div class="canvas-subhead" id="inputGroupTitle">Input Groups &amp; Password</div>
         <p class="amber-component-note">Prefix and suffix add-ons, plus a password field with an accessible visibility toggle.</p>
-        <div class="amber-field">
-          <label for="componentWebhookUrl">Webhook endpoint</label>
-          <div class="amber-input-group">
-            <span class="amber-input-addon" aria-hidden="true">https://</span>
-            <input class="amber-control" id="componentWebhookUrl" type="text" inputmode="url" value="hooks.amber.test/ledger" autocomplete="off" spellcheck="false" aria-describedby="componentWebhookHelp">
+        <div class="amber-form">
+          <div class="amber-form-section">
+            <label class="amber-form-header" for="componentWebhookUrl">Webhook endpoint</label>
+            <div class="amber-form-group">
+              <div class="amber-form-row">
+                <span class="amber-form-affix" aria-hidden="true">https://</span>
+                <input class="amber-control" id="componentWebhookUrl" type="text" inputmode="url" value="hooks.amber.test/ledger" autocomplete="off" spellcheck="false" aria-describedby="componentWebhookHelp">
+              </div>
+            </div>
+            <p class="amber-form-footer" id="componentWebhookHelp">The https:// prefix is added automatically.</p>
           </div>
-          <small id="componentWebhookHelp">The https:// prefix is added automatically.</small>
-        </div>
-        <div class="amber-field">
-          <label for="componentBudgetCap">Monthly budget cap</label>
-          <div class="amber-input-group">
-            <span class="amber-input-addon" aria-hidden="true">€</span>
-            <input class="amber-control" id="componentBudgetCap" type="number" inputmode="decimal" min="0" step="50" value="2500" aria-describedby="componentBudgetHelp">
-            <span class="amber-input-addon" aria-hidden="true">/ month</span>
+          <div class="amber-form-section">
+            <label class="amber-form-header" for="componentBudgetCap">Monthly budget cap</label>
+            <div class="amber-form-group">
+              <div class="amber-form-row">
+                <span class="amber-form-affix" aria-hidden="true">€</span>
+                <input class="amber-control" id="componentBudgetCap" type="number" inputmode="decimal" min="0" step="50" value="2500" aria-describedby="componentBudgetHelp">
+                <span class="amber-form-affix" aria-hidden="true">/ month</span>
+              </div>
+            </div>
+            <p class="amber-form-footer" id="componentBudgetHelp">Amount in euros per month.</p>
           </div>
-          <small id="componentBudgetHelp">Amount in euros per month.</small>
-        </div>
-        <div class="amber-field">
-          <label for="componentApiSecret">API secret</label>
-          <div class="amber-input-group">
-            <input class="amber-control" id="componentApiSecret" type="password" value="demo-secret-not-real" autocomplete="off" spellcheck="false" aria-describedby="componentApiSecretHelp">
-            <button class="amber-input-action" type="button" aria-label="Show secret" aria-pressed="false" aria-controls="componentApiSecret" data-amber-password-toggle><span data-amber-icon="eye" data-size="16"></span></button>
+          <div class="amber-form-section">
+            <label class="amber-form-header" for="componentApiSecret">API secret</label>
+            <div class="amber-form-group">
+              <div class="amber-form-row">
+                <input class="amber-control" id="componentApiSecret" type="password" value="demo-secret-not-real" autocomplete="off" spellcheck="false" aria-describedby="componentApiSecretHelp">
+                <button class="amber-input-action" type="button" aria-label="Show secret" aria-pressed="false" aria-controls="componentApiSecret" data-amber-password-toggle><span data-amber-icon="eye" data-size="16"></span></button>
+              </div>
+            </div>
+            <p class="amber-form-footer" id="componentApiSecretHelp">Demo value only — never paste real credentials into a design reference.</p>
           </div>
-          <small id="componentApiSecretHelp">Demo value only — never paste real credentials into a design reference.</small>
         </div>
       </article>
 
@@ -2381,7 +2599,7 @@ html.amber-mobile-nav-open { overflow: hidden; }
         <button class="btn btn-secondary btn-sm" type="button" data-export-format="tailwind" aria-pressed="false" onclick="showExportFormat('tailwind')">Tailwind Config</button>
         <button class="btn btn-secondary btn-sm" type="button" data-export-format="json" aria-pressed="false" onclick="showExportFormat('json')">JSON Tree</button>
       </div>
-      <pre style="background:var(--surface-alt);padding:14px;border-radius:var(--r-sm);font-family:var(--font-mono);font-size:12px;overflow-x:auto;max-height:260px" id="tokenExportCode"></pre>
+      <pre style="background:var(--surface-alt);padding:14px;border-radius:var(--r-sm);font-family:var(--font-mono);font-size:0.75rem;overflow-x:auto;max-height:260px" id="tokenExportCode"></pre>
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary btn-sm" type="button" data-amber-modal-close onclick="Amber.Modal.close('tokenExportModal')">Close</button>
@@ -2454,7 +2672,7 @@ html.amber-mobile-nav-open { overflow: hidden; }
   const VERSION = '2.9.2';
   const TOKEN_NAMES = [
     '--bg','--surface','--surface-alt','--surface-hover','--surface-active','--surface-glass','--border','--border-strong','--border-focus',
-    '--text','--text-muted','--text-faint','--text-inverse','--accent','--accent-hover','--accent-tint','--accent-tint-hover','--accent-glow','--accent-contrast',
+    '--text','--text-muted','--text-faint','--text-inverse','--accent','--accent-hover','--accent-tint','--accent-tint-hover','--accent-glow','--accent-contrast','--text-placeholder','--control-border','--control-selected','--focus-ring','--field-fill','--field-fill-hover',
     '--success','--success-dim','--success-border','--warning','--warning-dim','--warning-border','--danger','--danger-dim','--danger-border','--info','--info-dim','--info-border',
     '--r-xs','--r-sm','--r-md','--r-lg','--r-xl','--r-pill','--shadow-xs','--shadow-sm','--shadow-md','--shadow-lg','--shadow-xl','--font-serif','--font-sans','--font-mono','--z-dropdown','--z-sticky','--z-modal','--z-toast','--dur-fast','--dur-med','--ease-spring','--ease-out'
   ];
@@ -3381,7 +3599,7 @@ html.amber-mobile-nav-open { overflow: hidden; }
       export: function (format) {
         const light = read('light'), dark = read('dark'); format = format || 'css';
         if (format === 'json') return JSON.stringify({ light: light, dark: dark }, null, 2);
-        if (format === 'tailwind') return `module.exports = {\n  theme: {\n    extend: {\n      colors: {\n        amber: 'var(--accent)',\n        surface: 'var(--surface)',\n        background: 'var(--bg)',\n        success: 'var(--success)',\n        warning: 'var(--warning)',\n        danger: 'var(--danger)',\n        info: 'var(--info)'\n      },\n      borderRadius: {\n        sm: 'var(--r-sm)', md: 'var(--r-md)', lg: 'var(--r-lg)', pill: 'var(--r-pill)'\n      },\n      fontFamily: { sans: ['Inter', 'sans-serif'], serif: ['Playfair Display', 'Georgia', 'serif'], mono: ['JetBrains Mono', 'monospace'] }\n    }\n  }\n};`;
+        if (format === 'tailwind') return `module.exports = {\n  theme: {\n    extend: {\n      colors: {\n        amber: 'var(--accent)',\n        surface: 'var(--surface)',\n        background: 'var(--bg)',\n        success: 'var(--success)',\n        warning: 'var(--warning)',\n        danger: 'var(--danger)',\n        info: 'var(--info)'\n      },\n      borderRadius: {\n        sm: 'var(--r-sm)', md: 'var(--r-md)', lg: 'var(--r-lg)', pill: 'var(--r-pill)'\n      },\n      fontFamily: { sans: ['-apple-system', 'BlinkMacSystemFont', 'system-ui', 'Segoe UI', 'Roboto', 'sans-serif'], serif: ['Playfair Display', 'Georgia', 'serif'], mono: ['ui-monospace', 'SF Mono', 'Menlo', 'Consolas', 'monospace'] }\n    }\n  }\n};`;
         const block = function (selector, values) { return selector + ' {\n' + TOKEN_NAMES.map(function (name) { return '  ' + name + ': ' + values[name] + ';'; }).join('\n') + '\n}'; };
         return block(':root', light) + '\n\n' + block('[data-theme="dark"]', dark);
       },
@@ -3886,6 +4104,7 @@ html.amber-mobile-nav-open { overflow: hidden; }
     const wizard = document.getElementById('amberWorkflowWizard');
     if (!wizard) return;
     const current = Math.max(1, Math.min(3, Number(wizard.dataset.step) || 1));
+    wizard.dataset.direction = direction < 0 ? 'back' : 'forward';
     if (direction > 0 && current === 3) {
       wizard.dataset.finished = 'true';
       updateAmberWizard();
@@ -4686,10 +4905,100 @@ html.amber-mobile-nav-open { overflow: hidden; }
   window.clearAmberTextarea = clearAmberTextarea;
   window.setAmberChartRange = setAmberChartRange;
 
+  const prefersReducedMotion = function () { return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches; };
+
+  // Sliding selection thumb for tab lists, segmented controls and code tabs.
+  // It follows the existing selection classes, so no click handler needs to know about it.
+  function initializeSegmentThumbs() {
+    const groups = document.querySelectorAll('.amber-tab-list, .amber-segmented, .code-tabs');
+    const selectedSelector = '.amber-tab.is-active, .amber-segment.is-selected, .code-tab-btn.active';
+    groups.forEach(function (group) {
+      if (group.querySelector(':scope > .amber-seg-thumb')) return;
+      const thumb = document.createElement('span');
+      thumb.className = 'amber-seg-thumb';
+      thumb.setAttribute('aria-hidden', 'true');
+      group.insertBefore(thumb, group.firstChild);
+      group.classList.add('has-thumb');
+      const sync = function () {
+        const selected = group.querySelector(':scope > ' + selectedSelector.split(', ').join(', :scope > '));
+        if (!selected || !selected.offsetWidth) { thumb.style.opacity = '0'; return; }
+        thumb.style.opacity = '';
+        thumb.style.width = selected.offsetWidth + 'px';
+        thumb.style.height = selected.offsetHeight + 'px';
+        thumb.style.transform = 'translate(' + selected.offsetLeft + 'px, ' + selected.offsetTop + 'px)';
+      };
+      sync();
+      // Enable the transition only after the first placement so the thumb doesn't slide in on load.
+      window.requestAnimationFrame(function () { window.requestAnimationFrame(function () { group.classList.add('is-thumb-ready'); }); });
+      new MutationObserver(sync).observe(group, { subtree: true, attributes: true, attributeFilter: ['class'] });
+      if ('ResizeObserver' in window) new ResizeObserver(sync).observe(group);
+      if (document.fonts && document.fonts.ready) document.fonts.ready.then(sync);
+    });
+  }
+
+  // Animated <details> disclosure: keeps native semantics and keyboard support, adds height + fade motion.
+  function initializeAccordionMotion() {
+    const easing = 'cubic-bezier(0.32, 0.72, 0, 1)';
+    document.querySelectorAll('details.amber-accordion').forEach(function (details) {
+      const summary = details.querySelector('summary');
+      const body = details.querySelector('.amber-accordion-body');
+      if (!summary || !body || details.dataset.amberMotion) return;
+      details.dataset.amberMotion = 'true';
+      let animation = null;
+      const finish = function (open) {
+        details.open = open;
+        details.classList.remove('is-closing');
+        details.style.height = ''; details.style.overflow = '';
+        animation = null;
+      };
+      summary.addEventListener('click', function (event) {
+        if (prefersReducedMotion() || typeof details.animate !== 'function') return;
+        event.preventDefault();
+        const startHeight = details.offsetHeight;
+        const closing = details.open && !details.classList.contains('is-closing');
+        if (animation) animation.cancel();
+        details.style.overflow = 'hidden';
+        if (closing) {
+          details.classList.add('is-closing');
+          const endHeight = summary.offsetHeight + (details.offsetHeight - details.clientHeight);
+          animation = details.animate({ height: [startHeight + 'px', endHeight + 'px'] }, { duration: 300, easing: easing });
+          body.animate({ opacity: [1, 0] }, { duration: 180, easing: 'ease-out', fill: 'forwards' }).onfinish = function (e) { e.target.cancel(); };
+          animation.onfinish = function () { finish(false); };
+        } else {
+          details.classList.remove('is-closing');
+          details.open = true;
+          const endHeight = details.offsetHeight;
+          animation = details.animate({ height: [startHeight + 'px', endHeight + 'px'] }, { duration: 340, easing: easing });
+          body.animate({ opacity: [0, 1], transform: ['translateY(-4px)', 'none'] }, { duration: 300, delay: 40, easing: easing, fill: 'backwards' });
+          animation.onfinish = function () { finish(true); };
+        }
+        animation.oncancel = function () { details.style.height = ''; };
+      });
+    });
+  }
+
+  // Cross-fade the code sample when its format tab changes.
+  function initializeCodeTabMotion() {
+    const display = document.getElementById('apiSnippetDisplay');
+    if (!display || typeof display.animate !== 'function') return;
+    document.querySelectorAll('.code-tab-btn').forEach(function (tab) {
+      tab.addEventListener('click', function () {
+        if (prefersReducedMotion()) return;
+        display.animate({ opacity: [0, 1], transform: ['translateY(4px)', 'none'] }, { duration: 260, easing: 'cubic-bezier(0.32, 0.72, 0, 1)' });
+      });
+    });
+  }
+
+  function initializeAmberMotion() {
+    initializeSegmentThumbs();
+    initializeAccordionMotion();
+    initializeCodeTabMotion();
+  }
+
   Amber.ready.then(function () {
     document.querySelectorAll('[data-amber-version]').forEach(function (element) { element.textContent = Amber.version; });
     localizeShortcuts(document.body); initializeCodeTabs();
-    iconGallery(); initializeSentenceBuilder(); initializeDataTable(); initializeComponentInteractions(); initializeResponsiveComponents(); initializeAmberComboboxes(); initializeAmberAnalytics(); initializeContentComponents(); initializeAmberChatInput(); updateAmberTextareaCount(document.getElementById('amberReleaseNote')); showExportFormat('json');
+    iconGallery(); initializeSentenceBuilder(); initializeDataTable(); initializeComponentInteractions(); initializeResponsiveComponents(); initializeAmberComboboxes(); initializeAmberAnalytics(); initializeContentComponents(); initializeAmberChatInput(); initializeAmberMotion(); updateAmberTextareaCount(document.getElementById('amberReleaseNote')); showExportFormat('json');
   });
 }());
 
