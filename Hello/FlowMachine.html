@@ -655,6 +655,15 @@
     .lib-file-actions{display:flex;}
     .pal-item,.lib-file,.cmd-item,.phrase-popover-item{min-height:44px;}
   }
+  /* Narrow screens: slimmer pills so they don't look bloated (after the coarse-pointer block so it wins). */
+  @media (max-width:640px){
+    .btn{min-height:36px;padding:6px 12px;}
+    .btn-sm{min-height:32px;padding:5px 10px;}
+    .btn-icon-only,.ai-send{width:38px;height:38px;padding:0;}
+    #topbar .topbar-group .btn{width:40px;min-height:36px;padding:0;}
+    #canvasControls button{min-width:36px;height:36px;}
+    .ai-tool-btn{height:36px;}
+  }
 </style>
 </head>
 <body>
