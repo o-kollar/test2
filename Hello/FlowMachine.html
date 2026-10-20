@@ -506,6 +506,57 @@
   .wh-status.is-ok{color:var(--success);}
   .wh-status.is-error{color:var(--danger);}
 
+  /* Debug run of a prompt/script: Input and Console tabs under the editor (console = run card from fs.html) */
+  .fv-run{flex-shrink:0;}
+  .fv-run .btn-ic{width:12px;height:12px;}
+  .dbg{flex:0 0 auto;height:min(340px, 48%);min-height:210px;display:flex;flex-direction:column;border-top:1px solid var(--separator);background:var(--surface-alt);}
+  .dbg[hidden]{display:none;}
+  .dbg-bar{display:flex;align-items:center;gap:10px;padding:6px 8px 6px 10px;border-bottom:1px solid var(--separator);background:var(--surface);}
+  .dbg-tabs .fv-seg-btn{display:inline-flex;align-items:center;gap:6px;}
+  .dbg-dot{width:7px;height:7px;border-radius:50%;background:var(--text-faint);}
+  .dbg-dot.is-running{background:var(--info);animation:runBlink 1s steps(2) infinite;}
+  .dbg-dot.is-done{background:var(--success);}
+  .dbg-dot.is-warn,.dbg-dot.is-stopped{background:var(--warning);}
+  .dbg-dot.is-failed{background:var(--danger);}
+  .dbg-meta{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-muted);font:0.6875rem var(--font-mono);}
+  .dbg-actions{display:flex;align-items:center;gap:4px;margin-left:auto;flex-shrink:0;}
+  .dbg-actions .btn .btn-ic{width:12px;height:12px;}
+  .dbg-close{width:30px;height:30px;padding:0;}
+  .dbg-close .btn-ic{width:15px;height:15px;margin:0;}
+  .dbg-pane{flex:1;min-height:0;display:flex;flex-direction:column;}
+  .dbg-pane[hidden]{display:none;}
+  .dbg-input{gap:10px;padding:12px;overflow:auto;overscroll-behavior:contain;}
+  .dbg-label{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin:0;color:var(--text);font-size:0.75rem;font-weight:600;}
+  .dbg-label code{color:var(--text-muted);font:500 0.6875rem var(--font-mono);}
+  .dbg-input .fv-embed{flex:1;min-height:96px;max-height:none;}
+  .dbg-input .fv-embed .code-editor{min-height:100%;}
+  .dbg-field{display:flex;flex-direction:column;gap:4px;max-width:720px;}
+  .dbg-field label{color:var(--text-muted);font:600 0.6875rem var(--font-mono);}
+  .dbg-field input[type=text]{width:100%;min-width:0;padding:6px 9px;border:1px solid var(--separator);border-radius:var(--r-sm);background:var(--surface);color:var(--text);font:0.75rem var(--font-mono);}
+  .dbg-field input[type=text]::placeholder{color:var(--text-placeholder);opacity:1;}
+  .dbg-field input[type=text]:focus{outline:2px solid var(--focus-ring);outline-offset:0;}
+  .dbg-field.is-missing input[type=text]{border-color:var(--warning-border);background:var(--warning-dim);}
+  .dbg-check{display:flex;align-items:center;gap:8px;color:var(--text);font-size:0.75rem;cursor:pointer;}
+  .dbg-check input{width:15px;height:15px;margin:0;accent-color:var(--accent);}
+  .dbg-hint{margin:0;color:var(--text-muted);font-size:0.6875rem;line-height:1.5;}
+  .dbg-hint.is-error{color:var(--danger);font-weight:600;}
+  .dbg-hint code{padding:0 4px;border-radius:4px;background:var(--surface);font:0.6875rem var(--font-mono);}
+  .run-card{min-width:0;background:#141312;color:#ECE7DE;}
+  .run-card :focus-visible{outline:2px solid #F08E5A;outline-offset:1px;}
+  .run-body{position:relative;flex:1;min-height:0;}
+  .run-output{position:absolute;inset:0;overflow:auto;overscroll-behavior:contain;margin:0;padding:10px 14px;font:0.75rem/1.7 var(--font-mono);white-space:pre-wrap;word-break:break-word;}
+  .run-output > span,.run-output > button{display:block;}
+  .run-output > button{width:100%;padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left;white-space:pre-wrap;cursor:pointer;}
+  .run-output > button:hover{text-decoration:underline;}
+  .run-empty{color:#736C63;}
+  .run-jump{position:absolute;right:12px;bottom:10px;display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border:1px solid rgba(255,255,255,.16);border-radius:var(--r-pill);background:#2B2824;color:#F5F3EF;font:600 0.7188rem var(--font-sans);cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.4);}
+  .run-jump:hover{background:#35322E;}
+  .run-jump[hidden]{display:none;}
+  .run-jump .btn-ic{width:12px;height:12px;}
+  .run-output .o-dim{color:#8C857B;} .run-output .o-info{color:#F2B957;} .run-output .o-ok{color:#53C378;} .run-output .o-err{color:#F16E63;} .run-output .o-head{color:#F08E5A;font-weight:700;}
+  .o-caret{color:#F08E5A;animation:runBlink 1s steps(2) infinite;}
+  @keyframes runBlink{50%{opacity:0;}}
+
 
   /* ==========================================================================
      RESPONSIVE — desktop, tablet and phone
@@ -575,6 +626,9 @@
     .fv-foot-right{gap:10px;flex-wrap:wrap;justify-content:flex-end;}
     .ce-gutter{padding-left:10px;padding-right:8px;}
     .ce-hl,.ce-input{padding-left:10px;padding-right:16px;}
+    .dbg{height:min(400px, 58%);}
+    .dbg-meta{display:none;}
+
     .detail-form{padding:14px 12px 24px;}
 
     /* Table configurator: each column becomes a two-line card */
@@ -902,6 +956,8 @@
     upload: iconSvg('<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><path d="M12 3v12"/>'),
     arrowUp: iconSvg('<path d="m5 12 7-7 7 7"/><path d="M12 19V5"/>'),
     alertCircle: iconSvg('<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>'),
+    square: iconSvg('<rect x="5" y="5" width="14" height="14" rx="2"/>'),
+    arrowDown: iconSvg('<path d="M12 5v14"/><path d="m19 12-7 7-7-7"/>'),
     link: iconSvg('<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>')
   };
   function paintIcons(root){
@@ -1867,7 +1923,8 @@
     if(!kind || kind==='flow' || !Workspace.exists(path)) return false;
     closeAllPhrasePopovers();
     if(!fileView) fileViewReturnFocus = document.activeElement;
-    fileView = { type:'file', path, mode: kind==='data' ? (opts.mode || 'tables') : 'code', focusTable: opts.table || null };
+    if(debugRun && debugRun.path!==path) discardDebugRun();
+    fileView = { type:'file', path, mode: kind==='data' ? (opts.mode || 'tables') : 'code', focusTable: opts.table || null, debug: !!(debugRun && debugRun.path===path) };
     fileViewEl.hidden = false;
     renderFileView();
     focusFileView(opts.focusName);
@@ -1883,6 +1940,7 @@
     updateNodeVisual(node);
     closeAllPhrasePopovers();
     if(!fileView) fileViewReturnFocus = document.activeElement;
+    discardDebugRun();
     fileView = { type:'webhook', nodeId };
     fileViewEl.hidden = false;
     renderFileView();
@@ -1895,6 +1953,7 @@
   function closeFileView(){
     if(!fileView) return;
     const fv = fileView;
+    discardDebugRun();
     fileView = null;
     fileViewEl.hidden = true;
     fileViewEl.innerHTML = '';
@@ -1930,8 +1989,10 @@
           '<div class="fv-title-text">'+o.titleHtml+'<span class="fv-meta"></span></div></div>'+
         (o.tabs ? '<div class="fv-seg" role="tablist" aria-label="View">'+o.tabs.map(t=>
           '<button type="button" role="tab" class="fv-seg-btn'+(t.active?' is-active':'')+'" aria-selected="'+t.active+'" data-mode="'+t.mode+'">'+t.label+'</button>').join('')+'</div>' : '')+
+        (o.runnable ? '<button type="button" class="btn btn-run btn-sm fv-run" title="Run for debugging (Ctrl+Enter)" aria-keyshortcuts="Control+Enter"><span class="btn-ic">'+ICONS.play+'</span>Run</button>' : '')+
       '</header>'+
       '<div class="fv-scroll"></div>'+
+      (o.runnable ? '<div class="dbg" hidden></div>' : '')+
       '<footer class="fv-foot"><span><span class="cmd-kbd">Esc</span>back to canvas · '+o.footNote+'</span><span class="fv-foot-right"></span></footer>'+
     '</div>';
   }
@@ -1962,11 +2023,13 @@
       const path = fileView.path;
       if(!Workspace.exists(path)){ closeFileView(); return; }
       const kind = fileKindOf(path), folder = FOLDERS[kind];
+      const runnable = isDebuggable(kind);
       fileViewEl.innerHTML = fvShellHtml({
         icon: folder.icon, color: folder.color,
         titleHtml: '<input class="fv-path" type="text" spellcheck="false" autocomplete="off" aria-label="File path — edit to rename">',
         tabs: kind==='data' ? [{mode:'tables', label:'Tables', active: fileView.mode==='tables'}, {mode:'sql', label:'SQL', active: fileView.mode==='sql'}] : null,
-        footNote: 'changes save automatically'
+        runnable,
+        footNote: 'changes save automatically'+(runnable ? ' · <span class="cmd-kbd">Ctrl</span><span class="cmd-kbd">Enter</span>run for debugging' : '')
       });
       fileViewEl.setAttribute('aria-label', folder.kindLabel+' '+path);
       fileViewEl.querySelector('.fv-back').addEventListener('click', closeFileView);
@@ -1989,11 +2052,15 @@
         renderSchemaEditor(path, form, fileView.focusTable);
         fileView.focusTable = null;
       } else {
-        renderCodeEditor({
+        fileView.editor = renderCodeEditor({
           lang: folder.lang, label: folder.kindLabel+' '+path,
           get: ()=>Workspace.read(fileView.path) || '',
-          set: v=>{ Workspace.write(fileView.path, v); refreshFileUsers(fileView.path); renderFileViewMeta(); if(kind==='data') renderSidebar(); }
+          set: v=>{ Workspace.write(fileView.path, v); refreshFileUsers(fileView.path); renderFileViewMeta(); if(kind==='data') renderSidebar(); if(kind==='prompt') refreshDebugInputs(); }
         }, scroll, fileViewEl.querySelector('.fv-foot-right'));
+      }
+      if(runnable){
+        fileViewEl.querySelector('.fv-run').addEventListener('click', ()=>{ if(fileView.debug && debugRun && debugRun.path===fileView.path && debugRun.status==='running') stopDebugRun(); else startDebugRun(); });
+        renderDebugPanel();
       }
     }
     renderFileViewMeta();
@@ -2010,6 +2077,7 @@
     renameFile(from, to);
     fileView.path = to;
     input.value = to;
+    updateRunHead();
     fileViewEl.setAttribute('aria-label', FOLDERS[kind].kindLabel+' '+to);
     renderFileViewMeta();
   }
@@ -2031,6 +2099,8 @@
   function renameFile(from, to){
     const wasClean = !isDirty();
     if(!Workspace.rename(from, to)) return false;
+    DebugInputs.rename(from, to);
+    if(debugRun && debugRun.path===from) debugRun.path = to;
     state.nodes.forEach(n=>{ const k = nodeFileKey(n); if(k && n.config[k]===from){ n.config[k] = to; updateNodeVisual(n); } });
     const flows = updateSavedFlows(n=>{ const k = nodeFileKey(n); if(k && n.config[k]===from){ n.config[k] = to; return true; } return false; });
     if(wasClean) markSaved();
@@ -2106,7 +2176,784 @@
       }
     });
     paint();
+    // Lets debug output jump to a reported line (e.g. a SyntaxError) and select it.
+    ta.goToLine = n=>{
+      const lines = ta.value.split('\n');
+      const line = Math.max(1, Math.min(lines.length, n|0));
+      const start = lines.slice(0, line-1).reduce((s, l)=>s + l.length + 1, 0);
+      ta.focus({ preventScroll:true });
+      ta.setSelectionRange(start, start + lines[line-1].length);
+      paintCaret(); revealCaret();
+    };
     return ta;
+  }
+
+  /* ---------------- Debug runs for prompts and scripts (run card pattern from fs.html) ----------------
+     Simulated: nothing leaves the browser. Scripts are compiled and traced statically against the debug
+     input; prompts are rendered with the debug variables and answered by a stand-in model.
+     Swap simulateScript / simulatePrompt for ServerLink calls once a real execution server exists. */
+  const DEBUG_RUNNERS = { script:{ cmd:'python', noun:'script' }, prompt:{ cmd:'prompt', noun:'prompt' } };
+  const MAX_RUN_LINES = 2000;
+  const PY_UNKNOWN = {}; // scope value whose content is only known at runtime
+  let debugRun = null; // { path, kind, lines, pending, status, code, warnings, summary, started, ms, timer, follow, scrollTop }
+
+  function isDebuggable(kind){ return Object.prototype.hasOwnProperty.call(DEBUG_RUNNERS, kind || ''); }
+  const runSecs = ms => (ms/1000).toFixed(1)+' s';
+  function clip(s, n){ s = String(s); n = n || 160; return s.length>n ? s.slice(0, n-1)+'…' : s; }
+
+  // Debug inputs live next to the files (not in them), so a run can be repeated after every edit.
+  const DebugInputs = (function(){
+    const KEY = 'flow_machine_debug_inputs';
+    let map = {};
+    try{ map = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; }catch(e){ map = {}; }
+    function save(){
+      try{ localStorage.setItem(KEY, JSON.stringify(map)); }
+      catch(e){ Logger.warn('Could not save debug inputs.', { error: String(e) }); }
+    }
+    return {
+      get: p => map[p] || null,
+      set(p, v){ map[p] = v; save(); },
+      rename(from, to){ if(map[from]){ map[to] = map[from]; delete map[from]; save(); } },
+      remove(p){ if(map[p]){ delete map[p]; save(); } }
+    };
+  })();
+
+  // Saved inputs, else a guess from the step that uses the file (its task, or a webhook's test payload).
+  function debugInputsFor(path){
+    const saved = DebugInputs.get(path) || {};
+    const node = usersOf(path)[0] || null;
+    if(fileKindOf(path)==='script'){
+      if(typeof saved.json==='string') return { json: saved.json };
+      const edge = node && state.edges.find(e=>e.to===node.id);
+      const src = edge && state.nodes.find(n=>n.id===edge.from);
+      const fromWebhook = src && src.type==='trigger' && src.config.triggerType==='webhook' && describePayload(src.config).ok;
+      return { json: fromWebhook ? src.config.webhookPayload : '{}' };
+    }
+    return {
+      vars: Object.assign({}, saved.vars),
+      task: typeof saved.task==='string' ? saved.task : (node ? node.config.task || '' : ''),
+      reasoning: typeof saved.reasoning==='boolean' ? saved.reasoning : !!(node && node.config.reasoning)
+    };
+  }
+
+  function activeDebugRun(){ return debugRun && fileView && fileView.type==='file' && debugRun.path===fileView.path ? debugRun : null; }
+
+  function startDebugRun(){
+    if(!fileView || fileView.type!=='file') return false;
+    const path = fileView.path, kind = fileKindOf(path);
+    if(!isDebuggable(kind) || !Workspace.exists(path)) return false;
+    discardDebugRun();
+    const inputs = debugInputsFor(path), source = Workspace.read(path) || '';
+    const result = kind==='script' ? simulateScript(path, source, inputs) : simulatePrompt(path, source, inputs);
+    const current = { path, kind, lines:[], pending: result.lines.slice(), status:'running', code: result.code, warnings: result.warnings || 0,
+      summary: result.summary || '', started: Date.now(), ms:0, timer:null, follow:true, scrollTop:0 };
+    debugRun = current;
+    const panelBefore = fileViewEl.querySelector('.dbg');
+    const hadFocus = !!(panelBefore && panelBefore.contains(document.activeElement));
+    fileView.debug = true;
+    fileView.debugTab = 'console';
+    Logger.info('Debug run started: '+path, { kind });
+    setStatus('Running '+path+' for debugging…');
+    renderDebugPanel();
+    if(hadFocus){ const out = fileViewEl.querySelector('.dbg .run-output'); if(out) out.focus({ preventScroll:true }); }
+    current.timer = setInterval(()=>{
+      if(debugRun!==current){ clearInterval(current.timer); return; }
+      if(current.pending.length){ addRunLine(current, current.pending.shift()); return; }
+      clearInterval(current.timer); current.timer = null;
+      current.status = current.code===0 ? 'done' : 'failed';
+      current.ms = Date.now() - current.started;
+      addRunLine(current, ['dim', (kind==='script' ? 'Process exited with code ' : 'Finished with code ')+current.code]);
+      updateRunHead();
+      const what = current.path+(current.summary ? ' · '+current.summary : '');
+      if(current.code!==0){ Logger.error('Debug run failed: '+what, { exit: current.code }); setStatus(current.path+' failed · exit '+current.code+(current.summary ? ' · '+current.summary : '')+' — click an error line to jump to it.'); }
+      else if(current.warnings){ Logger.warn('Debug run finished with warnings: '+what); setStatus(current.path+' finished with '+current.summary+' — see the output.'); }
+      else { Logger.success('Debug run finished: '+current.path, { ms: current.ms }); setStatus(current.path+' finished · exit 0 · '+runSecs(current.ms)+'.'); }
+    }, kind==='prompt' ? 45 : 110);
+    return true;
+  }
+
+  function stopDebugRun(){
+    const r = debugRun;
+    if(!r || !r.timer) return;
+    clearInterval(r.timer); r.timer = null;
+    r.status = 'stopped'; r.code = 130; r.ms = Date.now() - r.started;
+    addRunLine(r, ['dim', '^C Stopped']);
+    updateRunHead();
+    Logger.warn('Debug run stopped: '+r.path);
+    setStatus('Stopped the debug run of '+r.path+'.');
+  }
+  function discardDebugRun(){
+    if(debugRun && debugRun.timer) clearInterval(debugRun.timer);
+    debugRun = null;
+  }
+  function closeDebugPanel(){
+    discardDebugRun();
+    if(!fileView) return;
+    fileView.debug = false;
+    renderDebugPanel();
+    if(fileView.editor) fileView.editor.focus({ preventScroll:true });
+  }
+
+  function updateRunButton(){
+    const btn = fileViewEl.querySelector('.fv-run');
+    if(!btn) return;
+    const r = activeDebugRun(), running = !!(r && r.status==='running');
+    btn.innerHTML = '<span class="btn-ic">'+(running ? ICONS.square : ICONS.play)+'</span>'+(running ? 'Stop' : 'Run');
+    btn.title = running ? 'Stop the debug run' : 'Run for debugging (Ctrl+Enter)';
+  }
+
+  // The panel has two tabs: Input (debug inputs) and Console (run output). A run switches to Console.
+  function renderDebugPanel(){
+    const panel = fileViewEl.querySelector('.dbg');
+    if(!panel || !fileView) return;
+    updateRunButton();
+    panel.hidden = !fileView.debug;
+    if(!fileView.debug){ panel.innerHTML = ''; return; }
+    const tab = fileView.debugTab==='input' ? 'input' : 'console';
+    panel.setAttribute('aria-label', 'Debug run');
+    panel.innerHTML = '<div class="dbg-bar">'+
+        '<div class="fv-seg dbg-tabs" role="tablist" aria-label="Debug run">'+
+          '<button type="button" role="tab" class="fv-seg-btn" id="dbgTabInput" aria-controls="dbgPaneInput" data-tab="input">Input</button>'+
+          '<button type="button" role="tab" class="fv-seg-btn" id="dbgTabConsole" aria-controls="dbgPaneConsole" data-tab="console"><span class="dbg-dot" aria-hidden="true"></span>Console</button>'+
+        '</div>'+
+        '<span class="dbg-meta"></span><div class="dbg-actions"></div>'+
+      '</div>'+
+      '<form class="dbg-pane dbg-input" id="dbgPaneInput" role="tabpanel" aria-labelledby="dbgTabInput" novalidate></form>'+
+      '<section class="dbg-pane run-card" id="dbgPaneConsole" role="tabpanel" aria-labelledby="dbgTabConsole">'+
+        '<div class="run-body"><pre class="run-output" role="log" aria-live="off" tabindex="0" aria-label="Console output"></pre>'+
+        '<button class="run-jump" type="button" hidden><span class="btn-ic">'+ICONS.arrowDown+'</span>Latest output</button></div></section>';
+    const tabs = panel.querySelector('.dbg-tabs');
+    tabs.addEventListener('click', e=>{ const b = e.target.closest('[data-tab]'); if(b) setDebugTab(b.dataset.tab); });
+    tabs.addEventListener('keydown', e=>{
+      if(e.key!=='ArrowLeft' && e.key!=='ArrowRight' && e.key!=='Home' && e.key!=='End') return;
+      e.preventDefault();
+      const next = e.key==='Home' ? 'input' : e.key==='End' ? 'console' : (fileView.debugTab==='input' ? 'console' : 'input');
+      setDebugTab(next, true);
+    });
+    panel.querySelector('.dbg-actions').addEventListener('click', e=>{
+      if(e.target.closest('[data-run-stop]')) stopDebugRun();
+      else if(e.target.closest('[data-run-again]')) startDebugRun();
+      else if(e.target.closest('[data-run-close]')) closeDebugPanel();
+    });
+    const out = panel.querySelector('.run-output'), jump = panel.querySelector('.run-jump');
+    out.addEventListener('scroll', ()=>{
+      const r = activeDebugRun();
+      if(!r || panel.querySelector('#dbgPaneConsole').hidden) return;
+      r.follow = out.scrollHeight - out.scrollTop - out.clientHeight < 8;
+      r.scrollTop = out.scrollTop;
+      if(r.follow) jump.hidden = true;
+    });
+    jump.addEventListener('click', ()=>{ const r = activeDebugRun(); if(r) r.follow = true; out.scrollTop = out.scrollHeight; jump.hidden = true; });
+    out.addEventListener('click', e=>{
+      const b = e.target.closest('[data-line]');
+      if(b && fileView.editor) fileView.editor.goToLine(+b.dataset.line);
+    });
+    renderDebugInputs();
+    const r = activeDebugRun();
+    if(!r) out.innerHTML = '<span class="run-empty">Press Run to try this '+DEBUG_RUNNERS[fileKindOf(fileView.path)].noun+' with the values on the Input tab.</span>';
+    else {
+      const frag = document.createDocumentFragment();
+      r.lines.forEach(l=>frag.appendChild(runLineEl(l)));
+      if(r.status==='running'){ const caret = document.createElement('span'); caret.className = 'o-caret'; caret.setAttribute('aria-hidden', 'true'); caret.textContent = '▍'; frag.appendChild(caret); }
+      out.appendChild(frag);
+    }
+    paintDebugBar();
+    setDebugTab(tab);
+  }
+
+  function setDebugTab(tab, focus){
+    const panel = fileViewEl.querySelector('.dbg');
+    if(!panel || panel.hidden || !fileView) return;
+    fileView.debugTab = tab;
+    panel.querySelectorAll('.dbg-tabs [data-tab]').forEach(b=>{
+      const on = b.dataset.tab===tab;
+      b.classList.toggle('is-active', on);
+      b.setAttribute('aria-selected', String(on));
+      b.tabIndex = on ? 0 : -1;
+      if(on && focus) b.focus();
+    });
+    panel.querySelector('#dbgPaneInput').hidden = tab!=='input';
+    panel.querySelector('#dbgPaneConsole').hidden = tab!=='console';
+    // A hidden console can't scroll, so restore its position once it is shown again.
+    const r = activeDebugRun(), out = panel.querySelector('.run-output');
+    if(tab==='console' && r) out.scrollTop = r.follow ? out.scrollHeight : r.scrollTop;
+  }
+
+  // Status dot on the Console tab, command + exit status, and the Run / Stop / Close actions.
+  function paintDebugBar(){
+    const panel = fileViewEl.querySelector('.dbg');
+    if(!panel || panel.hidden || !fileView) return;
+    const r = activeDebugRun(), runner = DEBUG_RUNNERS[fileKindOf(fileView.path)];
+    const running = !!(r && r.status==='running');
+    const state = !r ? '' : r.status==='done' && r.warnings ? 'warn' : r.status;
+    panel.querySelector('.dbg-dot').className = 'dbg-dot'+(state ? ' is-'+state : '');
+    const meta = !r ? 'not run yet' : running ? 'running…' : r.status==='stopped' ? 'stopped · '+runSecs(r.ms)
+      : 'exit '+r.code+(r.warnings ? ' · '+r.warnings+' warning'+(r.warnings===1 ? '' : 's') : '')+' · '+runSecs(r.ms);
+    const metaEl = panel.querySelector('.dbg-meta');
+    metaEl.textContent = runner.cmd+' '+fileView.path+' · '+meta;
+    metaEl.title = metaEl.textContent;
+    panel.querySelector('.dbg-actions').innerHTML =
+      (running ? '<button type="button" class="btn btn-sm" data-run-stop><span class="btn-ic">'+ICONS.square+'</span>Stop</button>'
+               : '<button type="button" class="btn btn-run btn-sm" data-run-again title="Run (Ctrl+Enter)"><span class="btn-ic">'+ICONS.play+'</span>'+(r ? 'Run again' : 'Run')+'</button>')+
+      '<button type="button" class="btn btn-ghost btn-sm dbg-close" data-run-close aria-label="Close debug panel" title="Close debug panel"><span class="btn-ic">'+ICONS.x+'</span></button>';
+  }
+  function updateRunHead(){
+    updateRunButton();
+    const panel = fileViewEl.querySelector('.dbg');
+    if(!panel || panel.hidden) return;
+    paintDebugBar();
+    const r = activeDebugRun();
+    if(r && r.status!=='running'){ const caret = panel.querySelector('.o-caret'); if(caret) caret.remove(); }
+  }
+
+  // Output lines are [class, text, sourceLine?]; lines that point at the source jump to it when clicked.
+  function runLineEl(line){
+    const el = document.createElement(line[2] ? 'button' : 'span');
+    if(line[2]){ el.type = 'button'; el.dataset.line = line[2]; el.title = 'Go to line '+line[2]; }
+    el.className = 'o-'+(line[0] || 'txt');
+    el.textContent = line[1] || ' ';
+    return el;
+  }
+  // Appends without re-rendering, so output can grow without resetting scroll or thrashing the DOM.
+  function addRunLine(current, line){
+    current.lines.push(line);
+    if(current.lines.length > MAX_RUN_LINES) current.lines.splice(0, current.lines.length - MAX_RUN_LINES);
+    if(current!==activeDebugRun()) return;
+    const out = fileViewEl.querySelector('.dbg .run-output');
+    if(!out) return;
+    const caret = out.querySelector('.o-caret');
+    out.insertBefore(runLineEl(line), caret);
+    while(out.childElementCount > MAX_RUN_LINES + (caret ? 1 : 0)) out.firstElementChild.remove();
+    if(current.follow) out.scrollTop = out.scrollHeight;
+    else fileViewEl.querySelector('.dbg .run-jump').hidden = false;
+  }
+
+  function renderDebugInputs(){
+    const form = fileViewEl.querySelector('.dbg-input');
+    if(!form || !fileView) return;
+    const kind = fileKindOf(fileView.path), inputs = debugInputsFor(fileView.path);
+    const save = ()=>DebugInputs.set(fileView.path, inputs);
+    form.onsubmit = e=>{ e.preventDefault(); startDebugRun(); };
+    if(kind==='script'){
+      form.innerHTML = '<p class="dbg-label">Input <code>run(input)</code></p><div class="fv-embed"></div><p class="dbg-hint" role="status" aria-live="polite"></p>';
+      const hint = form.querySelector('.dbg-hint');
+      const paint = ()=>{
+        let err = null;
+        if(inputs.json.trim()){ try{ JSON.parse(inputs.json); }catch(e){ err = e.message; } }
+        hint.className = 'dbg-hint'+(err ? ' is-error' : '');
+        hint.innerHTML = err ? 'Invalid JSON: '+escapeHtml(err) : 'JSON, passed to <code>run()</code> as Python values. Empty means <code>None</code>.';
+      };
+      renderCodeEditor({ lang:'json', label:'Debug input for run(), JSON', get: ()=>inputs.json, set: v=>{ inputs.json = v; save(); paint(); } }, form.querySelector('.fv-embed'), null);
+      paint();
+      return;
+    }
+    const vars = templateVariables(Workspace.read(fileView.path) || '');
+    form.dataset.vars = vars.join(',');
+    form.innerHTML = '<p class="dbg-label">Variables <code>'+vars.length+' in prompt</code></p>'+
+      (vars.length ? '' : '<p class="dbg-hint">No <code>{{variable}}</code> placeholders — the prompt is sent as written.</p>')+
+      vars.map((v, i)=>'<div class="dbg-field'+(inputs.vars[v] ? '' : ' is-missing')+'"><label for="dbgVar'+i+'">{{'+escapeHtml(v)+'}}</label>'+
+        '<input type="text" id="dbgVar'+i+'" data-var="'+escapeHtml(v)+'" spellcheck="false" autocomplete="off" placeholder="Value for '+escapeHtml(v)+'"></div>').join('')+
+      '<div class="dbg-field"><label for="dbgTask">task</label><input type="text" id="dbgTask" data-task spellcheck="false" autocomplete="off" placeholder="What the step asks the model to do"></div>'+
+      '<label class="dbg-check"><input type="checkbox" data-reasoning> With reasoning</label>';
+    form.querySelectorAll('[data-var]').forEach(inp=>{ inp.value = inputs.vars[inp.dataset.var] || ''; });
+    form.querySelector('[data-task]').value = inputs.task;
+    form.querySelector('[data-reasoning]').checked = inputs.reasoning;
+    form.oninput = form.onchange = e=>{
+      const t = e.target;
+      if(t.dataset.var!==undefined){ inputs.vars[t.dataset.var] = t.value; t.closest('.dbg-field').classList.toggle('is-missing', !t.value); }
+      else if(t.dataset.task!==undefined) inputs.task = t.value;
+      else if(t.dataset.reasoning!==undefined) inputs.reasoning = t.checked;
+      save();
+    };
+    form.onkeydown = e=>{ if(e.key==='Enter' && !e.ctrlKey && !e.metaKey && e.target.matches('input[type=text]')){ e.preventDefault(); startDebugRun(); } };
+  }
+  // Re-renders the prompt's variable fields only when its set of {{variables}} changes.
+  function refreshDebugInputs(){
+    const form = fileViewEl.querySelector('.dbg-input');
+    if(form && fileView && fileView.debug && form.dataset.vars!==templateVariables(Workspace.read(fileView.path) || '').join(',')) renderDebugInputs();
+  }
+
+  /* ---- Python values (JSON in, JSON out) ---- */
+  function pyTypeName(v){
+    return v===null || v===undefined ? 'NoneType' : typeof v==='boolean' ? 'bool' : typeof v==='number' ? (Number.isInteger(v) ? 'int' : 'float')
+      : typeof v==='string' ? 'str' : Array.isArray(v) ? 'list' : 'dict';
+  }
+  function isPyDict(v){ return v!==null && typeof v==='object' && !Array.isArray(v); }
+  function pyRepr(v){
+    if(v===null || v===undefined) return 'None';
+    if(v===true) return 'True';
+    if(v===false) return 'False';
+    if(typeof v==='number') return String(v);
+    if(typeof v==='string') return "'"+v.replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\n/g,'\\n').replace(/\t/g,'\\t')+"'";
+    if(Array.isArray(v)) return '['+v.map(pyRepr).join(', ')+']';
+    return '{'+Object.keys(v).map(k=>pyRepr(k)+': '+pyRepr(v[k])).join(', ')+'}';
+  }
+  function pyStr(v){ return typeof v==='string' ? v : pyRepr(v); }
+  function pyKey(k){ return typeof k==='string' ? k : k===null ? 'None' : k===true ? 'True' : k===false ? 'False' : String(k); }
+  function pyIndex(v, key, fail){
+    if(Array.isArray(v) || typeof v==='string'){
+      const what = Array.isArray(v) ? 'list' : 'string';
+      if(typeof key!=='number' || !Number.isInteger(key)) fail('TypeError', Array.isArray(v) ? 'list indices must be integers or slices, not '+pyTypeName(key) : "string indices must be integers, not '"+pyTypeName(key)+"'");
+      const idx = key<0 ? v.length+key : key;
+      if(idx<0 || idx>=v.length) fail('IndexError', what+' index out of range');
+      return v[idx];
+    }
+    if(isPyDict(v)){
+      if(!Object.prototype.hasOwnProperty.call(v, pyKey(key))) fail('KeyError', pyRepr(key));
+      return v[pyKey(key)];
+    }
+    return fail('TypeError', "'"+pyTypeName(v)+"' object is not subscriptable");
+  }
+
+  // Evaluates what a static run can know: literals (str, numbers, True/False/None, lists, tuples, dicts) and
+  // names in `scope`, with ["key"], [0] and .get("key", default) lookups. Lookups raise like Python
+  // (KeyError, IndexError, TypeError). Returns { ok, value } | { error:{type,message} } | { unknown }.
+  function evalPy(src, scope){
+    const s = String(src);
+    let i = 0;
+    const unknown = why=>{ throw { unknown: why }; };
+    const fail = (type, message)=>{ throw { pyError: { type, message } }; };
+    const ws = ()=>{ while(i<s.length && /\s/.test(s[i])) i++; };
+    const expect = ch=>{ ws(); if(s[i]!==ch) unknown('syntax'); i++; };
+    function stringLit(){
+      let out = '';
+      for(;;){
+        const m = /^([rRbBuU]{0,2})("""|'''|"|')/.exec(s.slice(i));
+        if(!m) unknown('syntax');
+        const raw = /r/i.test(m[1]), q = m[2];
+        i += m[0].length;
+        let closed = false;
+        while(i<s.length){
+          if(s.startsWith(q, i)){ i += q.length; closed = true; break; }
+          const c = s[i];
+          if(c==='\\' && i+1<s.length){
+            const n = s[i+1];
+            const esc = raw ? undefined : { n:'\n', t:'\t', r:'\r', '\\':'\\', "'":"'", '"':'"', '0':'\0', '\n':'' }[n];
+            if(esc!==undefined){ out += esc; i += 2; continue; }
+            if(!raw && (n==='x' || n==='u')){
+              const len = n==='x' ? 2 : 4, hex = s.substr(i+2, len);
+              if(new RegExp('^[0-9a-fA-F]{'+len+'}$').test(hex)){ out += String.fromCharCode(parseInt(hex, 16)); i += 2+len; continue; }
+            }
+            out += c + n; i += 2; continue;
+          }
+          out += c; i++;
+        }
+        if(!closed) unknown('syntax');
+        ws();
+        if(!/^[rRbBuU]{0,2}["']/.test(s.slice(i))) return out;
+      }
+    }
+    function items(close){
+      const out = [];
+      let comma = false;
+      for(;;){
+        ws();
+        if(s[i]===close){ i++; break; }
+        out.push(value()); ws();
+        if(s[i]===','){ i++; comma = true; continue; }
+        if(s[i]!==close) unknown('syntax');
+        i++; break;
+      }
+      return { items: out, single: out.length===1 && !comma };
+    }
+    function dict(){
+      const out = {};
+      for(;;){
+        ws();
+        if(s[i]==='}'){ i++; return out; }
+        const k = value(); ws();
+        if(s[i]!==':') unknown('syntax');
+        i++;
+        const v = value();
+        if(k!==null && typeof k==='object') fail('TypeError', "unhashable type: '"+pyTypeName(k)+"'");
+        out[pyKey(k)] = v; ws();
+        if(s[i]===','){ i++; continue; }
+        if(s[i]!=='}') unknown('syntax');
+      }
+    }
+    function value(){
+      ws();
+      const rest = s.slice(i);
+      let v, m;
+      if(s[i]==='['){ i++; v = items(']').items; }
+      else if(s[i]==='('){ i++; const t = items(')'); v = t.single ? t.items[0] : t.items; }
+      else if(s[i]==='{'){ i++; v = dict(); }
+      else if(/^[rRbBuU]{0,2}["']/.test(rest)) v = stringLit();
+      else if((m = /^-?(?:\d[\d_]*(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?/.exec(rest))){ i += m[0].length; v = Number(m[0].replace(/_/g, '')); }
+      else if((m = /^[A-Za-z_]\w*/.exec(rest)) && !/^[fF][rR]?["']|^[rR][fF]["']/.test(rest)){
+        i += m[0].length;
+        const name = m[0];
+        if(name==='True') v = true;
+        else if(name==='False') v = false;
+        else if(name==='None') v = null;
+        else if(Object.prototype.hasOwnProperty.call(scope, name) && scope[name]!==PY_UNKNOWN) v = scope[name];
+        else unknown(name);
+      } else unknown('syntax');
+      for(;;){
+        ws();
+        if(s[i]==='['){ i++; const key = value(); expect(']'); v = pyIndex(v, key, fail); }
+        else if(/^\.get\s*\(/.test(s.slice(i))){
+          i = s.indexOf('(', i) + 1;
+          const key = value(); ws();
+          let dflt = null;
+          if(s[i]===','){ i++; dflt = value(); }
+          expect(')');
+          if(!isPyDict(v)) fail('AttributeError', "'"+pyTypeName(v)+"' object has no attribute 'get'");
+          v = Object.prototype.hasOwnProperty.call(v, pyKey(key)) ? v[pyKey(key)] : dflt;
+        }
+        else return v;
+      }
+    }
+    try{
+      const v = value(); ws();
+      if(i<s.length) unknown('syntax');
+      return { ok:true, value:v };
+    }catch(e){
+      if(e && e.pyError) return { ok:false, error:e.pyError };
+      if(e && 'unknown' in e) return { ok:false, unknown:e.unknown };
+      throw e;
+    }
+  }
+
+  // Finds the first ':' outside brackets (skipping ':=' ) in string-masked code; -1 if none.
+  function topLevelColon(code){
+    let depth = 0;
+    for(let i=0;i<code.length;i++){
+      const c = code[i];
+      if(c==='(' || c==='[' || c==='{') depth++;
+      else if(c===')' || c===']' || c==='}') depth--;
+      else if(c===':' && depth===0 && code[i+1]!=='=') return i;
+    }
+    return -1;
+  }
+
+  // A light Python front end: reports the first syntax or indentation error the way CPython words it,
+  // otherwise returns logical statements { line, indent, text, code, header?, inline? } (`code` has strings masked as "s").
+  function parsePython(source){
+    const lines = String(source).replace(/\r\n?/g, '\n').split('\n');
+    const PAIRS = { ')':'(', ']':'[', '}':'{' };
+    const BLOCK_NAMES = { def:'function definition', class:'class definition' };
+    const stmts = [], indents = [0], brackets = [];
+    let triple = null, cont = false, stmt = null, expectIndent = null;
+    const fail = (line, type, message)=>({ error: { line, type, message, text: lines[line-1] || '' } });
+    for(let li=0; li<lines.length; li++){
+      const raw = lines[li], ln = li+1;
+      const inside = !!(triple || brackets.length || cont), inString = !!triple;
+      let j = 0;
+      if(!inside){
+        if(/^[ \t]*(#.*)?$/.test(raw)) continue;
+        const ind = /^[ \t]*/.exec(raw)[0], width = ind.replace(/\t/g, '        ').length;
+        if(expectIndent){
+          if(width<=indents[indents.length-1]) return fail(ln, 'IndentationError', 'expected an indented block after '+expectIndent.what+' on line '+expectIndent.line);
+          indents.push(width); expectIndent = null;
+        } else if(width>indents[indents.length-1]) return fail(ln, 'IndentationError', 'unexpected indent');
+        else {
+          while(width<indents[indents.length-1]) indents.pop();
+          if(width!==indents[indents.length-1]) return fail(ln, 'IndentationError', 'unindent does not match any outer indentation level');
+        }
+        stmt = { line: ln, indent: width, text: '', code: '' };
+        j = ind.length;
+      }
+      const from = j;
+      let cut = raw.length;
+      cont = false;
+      for(; j<raw.length; j++){
+        const c = raw[j];
+        if(triple){
+          if(c==='\\'){ j++; continue; }
+          if(raw.startsWith(triple.q, j)){ j += 2; triple = null; stmt.code += 's'; }
+          continue;
+        }
+        if(c==='#'){ cut = j; break; }
+        if(c==='"' || c==="'"){
+          if(raw.startsWith(c+c+c, j)){ triple = { q: c+c+c, line: ln }; j += 2; continue; }
+          let k = j+1;
+          while(k<raw.length && raw[k]!==c) k += raw[k]==='\\' ? 2 : 1;
+          if(k>=raw.length) return fail(ln, 'SyntaxError', 'unterminated string literal (detected at line '+ln+')');
+          stmt.code += 's'; j = k; continue;
+        }
+        if(c==='(' || c==='[' || c==='{') brackets.push({ ch:c, line:ln });
+        else if(PAIRS[c]){
+          const open = brackets.pop();
+          if(!open) return fail(ln, 'SyntaxError', "unmatched '"+c+"'");
+          if(open.ch!==PAIRS[c]) return fail(ln, 'SyntaxError', "closing parenthesis '"+c+"' does not match opening parenthesis '"+open.ch+"'"+(open.line!==ln ? ' on line '+open.line : ''));
+        }
+        stmt.code += c;
+      }
+      let piece = raw.slice(from, cut);
+      if(!inString) piece = inside ? piece.trim() : piece.trimEnd();
+      stmt.text += (stmt.text ? '\n' : '') + piece;
+      if(triple || brackets.length) continue;
+      if(/\\\s*$/.test(stmt.code)){
+        cont = true;
+        stmt.code = stmt.code.replace(/\\\s*$/, ' ');
+        stmt.text = stmt.text.replace(/\\\s*$/, '');
+        continue;
+      }
+      const code = stmt.code.trim();
+      const kw = /^(?:async\s+)?(def|class|if|elif|else|for|while|with|try|except|finally)\b/.exec(code)
+        || (/:$/.test(code) && /^(match|case)\b(?!\s*[=.,)\]])/.exec(code)); // soft keywords: only as block headers
+      if(kw){
+        const colon = topLevelColon(code);
+        if(colon<0) return fail(stmt.line, 'SyntaxError', "expected ':'");
+        stmt.header = kw[1];
+        stmt.inline = !!code.slice(colon+1).trim();
+        if(!stmt.inline) expectIndent = { line: stmt.line, what: BLOCK_NAMES[kw[1]] || "'"+kw[1]+"' statement" };
+      }
+      stmts.push(stmt);
+      stmt = null;
+    }
+    if(triple) return fail(triple.line, 'SyntaxError', 'unterminated triple-quoted string literal (detected at line '+lines.length+')');
+    if(brackets.length){ const b = brackets[brackets.length-1]; return fail(b.line, 'SyntaxError', "'"+b.ch+"' was never closed"); }
+    if(expectIndent) return fail(lines.length, 'IndentationError', 'expected an indented block after '+expectIndent.what+' on line '+expectIndent.line);
+    return { stmts };
+  }
+
+  const PY_EFFECTS = [
+    [/\b(?:urlopen|urllib\.request\.\w+|requests\.(?:get|post|put|patch|delete|head|request)|httpx\.\w+|aiohttp\.\w+|socket\.\w+)\s*\(/, 'network call'],
+    [/(?:^|[^\w.])open\s*\(|\.(?:read_text|write_text|read_bytes|write_bytes)\s*\(/, 'file access'],
+    [/\b(?:subprocess\.\w+|os\.system|os\.popen)\s*\(/, 'process call'],
+    [/\bsqlite3\.connect\s*\(/, 'database connection'],
+    [/\btime\.sleep\s*\(/, 'sleep']
+  ];
+
+  // Simulated `python <file>`: compiles the file, runs module-level code, then calls run(input) and traces
+  // the statements whose values can be known statically. Branches and loops are reported, not guessed.
+  function simulateScript(path, source, inputs){
+    const out = [];
+    const L = (cls, text, line)=>{ out.push(line ? [cls, text, line] : [cls, text]); };
+    const done = (code, summary)=>({ code, lines: out, summary: summary || '' });
+    const traceback = (st, where, err)=>{
+      L('err', 'Traceback (most recent call last):');
+      L('err', '  File "'+path+'", line '+st.line+', in '+where, st.line);
+      L('err', '    '+firstLine(st.text), st.line);
+      L('err', err.type+(err.message ? ': '+err.message : ''), st.line);
+      L('info', 'Click an error line to jump to it in the editor.');
+      return done(1, err.type+' on line '+st.line);
+    };
+    L('dim', '$ python '+path+'   # simulated — no code, network or file access really runs');
+    let input = null;
+    const raw = String(inputs.json || '').trim();
+    if(raw){
+      try{ input = JSON.parse(raw); }
+      catch(e){ L('err', 'The debug input is not valid JSON: '+e.message); L('info', 'Fix it on the Input tab, then run again.'); return done(2, 'invalid input JSON'); }
+    }
+    L('dim', 'input = '+clip(pyRepr(input), 240));
+
+    const parsed = parsePython(source);
+    if(parsed.error){
+      const e = parsed.error;
+      L('err', '  File "'+path+'", line '+e.line, e.line);
+      L('err', '    '+e.text.trim(), e.line);
+      L('err', e.type+': '+e.message, e.line);
+      L('info', 'Click an error line to jump to it in the editor.');
+      return done(1, e.type+' on line '+e.line);
+    }
+    const isBareString = st=>/^[rRbBuU]{0,2}("""|'''|"|')/.test(st.text.trim()) && /^[rRbBuU]{0,2}s$/.test(st.code.trim());
+    const stmts = parsed.stmts.filter(st=>!isBareString(st));
+    L('ok', '✓ Compiled · '+source.replace(/\n+$/, '').split('\n').length+' lines');
+    const imports = [];
+    stmts.forEach(st=>{
+      if(st.indent) return;
+      const c = st.code.trim();
+      let m;
+      if((m = /^import\s+(.+)$/.exec(c))) m[1].split(',').forEach(x=>imports.push(x.trim().split(/\s+as\s+/)[0]));
+      else if((m = /^from\s+([\w.]+)\s+import\b/.exec(c))) imports.push(m[1]);
+    });
+    if(imports.length) L('dim', 'imports '+Array.from(new Set(imports)).join(', ')+' (not loaded in a simulated run)');
+
+    // Names a statement may bind or change: assignment targets, loop/with targets, def/class names, x.append(…), x[k] = ….
+    function bindings(st){
+      const code = st.code.trim();
+      let m;
+      if(st.header==='def' || st.header==='class') return (m = /^(?:async\s+)?(?:def|class)\s+([A-Za-z_]\w*)/.exec(code)) ? [m[1]] : [];
+      if(st.header==='with') return (code.match(/\bas\s+[A-Za-z_]\w*/g) || []).map(a=>a.replace(/^as\s+/, ''));
+      if(st.header==='for') return (m = /^(?:async\s+)?for\s+([\w\s,()]+?)\s+in\b/.exec(code)) ? m[1].replace(/[()]/g, '').split(',').map(n=>n.trim()).filter(Boolean) : [];
+      if(st.header) return [];
+      m = /^([A-Za-z_][\w\s,]*?)\s*(?::[^=]*)?(?:[-+*/%&|^@<>]{1,3}=|=(?!=)|[.[])/.exec(code);
+      return m ? m[1].split(',').map(n=>n.trim()).filter(n=>/^[A-Za-z_]\w*$/.test(n)) : [];
+    }
+
+    // Runs statements in order. Bodies of def/class and of branches/loops are skipped (names they bind become
+    // unknown); `with`, `try` and `finally` bodies run. An error inside `try` is reported but treated as handled.
+    // Returns { returned, value | unknown, st } | { error, st } | { branchReturns }.
+    function exec(block, scope){
+      const stack = [], branchReturns = [];
+      const raise = (error, st)=>{
+        const t = stack.slice().reverse().find(h=>h.tryBlock);
+        if(!t) return { error, st };
+        L('dim', 'line '+st.line+': raises '+error.type+(error.message ? ': '+error.message : '')+' inside try — the except handling is not traced', st.line);
+        t.skip = true;
+        return null;
+      };
+      for(const st of block){
+        while(stack.length && stack[stack.length-1].indent>=st.indent) stack.pop();
+        const skipped = stack.some(h=>h.skip), inDef = stack.some(h=>h.def);
+        const code = st.code.trim(), text = st.text.trim();
+        if(!inDef) PY_EFFECTS.forEach(([re, what])=>{ if(re.test(code)) L('info', 'line '+st.line+': '+what+' skipped'+(skipped ? ' (inside a branch)' : '')+' — '+clip(firstLine(text), 90), st.line); });
+        if(skipped){
+          if(!inDef){ bindings(st).forEach(n=>{ scope[n] = PY_UNKNOWN; }); if(/^return\b/.test(code)) branchReturns.push(st); }
+          if(st.header && !st.inline) stack.push({ indent: st.indent, skip:true, def: st.header==='def' || st.header==='class' });
+          continue;
+        }
+        let m, r;
+        if(st.header){
+          const h = st.header, def = h==='def' || h==='class', runs = h==='with' || h==='try' || h==='finally';
+          bindings(st).forEach(n=>{ scope[n] = PY_UNKNOWN; });
+          if(h==='if' || h==='for' || h==='while') L('dim', 'line '+st.line+': '+clip(firstLine(text), 80)+' — not traced, depends on runtime data', st.line);
+          if(st.inline){ if(!def && !runs && /:\s*return\b/.test(code)) branchReturns.push(st); }
+          else stack.push({ indent: st.indent, skip: !runs, def, tryBlock: h==='try' });
+          continue;
+        }
+        if(/^return\b/.test(code)){
+          const expr = text.replace(/^return\b/, '').trim();
+          if(!expr) return { returned:true, value:null, st };
+          r = evalPy(expr, scope);
+          if(r.error){ const f = raise(r.error, st); if(f) return f; continue; }
+          return r.ok ? { returned:true, value:r.value, st } : { returned:true, unknown:expr, st };
+        }
+        if(/^raise\b/.test(code)){
+          const expr = text.replace(/^raise\b/, '').replace(/\s+from\s+[\s\S]*$/, '').trim();
+          const em = /^([A-Za-z_][\w.]*)\s*(?:\(([\s\S]*)\))?$/.exec(expr);
+          let err;
+          if(!expr) err = { type:'RuntimeError', message:'No active exception to reraise' };
+          else if(!em) err = { type:'Exception', message:expr };
+          else {
+            r = em[2] && em[2].trim() ? evalPy(em[2], scope) : null;
+            err = { type:em[1], message: !r ? '' : r.ok ? pyStr(r.value) : em[2].trim() };
+          }
+          const f = raise(err, st); if(f) return f; continue;
+        }
+        if(/^print\s*\(/.test(code) && /\)$/.test(text)){
+          const args = text.slice(text.indexOf('(')+1, -1);
+          r = evalPy('['+args+']', scope);
+          if(r.error){ const f = raise(r.error, st); if(f) return f; continue; }
+          if(r.ok) r.value.map(pyStr).join(' ').split('\n').forEach(t=>L('', t));
+          else L('dim', 'line '+st.line+': print('+clip(args, 80)+') — value depends on runtime data', st.line);
+          continue;
+        }
+        if((m = /^([A-Za-z_]\w*)\s*(?::[^=]*)?=(?!=)/.exec(code))){
+          const tm = /^([A-Za-z_]\w*)\s*(?::[^=]*)?=/.exec(text);
+          r = tm ? evalPy(text.slice(tm[0].length), scope) : { ok:false };
+          scope[m[1]] = r.ok ? r.value : PY_UNKNOWN;
+          if(r.error){ const f = raise(r.error, st); if(f) return f; }
+          continue;
+        }
+        bindings(st).forEach(n=>{ scope[n] = PY_UNKNOWN; });
+      }
+      return { branchReturns };
+    }
+
+    const globals = {};
+    const mod = exec(stmts, globals);
+    if(mod.error) return traceback(mod.st, '<module>', mod.error);
+
+    const defIdx = stmts.findIndex(st=>st.indent===0 && /^def\s+run\s*\(/.test(st.code.trim()));
+    if(defIdx<0){
+      L('err', 'Traceback (most recent call last):');
+      L('err', '  File "<flow runner>", line 1, in <module>');
+      L('err', "AttributeError: module '"+baseName(path).replace(/\.py$/, '')+"' has no attribute 'run'");
+      L('info', 'A Script step calls a top-level  def run(input):  with the previous step’s output.');
+      return done(1, 'no run() function');
+    }
+    const def = stmts[defIdx];
+    const open = def.text.indexOf('(');
+    let depth = 0, close = open;
+    for(; close<def.text.length; close++){ const c = def.text[close]; if('([{'.includes(c)) depth++; else if(')]}'.includes(c) && --depth===0) break; }
+    const params = def.text.slice(open+1, close).split(',').map(p=>p.trim()).filter(p=>p && p!=='/' && p!=='*');
+    const positional = params.filter(p=>!p.startsWith('*')), varargs = params.some(p=>/^\*[^*]/.test(p));
+    const required = positional.filter(p=>!p.includes('=')).map(p=>p.split(':')[0].trim());
+    if(!positional.length && !varargs){
+      L('err', 'TypeError: run() takes 0 positional arguments but 1 was given', def.line);
+      L('info', 'Give run() a parameter for the previous step’s output:  def run(input):');
+      return done(1, 'TypeError on line '+def.line);
+    }
+    if(required.length>1){
+      const missing = required.slice(1).map(n=>"'"+n+"'");
+      L('err', 'TypeError: run() missing '+missing.length+' required positional argument'+(missing.length===1 ? '' : 's')+': '+
+        (missing.length===1 ? missing[0] : missing.slice(0, -1).join(', ')+' and '+missing[missing.length-1]), def.line);
+      return done(1, 'TypeError on line '+def.line);
+    }
+    const pname = positional.length ? positional[0].split(/[:=]/)[0].trim() : params.find(p=>/^\*[^*]/.test(p)).slice(1).split(':')[0].trim();
+    const scope = Object.assign({}, globals);
+    scope[pname] = positional.length ? input : [input];
+    L('dim', 'calling run('+pname+') · line '+def.line, def.line);
+    const body = [];
+    for(let k=defIdx+1; k<stmts.length && stmts[k].indent>def.indent; k++) body.push(stmts[k]);
+    const res = exec(body, scope);
+    if(res.error) return traceback(res.st, 'run', res.error);
+    if(res.returned && 'unknown' in res){
+      L('info', 'run() returns  '+clip(firstLine(res.unknown), 100)+'  · line '+res.st.line, res.st.line);
+      L('dim', 'Not evaluated — it depends on values only known at runtime (calls, loops or network data).');
+      return done(0);
+    }
+    if(res.returned){
+      const v = res.value;
+      const desc = Array.isArray(v) ? 'a list of '+v.length+' item'+(v.length===1 ? '' : 's') : isPyDict(v) ? 'a dict with '+Object.keys(v).length+' key'+(Object.keys(v).length===1 ? '' : 's')
+        : typeof v==='string' ? 'a str ('+v.length+' chars)' : pyTypeName(v);
+      L('ok', '✓ run() returned '+desc+' · line '+res.st.line, res.st.line);
+      const json = JSON.stringify(v, null, 2).split('\n');
+      json.slice(0, 300).forEach(t=>L('', t));
+      if(json.length>300) L('dim', '… '+(json.length-300)+' more lines');
+      return done(0);
+    }
+    if(res.branchReturns.length){
+      const b = res.branchReturns[0];
+      L('info', 'run() only returns inside a branch (line '+b.line+') — the traced path falls through', b.line);
+    }
+    L('ok', '✓ run() returned None');
+    L('', 'null');
+    return done(0);
+  }
+
+  // Simulated prompt run: renders {{variables}} from the debug inputs, flags problems, and answers with a
+  // deterministic stand-in reply so the data flowing through the step can be checked.
+  function simulatePrompt(path, source, inputs){
+    const out = [];
+    const L = (cls, text, line)=>{ out.push(line ? [cls, text, line] : [cls, text]); };
+    const task = String(inputs.task || '').trim(), values = inputs.vars || {};
+    let warnings = 0;
+    L('dim', '$ prompt '+path+'   # simulated model — no request leaves the browser');
+    L('dim', 'task: '+(task ? '“'+clip(task, 120)+'”' : '(none)')+' · reasoning '+(inputs.reasoning ? 'on' : 'off'));
+    if(!source.trim()){
+      L('err', 'The prompt is empty — write its instructions first.');
+      return { code:1, lines:out, summary:'empty prompt' };
+    }
+    if(!task){ L('info', '⚠ No task — the step’s “for task” text is required when the flow runs'); warnings++; }
+    const vars = templateVariables(source);
+    vars.forEach(v=>{
+      const val = values[v]==null ? '' : String(values[v]);
+      if(val) L('', '{{'+v+'}} = '+clip(val, 160));
+      else { L('info', '⚠ {{'+v+'}} has no value — it is sent as an empty string'); warnings++; }
+    });
+    source.split('\n').forEach((l, idx)=>{
+      if(/\{\{|\}\}/.test(l.replace(/\{\{\s*[\w.]+\s*\}\}/g, ''))){ L('info', '⚠ line '+(idx+1)+': braces that aren’t a valid {{variable}} are sent as written', idx+1); warnings++; }
+    });
+    const rendered = source.replace(/\{\{\s*([\w.]+)\s*\}\}/g, (_, v)=>values[v]==null ? '' : String(values[v]));
+    const tokens = s=>Math.max(1, Math.ceil(String(s).length/4));
+    L('head', '── Rendered prompt · '+rendered.length+' chars · ~'+tokens(rendered+task)+' tokens');
+    rendered.replace(/\s+$/, '').split('\n').forEach(l=>L('', l));
+    const lines = rendered.split('\n');
+    const title = (lines.find(l=>/^#{1,6}\s/.test(l)) || '').replace(/^#+\s*/, '').trim();
+    const rules = lines.filter(l=>/^\s*(?:[-*+]|\d+\.)\s+\S/.test(l)).map(l=>l.replace(/^\s*(?:[-*+]|\d+\.)\s+/, '').replace(/\*\*/g, '').trim());
+    if(inputs.reasoning){
+      L('head', '── Thinking (simulated)');
+      L('dim', 'Reading '+lines.filter(l=>l.trim()).length+' lines of instructions'+(rules.length ? ' with '+rules.length+' rule'+(rules.length===1 ? '' : 's') : '')+'.');
+      L('dim', 'Planning '+(task ? 'how to “'+clip(task, 80)+'”' : 'the answer')+'.');
+    }
+    const reply = [];
+    reply.push('[simulated] '+(task ? 'Answer to “'+clip(task, 80)+'”' : 'Answer')+(title ? ' for “'+clip(title, 60)+'”' : '')+'.');
+    const filled = vars.filter(v=>values[v]);
+    if(filled.length) reply.push('Based on '+filled.map(v=>v+' = '+clip(values[v], 60)).join(', ')+'.');
+    if(rules.length){
+      reply.push('Following '+rules.length+' instruction'+(rules.length===1 ? '' : 's')+':');
+      rules.slice(0, 12).forEach(r=>reply.push('  ✓ '+clip(r, 100)));
+    }
+    reply.push('The real model’s reply replaces this text when the flow runs on the execution server.');
+    L('head', '── Simulated reply');
+    reply.forEach(l=>L('', l));
+    L('ok', '✓ Done · ~'+tokens(rendered+task)+' tokens in · ~'+tokens(reply.join('\n'))+' out');
+    return { code:0, lines:out, warnings, summary: warnings ? warnings+' warning'+(warnings===1 ? '' : 's') : '' };
   }
 
   /* ---------------- Webhook endpoint view ---------------- */
@@ -2207,7 +3054,15 @@
     if(e.key!=='Escape' || !fileView) return;
     if(document.getElementById('cmdPaletteOverlay').style.display==='flex' || document.querySelector('.phrase-popover')) return;
     e.preventDefault();
+    if(fileView.debug && document.activeElement && document.activeElement.closest && document.activeElement.closest('.dbg')){ closeDebugPanel(); return; }
     closeFileView();
+  });
+  // Ctrl/Cmd+Enter runs the open prompt or script for debugging.
+  document.addEventListener('keydown', e=>{
+    if(e.key!=='Enter' || !(e.ctrlKey || e.metaKey) || e.altKey || !fileView || fileView.type!=='file' || !isDebuggable(fileKindOf(fileView.path))) return;
+    if(e.target && e.target.closest && e.target.closest('#aiDock, #cmdPaletteOverlay')) return;
+    e.preventDefault();
+    startDebugRun();
   });
 
   function renderNodes(){
@@ -2902,6 +3757,7 @@
     }
     if(!confirm(msg)) return;
     Workspace.remove(path);
+    DebugInputs.remove(path);
     if(fileView && fileView.type==='file' && fileView.path===path) closeFileView();
     if(path===currentFlowPath){ setCurrentFlow(null); savedSnapshot = ''; }
     refreshFileUsers(path);
@@ -3271,6 +4127,9 @@
       else setStatus('Select a Run Prompt, Script, Data or webhook Trigger node first.');
     } },
     { label:'Run Flow Animation', hint:'Run', icon:'play', run:runFlowAnimation },
+    { label:'Run Open Prompt / Script for Debugging', hint:'Files \u00b7 Ctrl+Enter', icon:'play', run:()=>{
+      if(!startDebugRun()) setStatus('Open a prompt or script file first, then run it for debugging.');
+    } },
     { label:'Save Flow', hint:'Flow \u00b7 Ctrl+S', icon:'save', run:saveFlow },
     { label:'New Flow', hint:'Flow', icon:'plus', run:newFlow },
     { label:'Load Sample Flow', hint:'Flow', icon:'sample', run:()=>loadSample() },
@@ -3438,6 +4297,17 @@
       selectNode(n.id); openNode(n);
       return 'Opened '+(n.type==='trigger' ? 'the webhook endpoint' : nodeFilePath(n));
     } },
+    { name:'debug', args:'[node]', group:'Nodes', icon:'play', desc:'Run a prompt or script for debugging', suggest:'nodes', run(arg){
+      const openRunnable = fileView && fileView.type==='file' && isDebuggable(fileKindOf(fileView.path));
+      if(arg || !openRunnable){
+        const n = arg ? aiFindNode(arg) : aiSelected();
+        if(!n) return { warn: arg ? 'No node matches “'+arg+'”' : 'Open a prompt or script, or name a step: /debug summarize' };
+        if(!isDebuggable(nodeFileKind(n))) return { warn: '“'+n.name+'” isn’t a Run Prompt or Script step' };
+        selectNode(n.id); openNode(n);
+      }
+      if(!startDebugRun()) return { warn: 'Couldn’t start a debug run' };
+      return 'Running '+fileView.path+' for debugging — see the Console tab below the editor';
+    } },
     { name:'rename', args:'<new name>', group:'Nodes', icon:'edit', desc:'Rename the selected node', run(arg){
       const n = aiSelected();
       if(!n) return { warn: 'Select a node first' };
@@ -3513,6 +4383,8 @@
     if(/\b(sample|example|demo)\b/i.test(text)) return '/sample';
     if(/\b(clear|wipe|reset)\b/i.test(text)) return '/clear';
     if(/\b(dark|light|theme)\b/i.test(text)) return '/theme';
+    if((m = /\bdebug\b(?:\s+(?:the\s+)?(.+?))?(?:\s+(?:node|step|file|prompt|script))?$/i.exec(text))) return m[1] && aiFindNode(m[1]) ? '/debug '+m[1] : '/debug';
+    if(fileView && fileView.type==='file' && isDebuggable(fileKindOf(fileView.path)) && /\b(run|execute|test|try)\b/i.test(text)) return '/debug';
     if(/\b(run|execute|start|test)\b/i.test(text)) return '/run';
     if((m = /\b(?:open|edit)\s+(?:the\s+)?(.+?)(?:\s+(?:node|file|prompt|script))?$/i.exec(text)) && aiFindNode(m[1]) && canOpenNode(aiFindNode(m[1]))) return '/open '+m[1];
     if((m = /\b(?:select|go to|show|focus|open|find)\s+(?:the\s+)?(.+?)(?:\s+node)?$/i.exec(text)) && aiFindNode(m[1])) return '/select '+m[1];
